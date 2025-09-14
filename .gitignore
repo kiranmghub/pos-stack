@@ -1,0 +1,17 @@
+# Node / Vite
+node_modules/
+dist/
+.vite/
+*.log
+
+# Python / Django
+.venv/
+__pycache__/
+*.pyc
+*.sqlite3
+
+# Common
+.env
+.env.*
+.DS_Store
+coverage/
