@@ -1,0 +1,10 @@
+zip -r pos-frontend.zip pos-frontend \
+  -x "pos-frontend/node_modules/*" \
+     "pos-frontend/dist/*" \
+     "pos-frontend/.vite/*" \
+     "pos-frontend/.turbo/*" \
+     "pos-frontend/.next/*" \
+     "pos-frontend/.git/*" \
+     "pos-frontend/*/__pycache__/*" \
+     "pos-frontend/.DS_Store" \
+     "*.log"

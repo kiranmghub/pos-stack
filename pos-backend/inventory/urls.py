@@ -19,5 +19,7 @@ urlpatterns = [
     path("low_stock", LowStockView.as_view()),
     path("transfers", TransferListCreateView.as_view(), name="transfer-list"),
     path("transfers/<int:pk>", TransferDetailView.as_view(), name="transfer-detail"),
+    # Support action in path e.g. POST /transfers/1/send
+    path("transfers/<int:pk>/<str:action>", TransferDetailView.as_view(), name="transfer-action"),
 
 ]

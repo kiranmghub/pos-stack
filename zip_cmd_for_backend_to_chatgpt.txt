@@ -1,0 +1,8 @@
+zip -r pos-backend.zip pos-backend \
+  -x "pos-backend/.venv/*" \
+     "pos-backend/*/migrations/*" \
+     "pos-backend/*/__pycache__/*" \
+     "pos-backend/db.sqlite3" \
+     "*.pyc" \
+     "*.pyo" \
+     "*.DS_Store"

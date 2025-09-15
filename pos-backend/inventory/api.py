@@ -527,12 +527,13 @@ class TransferDetailView(APIView):
         }
         return Response(data, status=200)
 
-    def post(self, request, pk):
+    def post(self, request, pk, action=None):
         """
         Actions via ?action=send|receive|cancel
         """
         t = self.get_obj(request, pk)
-        action = (request.GET.get("action") or "").lower()
+        # accept action from path param or query param for flexibility
+        action = (action or request.GET.get("action") or "").lower()
         if action not in ("send", "receive", "cancel"):
             return Response({"error": "action required: send|receive|cancel"}, status=400)
 
