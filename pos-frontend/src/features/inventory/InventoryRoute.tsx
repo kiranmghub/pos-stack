@@ -25,6 +25,7 @@ import {
 
 // NEW: Transfers page import
 import TransfersPage from "@/features/inventory/TransfersPage";
+import CountsPage from "@/features/inventory/CountsPage";
 
 function toMoney(n: string | number) {
   const x = typeof n === "string" ? parseFloat(n) : n;
@@ -35,7 +36,7 @@ export default function InventoryRoute() {
   const [stores, setStores] = useState<StoreLite[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   // NEW: include "transfers" in the union
-  const [active, setActive] = useState<"overview" | "stock" | "ledger" | "transfers">("stock");
+  const [active, setActive] = useState<"overview" | "stock" | "ledger" | "transfers" | "counts">("stock");
 
   useEffect(() => {
     (async () => {
@@ -78,6 +79,7 @@ export default function InventoryRoute() {
           <TabButton active={active === "ledger"} onClick={() => setActive("ledger")} label="Ledger" icon={<ListChecks className="h-4 w-4" />} />
           {/* NEW: Transfers tab button */}
           <TabButton active={active === "transfers"} onClick={() => setActive("transfers")} label="Transfers" icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>} />
+          <TabButton active={active === "counts"} onClick={() => setActive("counts")} label="Counts" icon={<ListChecks className="h-4 w-4" />} />
         </div>
       </div>
 
@@ -88,6 +90,7 @@ export default function InventoryRoute() {
           {active === "ledger" && <LedgerTab storeId={storeId} />}
           {/* NEW: render Transfers page (self-contained) */}
           {active === "transfers" && <TransfersPage />}
+          {active === "counts" && <CountsPage storeId={storeId} />}
         </>
       ) : (
         <div className="p-6 text-slate-400">No stores found.</div>
