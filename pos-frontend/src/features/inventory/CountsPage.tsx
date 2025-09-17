@@ -223,7 +223,13 @@ async function onScanSubmit(e: React.FormEvent) {
     setQty(1); setSkuOpen(false);
     barcodeRef.current?.focus();
   } catch (e: any) {
-    setMsg(e.message || "Scan failed");
+//     setMsg(e.message || "Scan failed");
+    const human = e?.message?.toLowerCase().includes("no variant")
+    ? `No match for barcode “${barcode || sku}”.`
+    : (e?.message || "Scan failed");
+    setMsg(human);
+// keep focus so the operator can immediately rescan
+    setTimeout(() => barcodeRef.current?.focus(), 0);
   } finally {
     submitting.current = false;
   }

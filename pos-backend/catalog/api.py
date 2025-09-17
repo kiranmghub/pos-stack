@@ -118,7 +118,7 @@ class CatalogProductListCreateView(ListCreateAPIView):
         has_default_tax_rate = "default_tax_rate" in product_field_names
 
         qs = Product.objects.filter(tenant=tenant).annotate(
-            variants_count=Count("variant")
+            variants_count=Count("variants")
         )
 
         # Always annotate default_tax_rate with a known output_field to avoid FieldError.
