@@ -1,4 +1,5 @@
 # inventory/api_counts.py
+from django.utils import timezone
 from datetime import datetime
 from django.db import transaction
 from django.db.models import Sum, Value, IntegerField, Q
@@ -74,15 +75,45 @@ class CountSessionListCreateView(APIView):
         page = int(request.GET.get("page") or "1")
         page_size = int(request.GET.get("page_size") or "24")
 
+        # qs = CountSession.objects.filter(tenant=tenant).select_related("store").order_by("-created_at")
+        # if store_id:
+        #     qs = qs.filter(store_id=store_id)
+        # if status_f:
+        #     qs = qs.filter(status=status_f)
+        # if q:
+        #     qs = qs.filter(Q(code__icontains=q) | Q(note__icontains=q))
+        #
+        # total = qs.count()
+        # ... existing code above ...
         qs = CountSession.objects.filter(tenant=tenant).select_related("store").order_by("-created_at")
         if store_id:
             qs = qs.filter(store_id=store_id)
         if status_f:
             qs = qs.filter(status=status_f)
-        if q:
-            qs = qs.filter(Q(code__icontains=q) | Q(note__icontains=q))
 
+        # --- broadened search ---
+        q = (request.GET.get("q") or "").strip()
+        if q:
+            # treat "#5" or "5" as ID search
+            qid = q[1:] if q.startswith("#") else q
+            id_filter = Q()
+            if qid.isdigit():
+                id_filter = Q(id=int(qid))
+
+            # OPTIONAL: avoid over-filtering on 1-character non-ID searches
+            if len(q) < 2 and not qid.isdigit():
+                pass  # ignore this tiny query
+            else:
+                qs = qs.filter(
+                    id_filter |
+                    Q(code__icontains=q) |
+                    Q(note__icontains=q) |
+                    Q(store__code__icontains=q) |
+                    Q(store__name__icontains=q)
+                )
+        # --- end broadened search ---
         total = qs.count()
+
         start = (page - 1) * page_size
         rows = qs[start:start + page_size]
         data = [{
@@ -111,6 +142,10 @@ class CountSessionListCreateView(APIView):
         s = CountSession.objects.create(
             tenant=tenant, store=store, code=code, note=note, created_by=request.user
         )
+        if not s.code:
+            s.code = f"COUNT-{s.id:05d}"
+            s.save(update_fields=["code"])
+
         return Response({"id": s.id}, status=201)
 
 
@@ -209,7 +244,7 @@ class CountScanView(APIView):
 
         if s.status == "DRAFT":
             s.status = "IN_PROGRESS"
-            s.started_at = datetime.utcnow()
+            s.started_at = timezone.now()
             s.save(update_fields=["status", "started_at"])
 
         return Response({"ok": True, "line_id": line.id, "counted_qty": line.counted_qty}, status=200)
@@ -247,7 +282,7 @@ class CountSetQtyView(APIView):
 
         if s.status == "DRAFT":
             s.status = "IN_PROGRESS"
-            s.started_at = datetime.utcnow()
+            s.started_at = timezone.now()
             s.save(update_fields=["status", "started_at"])
 
         return Response({"ok": True}, status=200)
@@ -307,7 +342,7 @@ class CountFinalizeView(APIView):
                 summary["created"] = 1
 
             s.status = "FINALIZED"
-            s.finalized_at = datetime.utcnow()
+            s.finalized_at = timezone.now()
             s.save(update_fields=["status", "finalized_at"])
 
         return Response({"ok": True, "summary": summary}, status=200)

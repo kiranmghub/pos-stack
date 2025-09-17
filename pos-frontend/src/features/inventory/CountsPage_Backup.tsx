@@ -183,52 +183,41 @@ useEffect(() => {
     }
   }
 
-async function onScanSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  if (!session) return;
-
-  submitting.current = true;
-  const chosenSku = sku || skuQuery;
-  const chosenVariantId = pendingVariantId.current;
-
-  // NEW: parse qty from barcode pattern "code*qty"
-  const { code: parsedCode, qty: parsedQty } = parseCodeAndQty(barcode.trim());
-  const effBarcode = parsedCode;
-  const effQty = (parsedQty ?? qty) || 1;
-
-  if (!effBarcode && !chosenSku && !chosenVariantId) {
-    setMsg("Enter a barcode or SKU");
-    submitting.current = false;
-    return;
-  }
-
-  try {
-    const payload: any = { qty: effQty, location: location || undefined };
-    if (chosenVariantId) {
-      payload.variant_id = chosenVariantId;
-    } else {
-      payload.barcode = effBarcode || undefined;
-      payload.sku = chosenSku || undefined;
+  async function onScanSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!session) return;
+    const chosenSku = sku || skuQuery;
+    const chosenVariantId = pendingVariantId.current;
+    if (!barcode && !chosenSku && !chosenVariantId) {
+      setMsg("Enter a barcode or SKU");
+      return;
     }
-
-    await scanIntoCount(session.id, payload);
-
-    const s = await getCountSession(session.id);
-    setSession(s);
-    setMsg(`Added ${effBarcode ? `barcode ${effBarcode}` : `SKU ${chosenSku}`} × ${effQty}`);
-
-    setBarcode("");
-    setSku(""); setSkuQuery("");
-    pendingVariantId.current = null;
-    setQty(1); setSkuOpen(false);
-    barcodeRef.current?.focus();
-  } catch (e: any) {
-    setMsg(e.message || "Scan failed");
-  } finally {
-    submitting.current = false;
+    try {
+      const payload: any = {
+           qty: qty || 1,
+           location: location || undefined,
+      };
+      if (chosenVariantId) {
+           payload.variant_id = chosenVariantId;     // prefer server-strong key
+      } else {
+           payload.barcode = barcode || undefined;   // fallback to code text
+           payload.sku = chosenSku || undefined;
+      }
+      await scanIntoCount(session.id, payload);
+      const s = await getCountSession(session.id);
+      setSession(s);
+      setMsg(`Added ${barcode ? `barcode ${barcode}` : `SKU ${chosenSku}`} × ${qty}`);
+      setBarcode("");
+      setSku("");
+      setSkuQuery("");
+      pendingVariantId.current = null;            // reset after success
+      setQty(1);
+      setSkuOpen(false);                           // ensure dropdown is closed
+      barcodeRef.current?.focus();
+    } catch (e: any) {
+      setMsg(e.message || "Scan failed");
+    }
   }
-}
-
 
   async function onSetQty(variantId: number, counted: number) {
     if (!session) return;
@@ -423,22 +412,10 @@ async function onScanSubmit(e: React.FormEvent) {
                       <input
                         ref={barcodeRef}
                         value={barcode}
-                          onChange={(e) => {
-                            setBarcode(e.target.value);
-                            lastKeyTs.current = Date.now();
-                            scheduleAutoSubmit();        // ← calls the helper you added in step #1
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {     // immediate submit if scanner sends Enter
-                              e.preventDefault();
-                              formRef.current?.requestSubmit();
-                              return;
-                            }
-                            // optional: prevent browser shortcuts while scanning
-                            if ((e.ctrlKey || e.metaKey) && (e.key === "p" || e.key === "s")) e.preventDefault();
-                          }}
-                          placeholder="Barcode"
-                          className="bg-transparent outline-none flex-1"
+                        onChange={(e) => setBarcode(e.target.value)}
+                        onKeyDown={submitOnEnter}
+                        placeholder="Barcode"
+                        className="bg-transparent outline-none flex-1"
                       />
                     </div>
                       <div className="flex items-center gap-2 rounded bg-slate-800 px-3 py-2 relative">

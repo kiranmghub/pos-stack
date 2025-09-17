@@ -28,6 +28,35 @@ export type CountSession = {
   lines: CountLine[];
 };
 
+
+// === SKU/Variant lookup (ADD) ===
+export type VariantLite = {
+  id: number;
+  sku: string;
+  barcode?: string;
+  name?: string;          // or product_name depending on your API
+  product_name?: string;
+};
+
+
+export async function searchVariants({ q, limit = 8, store_id }:{
+  q:string; limit?:number; store_id?:number;
+}) {
+  const base = import.meta.env.VITE_API_BASE || "";
+  const url = new URL(`${base}/api/v1/catalog/variants`, window.location.origin);
+  url.searchParams.set("q", q);
+  url.searchParams.set("limit", String(limit));
+  if (store_id) url.searchParams.set("store_id", String(store_id));
+
+  const res = await ensureAuthedFetch(url.toString());
+  if (!res.ok) throw new Error("Variant search failed");
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.results ?? []);
+}
+
+
+
+
 export async function listStores(): Promise<StoreLite[]> {
   const res = await ensureAuthedFetch(`${API_BASE}/api/v1/pos/stores`);
   if (!res.ok) throw new Error("Failed to load stores");
@@ -74,21 +103,57 @@ export async function getCountSession(id: number) {
   return res.json() as Promise<CountSession>;
 }
 
-export async function scanIntoCount(id: number, payload: {
-  barcode?: string;
-  sku?: string;
-  variant_id?: number;
-  qty?: number;
-  location?: string;
-}) {
-  const res = await ensureAuthedFetch(`${API_BASE}/api/v1/inventory/counts/${id}/scan`, {
+// export async function scanIntoCount(id: number, payload: {
+//   barcode?: string;
+//   sku?: string;
+//   variant_id?: number;
+//   qty?: number;
+//   location?: string;
+// }) {
+//   const res = await ensureAuthedFetch(`${API_BASE}/api/v1/inventory/counts/${id}/scan`, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(payload),
+//   });
+//   if (!res.ok) throw new Error("Scan failed");
+//   return res.json();
+// }
+
+
+export async function scanIntoCount(
+  sessionId: number,
+  payload: { barcode?: string; sku?: string; variant_id?: number; qty?: number; location?: string }
+) {
+  const url = `${API_BASE}/api/v1/inventory/counts/${sessionId}/scan`; // no trailing slash
+
+  const res = await ensureAuthedFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Scan failed");
-  return res.json();
+
+  // Surface backend error details to the UI
+  if (!res.ok) {
+    let detail = `Scan failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data?.detail) detail = data.detail;
+      else if (data?.error) detail = data.error;
+    } catch {}
+    throw new Error(detail);
+  }
+
+  // Some views return tiny responses; parse gently
+  let data: any = null;
+  const text = await res.text();
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null; // not fatal; caller doesn’t require a shape
+  }
+  return data;
 }
+
 
 export async function setCountQty(id: number, payload: {
   variant_id: number;

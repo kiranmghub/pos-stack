@@ -19,6 +19,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from catalog.api_variants import VariantSearchView
 from common.auth_views import TenantAwareTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from .api import router  # ← single router for everything
@@ -60,5 +62,7 @@ urlpatterns = [
     # Inventory
     # path("api/v1/inventory/adjust", AdjustStockView.as_view()),
     path("api/v1/inventory/", include("inventory.urls", namespace="inventory")),
+    # Variants
+    path("api/v1/catalog/variants", VariantSearchView.as_view(), name="variant-search"),
 ]
 
