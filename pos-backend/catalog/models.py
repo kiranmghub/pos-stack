@@ -78,6 +78,14 @@ class Product(TimeStampedModel):
         verbose_name = "Product"
         verbose_name_plural = "Products"
 
+    # Optional: a safe representative image when product.image_url is empty
+    def representative_image_url(self):
+        if self.image_url:
+            return self.image_url
+        # fall back to the first variant that actually has an image
+        v = self.variants.filter(image_url__isnull=False).exclude(image_url="").order_by("id").first()
+        return v.image_url if v else ""
+
     def __str__(self):
         return self.name
 
@@ -93,6 +101,7 @@ class Variant(TimeStampedModel):
     barcode = models.CharField(max_length=64, blank=True, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    image_url = models.URLField(blank=True, default="")
     tax_category = models.ForeignKey(
         TaxCategory, null=True, blank=True, on_delete=models.SET_NULL
     )
@@ -119,6 +128,11 @@ class Variant(TimeStampedModel):
         # Keep prior behavior—SKU unique within product—while we tighten tenant uniqueness above.
         # (This is redundant but harmless; remove later if you prefer only tenant-level.)
         unique_together = ("product", "sku")
+
+    @property
+    def effective_image_url(self) -> str:
+        """Prefer a variant image; otherwise fall back to product image."""
+        return self.image_url or (self.product.image_url if self.product else "")
 
     def save(self, *args, **kwargs):
         # Keep tenant in sync with product (critical for create/update)

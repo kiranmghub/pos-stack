@@ -2,7 +2,7 @@
 import random
 from decimal import Decimal
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple  # <-- Python 3.8 compatible
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from tenants.models import Tenant
-from stores.models import Store, Register  # <-- Register added
+from stores.models import Store
 from catalog.models import Product, Variant, TaxCategory
 from inventory.models import InventoryItem
 
@@ -215,7 +215,7 @@ def save_barcode_sheet(codes_and_titles, pdf_path: Path, cols=3, rows=10, dpi=30
 
 # ---------------- Management command ----------------
 class Command(BaseCommand):
-    help = "Seed a Liquor Store demo (tenant, users, stores, register per store, catalog, inventory) and optionally print Code 39 barcode labels."
+    help = "Seed a Liquor Store demo (tenant, users, stores, catalog, inventory) and optionally print Code 39 barcode labels."
 
     def add_arguments(self, parser):
         # tenant + users
@@ -277,16 +277,6 @@ class Command(BaseCommand):
             stores.append(s)
         self.stdout.write(self.style.SUCCESS(f"Stores: {[s.code for s in stores]}"))
 
-        # --- One Register per store
-        for s in stores:
-            reg_code = f"{s.code}-REG1"
-            Register.objects.get_or_create(
-                store=s,
-                code=reg_code,
-                defaults={"code": f"Front Register @ {s.code}", "is_active": True},
-            )
-        self.stdout.write(self.style.SUCCESS("Register created for each store."))
-
         # --- Cashiers per store
         if TenantUser:
             for s in stores:
@@ -312,19 +302,7 @@ class Command(BaseCommand):
 
         def ensure_product(name, category, tax_cat, variants_spec):
             nonlocal seq
-            # Give every product a simple demo image URL
-            prod_img = f"https://picsum.photos/seed/{slug_simple(name)}/600/600"
-
-            p, _ = Product.objects.get_or_create(
-                tenant=tenant,
-                name=name,
-                defaults={"category": category, "is_active": True, "image_url": prod_img},
-            )
-            # Ensure image on existing product too (if blank)
-            if not (p.image_url or "").strip():
-                p.image_url = prod_img
-                p.save(update_fields=["image_url"])
-
+            p, _ = Product.objects.get_or_create(tenant=tenant, name=name, defaults={"category": category, "is_active": True})
             for size_label, size_mult in variants_spec:
                 base_low, base_high = PRICE_ANCHORS[category]
                 price = random.uniform(base_low, base_high) * size_mult
@@ -342,13 +320,9 @@ class Command(BaseCommand):
                         "tax_category": tax_cat,
                     },
                 )
-                # sprinkle a variant image on ~20% to test fallback
-                if created_v and random.random() < 0.2:
-                    v.image_url = f"https://picsum.photos/seed/{v.sku}/600/600"
-                    v.save(update_fields=["image_url"])
-                elif not created_v and not (v.image_url or "").strip() and random.random() < 0.2:
-                    v.image_url = f"https://picsum.photos/seed/{v.sku}/600/600"
-                    v.save(update_fields=["image_url"])
+                if not created_v and not v.barcode:
+                    v.barcode = barcode
+                    v.save(update_fields=["barcode"])
 
                 # per-store inventory
                 for s in stores:

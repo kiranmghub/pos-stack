@@ -17,12 +17,21 @@ class ProductAdmin(TenantScopedAdmin):
     list_filter = ("tenant", "category", "is_active")
     search_fields = ("name",)
 
+    def thumbnail(self, obj):
+        return obj.representative_image_url()
+    thumbnail.short_description = "Image"
+
 
 @admin.register(Variant)
 class VariantAdmin(admin.ModelAdmin):
     list_display = ("id", "product", "sku", "barcode", "price", "is_active")
     search_fields = ("sku", "barcode")
     list_filter = ("is_active", "product")
+
+    def image_short(self, obj):
+        url = obj.effective_image_url
+        return (url[:48] + "…") if url and len(url) > 48 else (url or "")
+    image_short.short_description = "Image URL"
 
 
 # admin.site.register(TaxCategory)

@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+
 # --- small helper copied (kept local to avoid cross-app import hell)
 def _resolve_request_tenant(request):
     t = getattr(request, "tenant", None)
@@ -43,19 +44,31 @@ class ProductListSerializer(serializers.ModelSerializer):
     default_tax_rate = serializers.DecimalField(
         max_digits=6, decimal_places=4, required=False, read_only=True, allow_null=True
     )
+    representative_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at")
+        fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at", "image_url", "representative_image_url",)
+
+    def get_representative_image_url(self, obj):  # <-- ADD
+        # If your Product model has representative_image_url(), use it.
+        if hasattr(obj, "representative_image_url"):
+            return obj.representative_image_url() or ""
+        # Safe fallback: product image or first variant image with a URL.
+        if getattr(obj, "image_url", ""):
+            return obj.image_url
+        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
+        return getattr(v, "image_url", "") if v else ""
 
 
 class VariantMiniSerializer(serializers.ModelSerializer):
     tax_rate = serializers.SerializerMethodField()
     on_hand = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Variant
-        fields = ("id", "sku", "barcode", "price", "is_active", "tax_category", "tax_rate", "on_hand")
+        fields = ("id", "sku", "barcode", "price", "is_active", "tax_category", "tax_rate", "on_hand", "image_url")
 
     def get_tax_rate(self, obj):
         return str(getattr(obj.tax_category, "rate", 0) or 0)
@@ -70,13 +83,30 @@ class VariantMiniSerializer(serializers.ModelSerializer):
         total = qs.aggregate(n=Coalesce(Sum("on_hand"), Value(0)))["n"]
         return int(total or 0)
 
+    def get_image_url(self, obj):
+        # Prefer variant image; fall back to product image; return "" if none.
+        url = (getattr(obj, "image_url", "") or "").strip()
+        if url:
+            return url
+        p = getattr(obj, "product", None)
+        return (getattr(p, "image_url", "") or "").strip() if p else ""
+
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     variants = VariantMiniSerializer(many=True, read_only=True)
+    representative_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ("id", "name", "is_active", "category", "description", "variants")
+        fields = ("id", "name", "is_active", "category", "description", "image_url", "representative_image_url", "variants",)
+
+    def get_representative_image_url(self, obj):  # <-- ADD
+        if hasattr(obj, "representative_image_url"):
+            return obj.representative_image_url() or ""
+        if getattr(obj, "image_url", ""):
+            return obj.image_url
+        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
+        return getattr(v, "image_url", "") if v else ""
 
 
 class ProductCreateSerializer(serializers.ModelSerializer):
