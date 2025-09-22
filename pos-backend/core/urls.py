@@ -20,6 +20,9 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from django.conf import settings
+from django.conf.urls.static import static
+
 from catalog.api_variants import VariantSearchView
 from common.auth_views import TenantAwareTokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
@@ -30,7 +33,7 @@ from catalog.api import (
     CatalogProductDetailView,
     VariantDetailView,
     TaxCategoryListView,
-    CategoryListView,
+    CategoryListView, ProductImageUploadView, VariantImageUploadView,
 )
 # from inventory.api import AdjustStockView
 
@@ -64,5 +67,12 @@ urlpatterns = [
     path("api/v1/inventory/", include("inventory.urls", namespace="inventory")),
     # Variants
     path("api/v1/catalog/variants", VariantSearchView.as_view(), name="variant-search"),
+    path("api/v1/catalog/products/<int:pk>/image", ProductImageUploadView.as_view()),
+    path("api/v1/catalog/variants/<int:pk>/image", VariantImageUploadView.as_view()),
+    path("api/v1/admin/", include("tenant_admin.urls")),
+
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

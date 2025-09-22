@@ -26,6 +26,11 @@ import base64
 import qrcode
 
 
+# Build absolute URL when we only have a relative path (/media/...)
+def _abs(request, url: str) -> str:
+    if not url:
+        return ""
+    return request.build_absolute_uri(url) if url.startswith("/") else url
 
 
 def _resolve_request_tenant(request):
@@ -102,15 +107,40 @@ class ProductsForPOSView(APIView):
                 | Q(barcode__icontains=query)
             )
 
+        def variant_image_url(v):
+            # 0) Variant file (best)
+            try:
+                if getattr(v, "image_file", None) and v.image_file and v.image_file.url:
+                    return _abs(request, v.image_file.url)
+            except Exception:
+                pass
+
+            # 1) Variant URL (next best)
+            if (getattr(v, "image_url", "") or "").strip():
+                return _abs(request, v.image_url)
+
+            # 2) Product file (fallback)
+            try:
+                if getattr(v.product, "image_file", None) and v.product.image_file and v.product.image_file.url:
+                    return _abs(request, v.product.image_file.url)
+            except Exception:
+                pass
+
+            # 3) Product URL (last resort)
+            return _abs(request, getattr(v.product, "image_url", "") or "")
+
         data = [
             {
                 "id": v.id,
                 "name": v.product.name,
+                "variant_name": v.name,
                 "price": str(v.price),
                 "sku": v.sku,
                 "barcode": v.barcode,
                 "on_hand": int(v.on_hand or 0),
                 "tax_rate": str(v.tax_rate or 0),
+                "image_url": variant_image_url(v),  # ← NEW
+                "representative_image_url": variant_image_url(v),
             }
             for v in qs.order_by("product__name")[:120]
         ]

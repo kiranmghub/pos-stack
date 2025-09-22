@@ -54,11 +54,6 @@ export default function PosScreen() {
     } catch { return []; }
   });
 
-  // pick the best image the backend gave us
-  const imgFor = (v: VariantLite): string =>
-  (v as any).image_url || (v as any).representative_image_url || "";
-
-
   const [barcode, setBarcode] = useState("");
   const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -404,26 +399,10 @@ export default function PosScreen() {
                 }`}
                 title={disabled ? "Out of stock" : "Add to cart"}
               >
-                <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                  {imgFor(p) ? (
-                    <img
-                      src={imgFor(p)}
-                      alt={p.name}
-                      className="h-full w-full object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none"; // fallback to icon if image fails
-                      }}
-                    />
-                  ) : (
-                    <span className="text-slate-400">🛒</span>
-                  )}
+                <div className="h-20 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2">
+                  <span className="text-slate-400">🛒</span>
                 </div>
-
                 <div className="font-medium truncate">{p.name}</div>
-                {/* NEW: variant name (or SKU as a fallback) */}
-                <div className="text-xs text-slate-300 mt-0.5 truncate">
-                  {(p as any).variant_name || p.sku || ""}
-                </div>
                 <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
                 <StockBadge remaining={remaining} />
               </button>
@@ -464,9 +443,6 @@ export default function PosScreen() {
             <div key={l.variant.id} className="flex items-center justify-between bg-slate-800 rounded-lg p-3">
               <div className="min-w-0">
                 <div className="font-medium truncate">{l.variant.name}</div>
-                <div className="text-sm text-slate-400 truncate">
-                {(l.variant as any).variant_name || l.variant.sku || ""}
-                </div>
                 <div className="text-sm text-slate-400">
                   ${toMoney(l.variant.price)} × {l.qty}
                 </div>

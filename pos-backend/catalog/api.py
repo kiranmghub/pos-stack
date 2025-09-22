@@ -3,10 +3,8 @@ from decimal import Decimal
 from django.db.models import Sum, Count, F, Value, IntegerField, DecimalField, CharField
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
-from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveUpdateAPIView
-from rest_framework.response import Response
-from rest_framework import permissions, status, serializers
+from rest_framework import permissions, status, serializers, parsers
 from django.db import transaction
 
 from tenants.models import Tenant
@@ -17,6 +15,16 @@ from inventory.models import InventoryItem
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+import os
+from django.conf import settings
+from django.core.files.storage import default_storage, FileSystemStorage
+
+
+# Build absolute URL when we only have a relative path (/media/...)
+def _abs(request, url: str) -> str:
+    if not url:
+        return ""
+    return request.build_absolute_uri(url) if url.startswith("/") else url
 
 
 # --- small helper copied (kept local to avoid cross-app import hell)
@@ -45,20 +53,30 @@ class ProductListSerializer(serializers.ModelSerializer):
         max_digits=6, decimal_places=4, required=False, read_only=True, allow_null=True
     )
     representative_image_url = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at", "image_url", "representative_image_url",)
 
-    def get_representative_image_url(self, obj):  # <-- ADD
-        # If your Product model has representative_image_url(), use it.
+    def get_representative_image_url(self, obj):
+        request = self.context.get("request")
         if hasattr(obj, "representative_image_url"):
-            return obj.representative_image_url() or ""
-        # Safe fallback: product image or first variant image with a URL.
+            return _abs(request, obj.representative_image_url() or "")
         if getattr(obj, "image_url", ""):
-            return obj.image_url
+            return _abs(request, obj.image_url)
         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-        return getattr(v, "image_url", "") if v else ""
+        return _abs(request, getattr(v, "image_url", "") if v else "")
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        # File first, then URL
+        try:
+            if obj.image_file and obj.image_file.url:
+                return _abs(request, obj.image_file.url)
+        except Exception:
+            pass
+        return _abs(request, obj.image_url or "")
 
 
 class VariantMiniSerializer(serializers.ModelSerializer):
@@ -84,29 +102,38 @@ class VariantMiniSerializer(serializers.ModelSerializer):
         return int(total or 0)
 
     def get_image_url(self, obj):
-        # Prefer variant image; fall back to product image; return "" if none.
-        url = (getattr(obj, "image_url", "") or "").strip()
-        if url:
-            return url
-        p = getattr(obj, "product", None)
-        return (getattr(p, "image_url", "") or "").strip() if p else ""
+        request = self.context.get("request")
+        url = getattr(obj, "effective_image_url", None) or getattr(obj, "image_url", "") or ""
+        return _abs(request, url)
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     variants = VariantMiniSerializer(many=True, read_only=True)
     representative_image_url = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = ("id", "name", "is_active", "category", "description", "image_url", "representative_image_url", "variants",)
 
-    def get_representative_image_url(self, obj):  # <-- ADD
+    def get_representative_image_url(self, obj):
+        request = self.context.get("request")
         if hasattr(obj, "representative_image_url"):
-            return obj.representative_image_url() or ""
+            return _abs(request, obj.representative_image_url() or "")
         if getattr(obj, "image_url", ""):
-            return obj.image_url
+            return _abs(request, obj.image_url)
         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-        return getattr(v, "image_url", "") if v else ""
+        return _abs(request, getattr(v, "image_url", "") if v else "")
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        try:
+            if obj.image_file and obj.image_file.url:
+                return _abs(request, obj.image_file.url)
+        except Exception:
+            pass
+        return _abs(request, obj.image_url or "")
+
 
 
 class ProductCreateSerializer(serializers.ModelSerializer):
@@ -185,7 +212,7 @@ class CatalogProductListCreateView(ListCreateAPIView):
         total = qs.count()
         start = (page - 1) * page_size
         items = qs[start:start + page_size]
-        data = ProductListSerializer(items, many=True).data
+        data = ProductListSerializer(items, many=True, context={"request": request}).data
         return Response({"count": total, "results": data}, status=200)
 
     def create(self, request, *args, **kwargs):
@@ -218,7 +245,15 @@ class CatalogProductDetailView(RetrieveUpdateDestroyAPIView):
     def get(self, request, *args, **kwargs):
         store_id = request.GET.get("store_id")
         obj = self.get_object()
-        ser = ProductDetailSerializer(obj, context={"store_id": store_id, "tenant": _resolve_request_tenant(request)})
+        ser = ProductDetailSerializer(
+            obj,
+            context={
+                "request": request,
+                "store_id": store_id,
+                "tenant": _resolve_request_tenant(request),
+            },
+        )
+
         return Response(ser.data, status=200)
 
     def patch(self, request, *args, **kwargs):
@@ -307,3 +342,60 @@ class CategoryListView(APIView):
         )
         data = [{"id": idx + 1, "name": name} for idx, name in enumerate(qs)]
         return Response(data, status=200)
+
+
+class ProductImageUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def post(self, request, pk):
+        tenant = _resolve_request_tenant(request)
+        product = get_object_or_404(Product, pk=pk, tenant=tenant)
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file provided as 'file'."}, status=400)
+
+        # Save to default storage (local dev or S3 prod)
+        saved = product.image_file.save(file.name, file, save=True)
+        # Build a URL that works on both FS and S3
+        try:
+            url = product.image_file.url
+        except Exception:
+            if isinstance(default_storage, FileSystemStorage):
+                url = request.build_absolute_uri(settings.MEDIA_URL.rstrip("/") + "/" + saved.lstrip("/"))
+            else:
+                url = default_storage.url(saved)
+
+        # Also keep image_url in sync (optional but convenient)
+        if url and url != (product.image_url or ""):
+            product.image_url = url
+            product.save(update_fields=["image_url"])
+
+        return Response({"image_url": url}, status=200)
+
+
+class VariantImageUploadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    def post(self, request, pk):
+        tenant = _resolve_request_tenant(request)
+        variant = get_object_or_404(Variant, pk=pk, product__tenant=tenant)
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file provided as 'file'."}, status=400)
+
+        saved = variant.image_file.save(file.name, file, save=True)
+        try:
+            url = variant.image_file.url
+        except Exception:
+            if isinstance(default_storage, FileSystemStorage):
+                url = request.build_absolute_uri(settings.MEDIA_URL.rstrip("/") + "/" + saved.lstrip("/"))
+            else:
+                url = default_storage.url(saved)
+
+        if url and url != (variant.image_url or ""):
+            variant.image_url = url
+            variant.save(update_fields=["image_url"])
+
+        return Response({"image_url": url}, status=200)

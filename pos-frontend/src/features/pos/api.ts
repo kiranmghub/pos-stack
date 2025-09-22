@@ -84,6 +84,9 @@ export type VariantLite = {
   price: string;        // money as string
   tax_rate?: string;    // decimal string
   on_hand?: number | string | null; // accept number or string
+  image_url?: string;
+  representative_image_url?: string;
+
 };
 
 /** === Calls used by the POS screen === */

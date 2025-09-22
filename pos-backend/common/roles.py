@@ -1,3 +1,4 @@
+# common/roles.py
 from django.db import models
 
 class TenantRole(models.TextChoices):
