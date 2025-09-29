@@ -125,7 +125,7 @@ const router = createBrowserRouter([
 
   // Admin Panel
     {
-      path: "/admin",
+      path: "/tenant_admin",
       element: (
         <ProtectedRoute>
           <OwnerOrAdmin>

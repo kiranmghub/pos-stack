@@ -15,10 +15,13 @@ import {
   type TaxCategory,
 } from "./api";
 
+type VariantDraft = NonNullable<ProductDTO["variants"]>[number];
+
 function toMoney(n: number | string | null | undefined) {
   const x = typeof n === "string" ? parseFloat(n) : typeof n === "number" ? n : 0;
   return (isNaN(x) ? 0 : x).toFixed(2);
 }
+
 
 export default function CatalogPage() {
   // table state
@@ -70,12 +73,15 @@ export default function CatalogPage() {
     setLoading(true);
     try {
       // ✅ map status to boolean or undefined
-      const activeFilter =
-        status === "" ? undefined : status === "true";
+//       const activeFilter =
+//         status === "" ? undefined : status === "true";
+      const activeFilter: "true" | "false" | undefined =
+        status === "" ? undefined : status;
 
       const resp = await listProducts({
         // ✅ send the correct query param name
-        query: debouncedQ,
+//         query: debouncedQ,
+        q: debouncedQ,
         is_active: activeFilter,
         category_id: categoryId || undefined,
         page,
@@ -492,11 +498,24 @@ function EditProductModal({
     onChange({ ...p, [key]: value });
   }
 
-  function updateVariant(i: number, patch: Partial<ProductDTO["variants"][number]>) {
-    const next = [...(p.variants || [])];
-    next[i] = { ...next[i], ...patch };
-    update("variants", next);
-  }
+//   function updateVariant(i: number, patch: Partial<ProductDTO["variants"][number]>) {
+//     const next = [...(p.variants || [])];
+//     next[i] = { ...next[i], ...patch };
+//     update("variants", next);
+//   }
+  // AFTER
+//     function updateVariant(i: number, patch: Partial<VariantDraft>) {
+//       const current = form.variants ?? [];
+//       const next = [...current];
+//       next[i] = { ...(next[i] as VariantDraft), ...patch };
+//       setForm({ ...form, variants: next });
+//     }
+
+    function updateVariant(i: number, patch: Partial<VariantDraft>) {
+      const next = [...(p.variants || [])] as VariantDraft[];
+      next[i] = { ...(next[i] || {} as VariantDraft), ...patch };
+      update("variants", next);
+    }
 
   function addVariant() {
     update("variants", [

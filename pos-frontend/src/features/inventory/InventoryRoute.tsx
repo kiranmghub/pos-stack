@@ -52,7 +52,7 @@ export default function InventoryRoute() {
     <AppShell>
       <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
         <PageHeading
-          icon={<Package className="h-5 w-5" />}
+//           icon={<Package className="h-5 w-5" />}
           title="Inventory"
           subtitle="Manage stock levels, adjustments, transfers, and ledger"
         />
@@ -90,7 +90,8 @@ export default function InventoryRoute() {
           {active === "ledger" && <LedgerTab storeId={storeId} />}
           {/* NEW: render Transfers page (self-contained) */}
           {active === "transfers" && <TransfersPage />}
-          {active === "counts" && <CountsPage storeId={storeId} />}
+{/*           {active === "counts" && <CountsPage storeId={storeId} />} */}
+          {active === "counts" && <CountsPage />}
         </>
       ) : (
         <div className="p-6 text-slate-400">No stores found.</div>
