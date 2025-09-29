@@ -251,6 +251,11 @@ export default function PosScreen() {
   const removeLine = (id: number) => setCart(prev => prev.filter(l => l.variant.id !== id));
   const clearCart = () => setCart([]);
 
+  function round2(n: number) {
+  return Math.round(n * 100) / 100;
+  }
+
+
   // totals
   const subtotal = useMemo(() => {
     return cart.reduce((s, l) => s + parseFloat(l.variant.price) * l.qty - (l.line_discount || 0), 0);
@@ -258,8 +263,14 @@ export default function PosScreen() {
 
   const tax = useMemo(() => {
     return cart.reduce((s, l) => {
-      const net = parseFloat(l.variant.price) * l.qty - (l.line_discount || 0);
-      return s + net * parseFloat(l.variant.tax_rate || "0");
+      const price = parseFloat(l.variant.price);
+      const rate = parseFloat(l.variant.tax_rate || "0");
+      // const net = parseFloat(l.variant.price) * l.qty - (l.line_discount || 0);
+      const net  = price * l.qty - (l.line_discount || 0);
+      const lineTax = round2(net * rate); // <- round PER LINE to match backend
+      // return s + net * parseFloat(l.variant.tax_rate || "0");
+      return s + lineTax;
+
     }, 0);
   }, [cart]);
 

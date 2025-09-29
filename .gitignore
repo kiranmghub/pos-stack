@@ -1,20 +1,33 @@
-# Node / Vite
-node_modules/
-dist/
-.vite/
+# Frontend env, Nbuild, ode / Vite
+pos-frontend/node_modules/
+pos-frontend/dist/
+ipos-frontend/.vite/
 *.log
+pos-frontend/tsconfig.tsbuildinfo
+
 
 # Python / Django
 .venv/
 __pycache__/
 *.pyc
 *.sqlite3
+pos-backend/.env
+pos-backend/.env.*
+pos-backend/media/
 
 # Common
 .env
 .env.*
 .DS_Store
 coverage/
+*.sock
+*.pid
 
 # Zip files
 *.zip
+
+**/*_Backup*
+
+# IDE
+.idea/
+

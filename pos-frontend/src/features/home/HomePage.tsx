@@ -51,7 +51,8 @@ export default function HomePage() {
   const role = (getRole() || "").toLowerCase(); // "owner", "cashier", etc.
   const user = getUser();
   const name =
-    user?.name || user?.username || user?.email?.split("@")[0] || "User";
+    user?.username || user?.email?.split("@")[0] || "User";
+
   const tenantCode = getTenantCode() || "";
 
   const canSeePOS = role === "owner" || role === "cashier" || role === "manager";
@@ -119,6 +120,7 @@ export default function HomePage() {
               accent="from-amber-500 to-orange-500"
             />
           )}
+
         </div>
 
         {/* (Optional) Quick tips / footer */}

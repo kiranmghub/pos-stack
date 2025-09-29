@@ -21,7 +21,7 @@ function toMoney(n: number | string | null | undefined) {
   return (isNaN(x) ? 0 : x).toFixed(2);
 }
 
-type PickRow = VariantLite & { on_hand?: number };
+type PickRow = VariantLite & { on_hand?: number ; product_name?: string; product?: { name?: string } | null;};
 
 export default function TransfersPage() {
   // reference data

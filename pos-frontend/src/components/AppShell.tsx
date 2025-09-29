@@ -4,7 +4,22 @@ import { Link } from "react-router-dom";
 import { Home, LogOut, Store } from "lucide-react";
 import { getTenantCode, logout, getUser, refreshAccessIfNeeded, authHeaders } from "@/lib/auth";
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+type AppShellProps = {
+  children: React.ReactNode;
+  /** Optional page title shown as a section header */
+  title?: string;
+  /** Constrain inner content to a centered max width */
+  contained?: boolean;
+  /** Right-side header actions (buttons, etc.) */
+  actions?: React.ReactNode;
+  /** Optional subtitle under the title */
+  subtitle?: React.ReactNode;
+};
+
+
+// export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, title, contained, actions, subtitle }: AppShellProps) {
+
   useTokenKeepAlive();
 
   const user = getUser();
@@ -48,6 +63,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Page body */}
       <main>{children}</main>
+
     </div>
   );
 }
