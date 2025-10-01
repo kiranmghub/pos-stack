@@ -25,12 +25,85 @@ import io
 import base64
 import qrcode
 
+# --- rules (taxes & discounts) ---
+from django.db.models import Q
+from django.utils.timezone import now
+
+from taxes.models import (
+    TaxRule,
+    TaxScope as TScope,
+    TaxBasis as TBasis,
+    ApplyScope as TApply,
+)
+
+from discounts.models import (
+    DiscountRule,
+    DiscountScope as DScope,
+    DiscountBasis as DBasis,
+    ApplyScope as DApply,
+    DiscountTarget,
+    Coupon,
+)
+
+
+from decimal import Decimal, ROUND_HALF_UP
+
+CENT = Decimal("0.01")
+def round2(x: Decimal) -> Decimal:
+    # Always round half up to 2 decimals (cash register behavior)
+    return (x or Decimal("0")).quantize(CENT, rounding=ROUND_HALF_UP)
+
+
 
 # Build absolute URL when we only have a relative path (/media/...)
 def _abs(request, url: str) -> str:
     if not url:
         return ""
     return request.build_absolute_uri(url) if url.startswith("/") else url
+
+
+def active_tax_rules(tenant, store):
+    t = now()
+    return (TaxRule.objects
+            .filter(tenant=tenant, is_active=True)
+            .filter(Q(start_at__isnull=True)|Q(start_at__lte=t),
+                    Q(end_at__isnull=True)|Q(end_at__gte=t))
+            .filter(Q(scope=TScope.GLOBAL)|Q(scope=TScope.STORE, store=store))
+            .order_by("priority", "id"))
+
+def active_discount_rules(tenant, store, coupon_code=None):
+    t = now()
+    rules = (DiscountRule.objects
+             .filter(tenant=tenant, is_active=True)
+             .filter(Q(start_at__isnull=True)|Q(start_at__lte=t),
+                     Q(end_at__isnull=True)|Q(end_at__gte=t))
+             .filter(Q(scope=DScope.GLOBAL)|Q(scope=DScope.STORE, store=store))
+             .order_by("priority", "id"))
+    coupon = None
+    if coupon_code:
+        coupon = (Coupon.objects
+                  .select_related("rule")
+                  .filter(tenant=tenant, code=coupon_code, is_active=True)
+                  .filter(Q(start_at__isnull=True)|Q(start_at__lte=t),
+                          Q(end_at__isnull=True)|Q(end_at__gte=t))
+                  .first())
+    return list(rules), coupon
+
+def line_matches_rule(line_ctx, rule):
+    """
+    line_ctx has: variant_id, product_id, category_id
+    """
+    if rule.target == DiscountTarget.ALL:
+        return True
+    if rule.target == DiscountTarget.CATEGORY:
+        return rule.categories.filter(id=line_ctx["category_id"]).exists()
+    if rule.target == DiscountTarget.PRODUCT:
+        return rule.products.filter(id=line_ctx["product_id"]).exists()
+    if rule.target == DiscountTarget.VARIANT:
+        return rule.variants.filter(id=line_ctx["variant_id"]).exists()
+    return False
+
+
 
 
 def _resolve_request_tenant(request):
@@ -238,66 +311,274 @@ class POSCheckoutView(APIView):
                     status="pending",
                 )
 
+                # subtotal = Decimal("0.00")
+                # total_tax = Decimal("0.00")
+                # total_fee = Decimal("0.00")
                 subtotal = Decimal("0.00")
                 total_tax = Decimal("0.00")
                 total_fee = Decimal("0.00")
+                total_discount = Decimal("0.00")
 
                 # Line creation + stock deduction
+                # for l in lines:
+                #     variant_id = l.get("variant_id")
+                #     qty = int(l.get("qty") or 0)
+                #     unit_price = Decimal(str(l.get("unit_price") or "0"))
+                #     line_discount = Decimal(str(l.get("line_discount") or "0"))
+
+                #     if qty <= 0:
+                #         continue
+
+                #     variant = Variant.objects.select_related("product", "tax_category").get(
+                #         id=variant_id,
+                #         product__tenant=tenant,
+                #     )
+
+                #     # tax rate from variant.tax_category.rate (nullable)
+                #     tax_rate = Decimal(str(getattr(variant.tax_category, "rate", 0) or 0))
+
+                #     net = (unit_price * qty) - line_discount
+                #     tax = (net * tax_rate).quantize(Decimal("0.01"))
+                #     fee = Decimal("0.00")
+                #     line_total = (net + tax + fee).quantize(Decimal("0.01"))
+
+                #     SaleLine.objects.create(
+                #         sale=sale,
+                #         variant=variant,
+                #         qty=qty,
+                #         unit_price=unit_price,
+                #         discount=line_discount,
+                #         tax=tax,
+                #         fee=fee,
+                #         line_total=line_total,
+                #     )
+
+                #     # deduct inventory at this store
+                #     inv, _ = InventoryItem.objects.select_for_update().get_or_create(
+                #         tenant=tenant, store=store, variant=variant, defaults={"on_hand": 0, "reserved": 0}
+                #     )
+                #     # you already subtract elsewhere; keep consistent:
+                #     inv.on_hand = (Decimal(inv.on_hand) - Decimal(qty))
+                #     if inv.on_hand < 0:
+                #         inv.on_hand = 0
+                #     inv.save()
+
+                #     subtotal += (unit_price * qty) - line_discount
+                #     total_tax += tax
+                #     total_fee += fee
+                # Optional coupon from payload
+                coupon_code = (data.get("coupon_code") or "").strip() or None
+
+                # Load rules once
+                rules_disc, coupon = active_discount_rules(tenant, store, coupon_code)
+                rules_tax = active_tax_rules(tenant, store)
+
+                # Enforce coupon max uses (if applicable) before spending any work
+                if coupon and coupon.max_uses is not None and coupon.used_count >= coupon.max_uses:
+                    return Response({"detail": "Coupon usage limit reached"}, status=400)
+
+
+                # Track lines for receipt-level rules
+                lines_payload = []
+
+                # ---- line-by-line processing ----
                 for l in lines:
                     variant_id = l.get("variant_id")
                     qty = int(l.get("qty") or 0)
                     unit_price = Decimal(str(l.get("unit_price") or "0"))
-                    line_discount = Decimal(str(l.get("line_discount") or "0"))
 
                     if qty <= 0:
                         continue
 
-                    variant = Variant.objects.select_related("product", "tax_category").get(
+                    variant = Variant.objects.select_related("product", "tax_category", "product__tax_category").get(
                         id=variant_id,
                         product__tenant=tenant,
                     )
 
-                    # tax rate from variant.tax_category.rate (nullable)
-                    tax_rate = Decimal(str(getattr(variant.tax_category, "rate", 0) or 0))
+                    # category resolution (variant -> product -> None)
+                    category_id = (getattr(variant.tax_category, "id", None)
+                                or getattr(getattr(variant, "product", None), "tax_category_id", None))
 
-                    net = (unit_price * qty) - line_discount
-                    tax = (net * tax_rate).quantize(Decimal("0.01"))
+                    # base net is unit * qty, rounded per POS standard
+                    base_net = round2(unit_price * qty)
+
+                    # ------- LINE DISCOUNTS (coupon first, then rules in priority order) -------
+                    line_discount = Decimal("0.00")
+
+                    # Coupon rule on lines (if any)
+                    if coupon and (coupon.rule.apply_scope == DApply.LINE):
+                        ctx = {"variant_id": variant.id, "product_id": variant.product_id, "category_id": category_id}
+                        if line_matches_rule(ctx, coupon.rule):
+                            if coupon.rule.basis == DBasis.PERCENT:
+                                line_discount += round2(base_net * (coupon.rule.rate or Decimal("0")))
+                            else:
+                                line_discount += round2((coupon.rule.amount or Decimal("0.00")) * qty)
+
+                    # Regular discount rules
+                    for dr in rules_disc:
+                        if dr.apply_scope != DApply.LINE:
+                            continue
+                        ctx = {"variant_id": variant.id, "product_id": variant.product_id, "category_id": category_id}
+                        if not line_matches_rule(ctx, dr):
+                            continue
+                        if dr.basis == DBasis.PERCENT:
+                            line_discount += round2(base_net * (dr.rate or Decimal("0")))
+                        else:
+                            line_discount += round2((dr.amount or Decimal("0.00")) * qty)
+                        if not dr.stackable:
+                            break
+
+                    # clamp
+                    if line_discount > base_net:
+                        line_discount = base_net
+
+                    net = round2(base_net - line_discount)
+
+                    # ------- LINE TAX RULES -------
+                    line_tax = Decimal("0.00")
+                    if rules_tax.exists():
+                        for tr in rules_tax:
+                            if tr.apply_scope != TApply.LINE:
+                                continue
+                            # category matching (if rule has categories)
+                            if tr.categories.exists() and not tr.categories.filter(id=category_id).exists():
+                                continue
+                            if tr.basis == TBasis.PERCENT:
+                                line_tax += round2(net * (tr.rate or Decimal("0")))
+                            else:
+                                line_tax += round2((tr.amount or Decimal("0.00")) * qty)
+                    else:
+                        # Legacy fallback: use tax category rate (variant -> product -> 0)
+                        var_rate = getattr(variant.tax_category, "rate", None)
+                        prod_rate = getattr(getattr(variant, "product", None), "tax_category", None)
+                        prod_rate = getattr(prod_rate, "rate", None)
+                        tax_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
+                        line_tax = round2(net * tax_rate)
+
                     fee = Decimal("0.00")
-                    line_total = (net + tax + fee).quantize(Decimal("0.01"))
+                    line_total = round2(net + line_tax + fee)
 
+                    # Create the sale line (discount is the authoritative per-line discount)
                     SaleLine.objects.create(
                         sale=sale,
                         variant=variant,
                         qty=qty,
                         unit_price=unit_price,
                         discount=line_discount,
-                        tax=tax,
+                        tax=line_tax,
                         fee=fee,
                         line_total=line_total,
                     )
 
-                    # deduct inventory at this store
+                    # Deduct inventory at this store
                     inv, _ = InventoryItem.objects.select_for_update().get_or_create(
                         tenant=tenant, store=store, variant=variant, defaults={"on_hand": 0, "reserved": 0}
                     )
-                    # you already subtract elsewhere; keep consistent:
                     inv.on_hand = (Decimal(inv.on_hand) - Decimal(qty))
                     if inv.on_hand < 0:
                         inv.on_hand = 0
                     inv.save()
 
-                    subtotal += (unit_price * qty) - line_discount
-                    total_tax += tax
+                    # Totals
+                    subtotal += net
+                    total_tax += line_tax
                     total_fee += fee
+                    total_discount += line_discount
 
-                sale.total = (subtotal + total_tax + total_fee).quantize(Decimal("0.01"))
+                    lines_payload.append({"net": net, "qty": qty, "category_id": category_id})
+
+                
+                # ---- RECEIPT-LEVEL DISCOUNTS ----
+                receipt_discount = Decimal("0.00")
+                # Coupon at receipt level
+                if coupon and (coupon.rule.apply_scope == DApply.RECEIPT):
+                    ok_min = (not coupon.min_subtotal) or (subtotal >= coupon.min_subtotal)
+                    if ok_min:
+                        if coupon.rule.basis == DBasis.PERCENT:
+                            receipt_discount += round2(subtotal * (coupon.rule.rate or Decimal("0")))
+                        else:
+                            receipt_discount += round2(coupon.rule.amount or Decimal("0.00"))
+
+                # Other receipt discount rules
+                for dr in rules_disc:
+                    if dr.apply_scope != DApply.RECEIPT:
+                        continue
+                    if dr.basis == DBasis.PERCENT:
+                        receipt_discount += round2(subtotal * (dr.rate or Decimal("0")))
+                    else:
+                        receipt_discount += round2(dr.amount or Decimal("0.00"))
+                    if not dr.stackable:
+                        break
+
+                if receipt_discount > subtotal:
+                    receipt_discount = subtotal
+
+                subtotal = round2(subtotal - receipt_discount)
+                total_discount = round2(total_discount + receipt_discount)
+
+                # ---- RECEIPT-LEVEL TAX RULES ----
+                for tr in rules_tax:
+                    if tr.apply_scope != TApply.RECEIPT:
+                        continue
+                    # base_net is subtotal of all lines or only matching categories
+                    if tr.categories.exists():
+                        cat_ids = set(tr.categories.values_list("id", flat=True))
+                        base_net = round2(sum(ln["net"] for ln in lines_payload if ln["category_id"] in cat_ids))
+                    else:
+                        base_net = subtotal
+                    if tr.basis == TBasis.PERCENT:
+                        total_tax += round2(base_net * (tr.rate or Decimal("0")))
+                    else:
+                        total_tax += round2(tr.amount or Decimal("0.00"))
+
+
+
+                # sale.total = (subtotal + total_tax + total_fee).quantize(Decimal("0.01"))
+                # sale.status = "completed"
+                # sale.save(update_fields=["total", "status"])
+
+                # # assign & persist a receipt number and snapshot
+                # receipt_no = sale.assign_receipt_no()
+                # receipt = {
+                #     "receipt_no": receipt_no,
+                #     "tenant": {"id": tenant.id, "code": tenant.code, "name": tenant.name},
+                #     "store": {"id": store.id, "code": store.code, "name": store.name},
+                #     "register": {"id": register.id},
+                #     "cashier": {"id": user.id, "username": user.username},
+                #     "created_at": timezone.localtime(sale.created_at).isoformat(),
+                #     "lines": [
+                #         {
+                #             "variant_id": sl.variant_id,
+                #             "name": sl.variant.product.name,
+                #             "sku": sl.variant.sku,
+                #             "qty": sl.qty,
+                #             "unit_price": str(sl.unit_price),
+                #             "discount": str(sl.discount),
+                #             "tax": str(sl.tax),
+                #             "fee": str(sl.fee),
+                #             "line_total": str(sl.line_total),
+                #         }
+                #         for sl in sale.lines.select_related("variant__product")
+                #     ],
+                #     "totals": {
+                #         "subtotal": str(subtotal.quantize(Decimal("0.01"))),
+                #         "tax": str(total_tax.quantize(Decimal("0.01"))),
+                #         "fees": str(total_fee.quantize(Decimal("0.01"))),
+                #         "grand_total": str(sale.total),
+                #     },
+                # }
+
+                # finalize sale totals
+                sale.subtotal = subtotal
+                sale.tax = total_tax
+                sale.fee = total_fee
+                sale.total = round2(subtotal + total_tax + total_fee)
                 sale.status = "completed"
-                sale.save(update_fields=["total", "status"])
+                sale.save(update_fields=["subtotal", "tax", "fee", "total", "status"])
 
-                # assign & persist a receipt number and snapshot
-                receipt_no = sale.assign_receipt_no()
+                # build receipt (add discount field)
                 receipt = {
-                    "receipt_no": receipt_no,
+                    "receipt_no": sale.assign_receipt_no(),
                     "tenant": {"id": tenant.id, "code": tenant.code, "name": tenant.name},
                     "store": {"id": store.id, "code": store.code, "name": store.name},
                     "register": {"id": register.id},
@@ -318,12 +599,14 @@ class POSCheckoutView(APIView):
                         for sl in sale.lines.select_related("variant__product")
                     ],
                     "totals": {
-                        "subtotal": str(subtotal.quantize(Decimal("0.01"))),
-                        "tax": str(total_tax.quantize(Decimal("0.01"))),
-                        "fees": str(total_fee.quantize(Decimal("0.01"))),
+                        "subtotal": str(subtotal),
+                        "discount": str(total_discount),
+                        "tax": str(total_tax),
+                        "fees": str(total_fee),
                         "grand_total": str(sale.total),
                     },
                 }
+
 
                 # Payment handling (cash + card) + receipt QR
                 def _qr_data_url(text: str) -> str:
@@ -405,6 +688,11 @@ class POSCheckoutView(APIView):
                 # Persist the enriched receipt (now with QR + payment info)
                 sale.receipt_data = receipt
                 sale.save(update_fields=["receipt_no", "receipt_data"])
+
+                # If a coupon was applied, mark usage (safe to do inside the same transaction)
+                if coupon:
+                    Coupon.objects.filter(id=coupon.id).update(used_count=F("used_count") + 1)
+
 
         except Variant.DoesNotExist:
             return Response({"detail": "Variant not found"}, status=400)

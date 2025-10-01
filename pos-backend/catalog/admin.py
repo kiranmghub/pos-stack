@@ -1,15 +1,7 @@
 from django.contrib import admin
-
-# Register your models here.
-from django.contrib import admin
 from .models import Product, Variant, TaxCategory
 from common.admin_mixins import TenantScopedAdmin
 
-
-# @admin.register(Product)
-# class ProductAdmin(admin.ModelAdmin):
-#     list_display = ("id", "name", "category")
-#     search_fields = ("name", "category")
 
 @admin.register(Product)
 class ProductAdmin(TenantScopedAdmin):
@@ -34,6 +26,9 @@ class VariantAdmin(admin.ModelAdmin):
     image_short.short_description = "Image URL"
 
 
-# admin.site.register(TaxCategory)
-
+@admin.register(TaxCategory)
+class TaxCategoryAdmin(admin.ModelAdmin):
+    list_display = ("tenant", "name", "code", "rate")
+    list_filter = ("tenant",)
+    search_fields = ("name", "code")  # REQUIRED for autocomplete to work
 

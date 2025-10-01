@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Boxes,
+  Building2,
 } from "lucide-react";
 
 function Card({
@@ -59,6 +60,8 @@ export default function HomePage() {
   const canSeeCatalog = role === "owner" || role === "manager";
   const canSeeInventory = role === "owner" || role === "manager";
   const canSeeOwnerDash = role === "owner";
+  const canSeeTenantAdmin = role === "owner"; // only owners see this
+
 
   return (
     <AppShell title="Home">
@@ -120,6 +123,18 @@ export default function HomePage() {
               accent="from-amber-500 to-orange-500"
             />
           )}
+
+        {canSeeTenantAdmin && (
+            <Card
+              to="/tenant_admin"
+              title="Tenant Administration"
+              desc="Manage users, stores, registers, and high-level tenant settings."
+              icon={<Building2 className="h-6 w-6 text-pink-300" />}
+              accent="from-pink-500 to-rose-500"
+            />
+        )}
+
+
 
         </div>
 

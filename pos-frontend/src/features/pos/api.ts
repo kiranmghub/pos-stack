@@ -115,6 +115,7 @@ export async function checkout(payload: {
   register_id: number | null;
   lines: { variant_id: number; qty: number; unit_price: string; line_discount?: string }[];
   payment: { type: "CASH" | "CARD"; amount: string; [k: string]: any };
+  coupon_code?: string; // optional
 }): Promise<{
   ok: boolean;
   sale_id: number;

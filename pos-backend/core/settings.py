@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     "common",
     "analytics",
     "devtools",
+    "taxes",
+    "discounts",
 ]
 
 # -----------------------------------------------------------------------------

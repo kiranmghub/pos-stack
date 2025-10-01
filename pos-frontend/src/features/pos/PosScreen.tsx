@@ -27,6 +27,10 @@ function toInt(v: unknown, fallback = 0) {
   const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
   return Number.isFinite(n) ? Math.floor(n) : fallback;
 }
+function toNum(s: any, fallback = 0) {
+  const n = parseFloat(String(s ?? ""));
+  return Number.isFinite(n) ? n : fallback;
+}
 
 // ---------- types ----------
 type CartLine = { variant: VariantLite; qty: number; line_discount?: number };
@@ -56,119 +60,87 @@ export default function PosScreen() {
 
   // pick the best image the backend gave us
   const imgFor = (v: VariantLite): string =>
-  (v as any).image_url || (v as any).representative_image_url || "";
-
+    (v as any).image_url || (v as any).representative_image_url || "";
 
   const [barcode, setBarcode] = useState("");
+  const [coupon, setCoupon] = useState<string>("");        // NEW: coupon code
   const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // legacy small preview (kept type, not used for modal rendering)
+  // legacy small summary (kept)
   const [receipt, setReceipt] = useState<ReceiptInfo | null>(null);
 
   // modals
   const [showCash, setShowCash] = useState(false);
   const [showCard, setShowCard] = useState(false);
 
-  // --- NEW: receipt modal state (1.2) ---
+  // authoritative receipt after successful checkout
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any | null>(null);
   const [lastQR, setLastQR] = useState<string | null>(null);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
 
-  // --- NEW: print helpers (1.2) ---
+  // print helpers
   function printHtml(html: string) {
     const w = window.open("", "_blank", "width=420,height=700");
     if (!w) return;
     w.document.open();
     w.document.write(html);
     w.document.close();
-    setTimeout(() => {
-      w.focus();
-      w.print();
-    }, 200);
+    setTimeout(() => { w.focus(); w.print(); }, 200);
   }
 
   function buildReceiptHtml(r: any, qr?: string | null) {
-    const lines = (r?.lines || [])
-      .map(
-        (l: any) => `
+    const lines = (r?.lines || []).map(
+      (l: any) => `
         <tr>
           <td style="padding:4px 0">${l.name} (${l.sku || "-"})</td>
           <td style="text-align:right;padding:4px 0">${l.qty}</td>
           <td style="text-align:right;padding:4px 0">$${l.unit_price}</td>
           <td style="text-align:right;padding:4px 0">$${l.line_total}</td>
         </tr>`
-      )
-      .join("");
+    ).join("");
 
     return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Receipt ${r?.receipt_no || ""}</title>
-    <style>
-      body{font:14px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;margin:16px;color:#000}
-      h1,h2,h3{margin:0}
-      .muted{color:#444}
-      table{width:100%;border-collapse:collapse;margin-top:10px}
-      .totals td{padding:4px 0}
-      .bar{border-top:1px dashed #999;margin:10px 0}
-      .center{text-align:center}
-      img{display:block;margin:8px auto}
-    </style>
-  </head>
-  <body>
-    <div class="center">
-      <h2>${r?.tenant?.name || ""}</h2>
-      <div class="muted">${r?.store?.code || ""} — ${r?.store?.name || ""}</div>
-      <div class="muted">Receipt #${r?.receipt_no || ""}</div>
-      <div class="muted">${new Date(r?.created_at || Date.now()).toLocaleString()}</div>
-    </div>
-
-    <div class="bar"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left">Item</th>
-          <th style="text-align:right">Qty</th>
-          <th style="text-align:right">Price</th>
-          <th style="text-align:right">Total</th>
-        </tr>
-      </thead>
-      <tbody>${lines}</tbody>
-    </table>
-
-    <div class="bar"></div>
-
-    <table class="totals">
-      <tr><td>Subtotal</td><td style="text-align:right">$${r?.totals?.subtotal || "0.00"}</td></tr>
-      <tr><td>Tax</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
-      ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">$${r.totals.fees}</td></tr>` : ""}
-      <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>$${r?.totals?.grand_total || "0.00"}</strong></td></tr>
-    </table>
-
-    <div class="bar"></div>
-
-    <div>Cashier: ${r?.cashier?.username || "-"}</div>
-
-    ${
-      r?.payment
-        ? `<div>Payment: ${r.payment.type}${r.payment.received ? ` (received $${r.payment.received})` : ""}${r.payment.change ? `, change $${r.payment.change}` : ""}</div>`
-        : ""
-    }
-
-    ${qr ? `<img width="160" height="160" src="${qr}" alt="QR" />` : ""}
-
-    <div class="center muted">Thank you for your business!</div>
-    <script>window.onafterprint = () => window.close && window.close();</script>
-  </body>
-</html>`;
+<html><head><meta charset="utf-8"/><title>Receipt ${r?.receipt_no || ""}</title>
+<style>
+body{font:14px/1.3 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Arial,sans-serif;margin:16px;color:#000}
+h1,h2,h3{margin:0}.muted{color:#444}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+.totals td{padding:4px 0}.bar{border-top:1px dashed #999;margin:10px 0}.center{text-align:center}
+img{display:block;margin:8px auto}
+</style></head>
+<body>
+  <div class="center">
+    <h2>${r?.tenant?.name || ""}</h2>
+    <div class="muted">${r?.store?.code || ""} — ${r?.store?.name || ""}</div>
+    <div class="muted">Receipt #${r?.receipt_no || ""}</div>
+    <div class="muted">${new Date(r?.created_at || Date.now()).toLocaleString()}</div>
+  </div>
+  <div class="bar"></div>
+  <table>
+    <thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody>${lines}</tbody>
+  </table>
+  <div class="bar"></div>
+  <table class="totals">
+    <tr><td>Subtotal</td><td style="text-align:right">$${r?.totals?.subtotal || "0.00"}</td></tr>
+    ${r?.totals?.discount ? `<tr><td>Discount</td><td style="text-align:right">-$${r.totals.discount}</td></tr>` : ""}
+    <tr><td>Tax</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
+    ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">$${r.totals.fees}</td></tr>` : ""}
+    <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>$${r?.totals?.grand_total || "0.00"}</strong></td></tr>
+  </table>
+  <div class="bar"></div>
+  <div>Cashier: ${r?.cashier?.username || "-"}</div>
+  ${r?.payment ? `<div>Payment: ${r.payment.type}${r.payment.received ? ` (received $${r.payment.received})` : ""}${r.payment.change ? `, change $${r.payment.change}` : ""}</div>` : ""}
+  ${qr ? `<img width="160" height="160" src="${qr}" alt="QR" />` : ""}
+  <div class="center muted">Thank you for your business!</div>
+  <script>window.onafterprint=()=>window.close&&window.close();</script>
+</body></html>`;
   }
 
-  // --- NEW: trigger for refetching products after checkout ---
+  // trigger for refetching products after checkout
   const [refreshTick, setRefreshTick] = useState(0);
 
   // fetch stores once
@@ -178,7 +150,6 @@ export default function PosScreen() {
         const list = await getMyStores();
         const safe = Array.isArray(list) ? list : (list as any).results || [];
         setStores(safe);
-
         if (!storeId && safe.length > 0) {
           const first = safe[0];
           setStoreId(first.id);
@@ -203,7 +174,7 @@ export default function PosScreen() {
         setMsg(e.message || "Failed to load products");
       }
     })();
-  }, [storeId, query, refreshTick]); // 👈 include refreshTick
+  }, [storeId, query, refreshTick]);
 
   // persist cart
   useEffect(() => {
@@ -217,10 +188,7 @@ export default function PosScreen() {
   const addToCart = (v: VariantLite) => {
     const onHand = toInt((v as any).on_hand, 0);
     const remaining = onHand - qtyInCart(v.id);
-    if (remaining <= 0) {
-      setMsg(`"${v.name}" is out of stock`);
-      return;
-    }
+    if (remaining <= 0) { setMsg(`"${v.name}" is out of stock`); return; }
     setCart(prev => {
       const i = prev.findIndex(l => l.variant.id === v.id);
       if (i >= 0) {
@@ -251,30 +219,10 @@ export default function PosScreen() {
   const removeLine = (id: number) => setCart(prev => prev.filter(l => l.variant.id !== id));
   const clearCart = () => setCart([]);
 
-  function round2(n: number) {
-  return Math.round(n * 100) / 100;
-  }
-
-
-  // totals
+  // preview subtotal only (the backend is authoritative for tax/total)
   const subtotal = useMemo(() => {
     return cart.reduce((s, l) => s + parseFloat(l.variant.price) * l.qty - (l.line_discount || 0), 0);
   }, [cart]);
-
-  const tax = useMemo(() => {
-    return cart.reduce((s, l) => {
-      const price = parseFloat(l.variant.price);
-      const rate = parseFloat(l.variant.tax_rate || "0");
-      // const net = parseFloat(l.variant.price) * l.qty - (l.line_discount || 0);
-      const net  = price * l.qty - (l.line_discount || 0);
-      const lineTax = round2(net * rate); // <- round PER LINE to match backend
-      // return s + net * parseFloat(l.variant.tax_rate || "0");
-      return s + lineTax;
-
-    }, 0);
-  }, [cart]);
-
-  const total = subtotal + tax;
 
   // barcode
   const onBarcodeSubmit = async (e: React.FormEvent) => {
@@ -310,10 +258,11 @@ export default function PosScreen() {
           line_discount: l.line_discount ? toMoney(l.line_discount) : "0.00",
         })),
         payment,
+        coupon_code: coupon || undefined, // NEW
       };
       const res = await checkout(payload);
 
-      // keep legacy summary
+      // legacy summary
       setReceipt({
         sale_id: res.sale_id,
         receipt_number: (res as any).receipt_no || (res as any).receipt_number,
@@ -321,14 +270,14 @@ export default function PosScreen() {
         total: (res as any).total,
       });
 
-      // --- NEW: open full receipt modal for both payment types (1.3) ---
+      // open full receipt modal
       setLastReceipt((res as any).receipt || null);
       setLastQR((res as any).qr_png_data_url || null);
       if ((res as any).receipt) setReceiptOpen(true);
 
       setMsg(`Sale #${res.sale_id} completed`);
       clearCart();
-      setRefreshTick(t => t + 1); // 👈 trigger re-fetch so stock updates
+      setRefreshTick(t => t + 1);
     } catch (e: any) {
       setMsg(e.message || "Checkout failed");
     } finally {
@@ -338,7 +287,16 @@ export default function PosScreen() {
     }
   }
 
-  // ---------- UI ----------
+  // When cart changes, drop the last server receipt preview
+  useEffect(() => {
+    if (lastReceipt) {
+      setLastReceipt(null);
+      setLastQR(null);
+      setReceiptOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
+
   // tiny badge for stock state
   const StockBadge: React.FC<{ remaining: number }> = ({ remaining }) => {
     if (remaining <= 0) {
@@ -355,7 +313,6 @@ export default function PosScreen() {
         </span>
       );
     }
-    // ✅ Bright green for healthy inventory
     return (
       <span className="mt-1 inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
         Stock: {remaining}
@@ -363,10 +320,21 @@ export default function PosScreen() {
     );
   };
 
+  // Derived totals from last server receipt (authoritative)
+  const serverSub  = toNum(lastReceipt?.totals?.subtotal);
+  const serverDisc = toNum(lastReceipt?.totals?.discount);
+  const serverTax  = toNum(lastReceipt?.totals?.tax);
+  const serverFees = toNum(lastReceipt?.totals?.fees);
+  const serverGrand= toNum(lastReceipt?.totals?.grand_total);
+
+  const showSub   = lastReceipt ? serverSub   : subtotal;
+  const showTax   = lastReceipt ? serverTax   : 0;
+  const showGrand = lastReceipt ? serverGrand : subtotal;
+
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100">
+    <div className="flex h-screen bg-slate-950 text-slate-100">
       {/* Left: Catalog */}
-      <div className="flex-1 border-r border-slate-800 p-4">
+      <div className="flex-1 flex flex-col min-h-0 border-r border-slate-800 p-4">
         {/* Store selector + Search */}
         <div className="mb-3 flex items-center gap-2">
           <div className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
@@ -397,62 +365,80 @@ export default function PosScreen() {
           </div>
         </div>
 
-        {/* Product grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {products.map((p) => {
-            const onHand = toInt((p as any).on_hand, 0);
-            const remaining = Math.max(0, onHand - qtyInCart(p.id));
-            const disabled = remaining <= 0;
-            return (
-              <button
-                key={p.id}
-                onClick={() => addToCart(p)}
-                disabled={disabled}
-                className={`rounded-xl p-3 text-left transition-colors ${
-                  disabled
-                    ? "bg-slate-800/60 cursor-not-allowed opacity-60"
-                    : "bg-slate-800 hover:bg-slate-700"
-                }`}
-                title={disabled ? "Out of stock" : "Add to cart"}
-              >
-                <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                  {imgFor(p) ? (
-                    <img
-                      src={imgFor(p)}
-                      alt={p.name}
-                      className="h-full w-full object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none"; // fallback to icon if image fails
-                      }}
-                    />
-                  ) : (
-                    <span className="text-slate-400">🛒</span>
-                  )}
-                </div>
-
-                <div className="font-medium truncate">{p.name}</div>
-                {/* NEW: variant name (or SKU as a fallback) */}
-                <div className="text-xs text-slate-300 mt-0.5 truncate">
-                  {(p as any).variant_name || p.sku || ""}
-                </div>
-                <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
-                <StockBadge remaining={remaining} />
-              </button>
-            );
-          })}
-          {products.length === 0 && (
-            <div className="col-span-full text-slate-400">No products</div>
+        {/* Coupon */}
+        <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+          <input
+            value={coupon}
+            onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+            placeholder="Coupon code (optional)"
+            className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+          />
+          {!!coupon && (
+            <button
+              onClick={() => setCoupon("")}
+              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600"
+              title="Clear coupon"
+            >
+              Clear
+            </button>
           )}
+        </div>
+
+        {/* Product grid */}
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {products.map((p) => {
+              const onHand = toInt((p as any).on_hand, 0);
+              const remaining = Math.max(0, onHand - qtyInCart(p.id));
+              const disabled = remaining <= 0;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => addToCart(p)}
+                  disabled={disabled}
+                  className={`rounded-xl p-3 text-left transition-colors ${
+                    disabled
+                      ? "bg-slate-800/60 cursor-not-allowed opacity-60"
+                      : "bg-slate-800 hover:bg-slate-700"
+                  }`}
+                  title={disabled ? "Out of stock" : "Add to cart"}
+                >
+                  <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                    {imgFor(p) ? (
+                      <img
+                        src={imgFor(p)}
+                        alt={p.name}
+                        className="h-full w-full object-contain"
+                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                      />
+                    ) : (
+                      <span className="text-slate-400">🛒</span>
+                    )}
+                  </div>
+
+                  <div className="font-medium truncate">{p.name}</div>
+                  <div className="text-xs text-slate-300 mt-0.5 truncate">
+                    {(p as any).variant_name || p.sku || ""}
+                  </div>
+                  <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
+                  <StockBadge remaining={remaining} />
+                </button>
+              );
+            })}
+            {products.length === 0 && (
+              <div className="col-span-full text-slate-400">No products</div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Right: Cart */}
-      <div className="w-[420px] flex flex-col">
+      <div className="w-[420px] h-screen flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-slate-800">
           <h2 className="flex items-center gap-2 font-semibold">
             <ShoppingCart className="h-5 w-5" /> Cart
           </h2>
-        <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
+          <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
             <LogOut className="h-4 w-4" /> Logout
           </button>
         </div>
@@ -476,7 +462,7 @@ export default function PosScreen() {
               <div className="min-w-0">
                 <div className="font-medium truncate">{l.variant.name}</div>
                 <div className="text-sm text-slate-400 truncate">
-                {(l.variant as any).variant_name || l.variant.sku || ""}
+                  {(l.variant as any).variant_name || l.variant.sku || ""}
                 </div>
                 <div className="text-sm text-slate-400">
                   ${toMoney(l.variant.price)} × {l.qty}
@@ -500,15 +486,15 @@ export default function PosScreen() {
         </div>
 
         {/* Totals + actions */}
-        <div className="border-t border-slate-800 p-4 space-y-2">
+        <div className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950">
           <div className="flex justify-between">
-            <span>Subtotal</span><span className="tabular-nums">${toMoney(subtotal)}</span>
+            <span>Subtotal</span><span className="tabular-nums">${toMoney(showSub)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Tax</span><span className="tabular-nums">${toMoney(tax)}</span>
+            <span>Tax</span><span className="tabular-nums">${toMoney(showTax)}</span>
           </div>
           <div className="flex justify-between font-semibold text-lg">
-            <span>Total</span><span className="tabular-nums">${toMoney(total)}</span>
+            <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-3">
@@ -549,13 +535,12 @@ export default function PosScreen() {
       {/* ---- CASH MODAL ---- */}
       {showCash && (
         <CashModal
-          total={total}
+          total={showGrand}
           onClose={() => setShowCash(false)}
           onSubmit={(cashAmount) =>
-            // ⬇️ minimal fix: send both amount (total) and received (tendered)
             submitCheckout({
               type: "CASH",
-              amount: toMoney(total),
+              amount: toMoney(showGrand),
               received: toMoney(cashAmount),
             })
           }
@@ -565,12 +550,12 @@ export default function PosScreen() {
       {/* ---- CARD MODAL ---- */}
       {showCard && (
         <CardModal
-          total={total}
+          total={showGrand}
           onClose={() => setShowCard(false)}
           onSubmit={(card) =>
             submitCheckout({
               type: "CARD",
-              amount: toMoney(total),
+              amount: toMoney(showGrand),
               card_brand: card.brand,
               card_last4: card.last4,
               card_auth_code: card.auth,
@@ -580,7 +565,7 @@ export default function PosScreen() {
         />
       )}
 
-      {/* ---- RECEIPT MODAL (1.4) ---- */}
+      {/* ---- RECEIPT MODAL ---- */}
       {receiptOpen && lastReceipt && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
@@ -622,6 +607,12 @@ export default function PosScreen() {
                   <span>Subtotal</span>
                   <span className="tabular-nums">${lastReceipt?.totals?.subtotal || "0.00"}</span>
                 </div>
+                {!!lastReceipt?.totals?.discount && (
+                  <div className="flex justify-between">
+                    <span>Discount</span>
+                    <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Tax</span>
                   <span className="tabular-nums">${lastReceipt?.totals?.tax || "0.00"}</span>
@@ -641,12 +632,8 @@ export default function PosScreen() {
               {lastReceipt?.payment && (
                 <div className="rounded-lg bg-slate-800 p-3 text-sm">
                   <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
-                  {lastReceipt.payment.received && (
-                    <div>Received: ${lastReceipt.payment.received}</div>
-                  )}
-                  {lastReceipt.payment.change && (
-                    <div>Change: ${lastReceipt.payment.change}</div>
-                  )}
+                  {lastReceipt.payment.received && (<div>Received: ${lastReceipt.payment.received}</div>)}
+                  {lastReceipt.payment.change && (<div>Change: ${lastReceipt.payment.change}</div>)}
                 </div>
               )}
 
@@ -682,22 +669,14 @@ export default function PosScreen() {
 }
 
 /* ---------------------------- Cash Modal ---------------------------- */
-
 function CashModal({
-  total,
-  onClose,
-  onSubmit,
-}: {
-  total: number;
-  onClose: () => void;
-  onSubmit: (cashAmount: number) => void;
-}) {
+  total, onClose, onSubmit,
+}: { total: number; onClose: () => void; onSubmit: (cashAmount: number) => void; }) {
   const [tendered, setTendered] = useState<string>("");
   const amount = parseFloat(tendered || "0");
   const change = Math.max(0, amount - total);
-
-  const exact = Math.abs(amount - total) < 0.005; // tolerate minor float noise
-  const canPay = amount >= total - 0.005;        // same tolerance
+  const exact = Math.abs(amount - total) < 0.005;
+  const canPay = amount >= total - 0.005;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
@@ -708,59 +687,38 @@ function CashModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span>Total due</span>
             <span className="font-semibold">${toMoney(total)}</span>
           </div>
-
           <label className="block text-sm">
             Cash tendered
             <input
-              autoFocus
-              inputMode="decimal"
-              value={tendered}
+              autoFocus inputMode="decimal" value={tendered}
               onChange={(e) => setTendered(e.target.value)}
               placeholder="0.00"
               className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
             />
           </label>
-
           <div className="flex justify-between text-sm">
             <span>Change</span>
             <span className="font-semibold">${toMoney(change)}</span>
           </div>
-
-          {!canPay && (
-            <div className="text-amber-300 text-sm">Insufficient cash. Total is ${toMoney(total)}.</div>
-          )}
-
+          {!canPay && (<div className="text-amber-300 text-sm">Insufficient cash. Total is ${toMoney(total)}.</div>)}
           <div className="pt-2 flex gap-2">
-            <button
-              onClick={() => setTendered(toMoney(total))}
-              className="rounded-lg bg-slate-700 px-3 py-2 text-sm"
-            >
+            <button onClick={() => setTendered(toMoney(total))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
               Exact ${toMoney(total)}
             </button>
-            <button
-              onClick={() => setTendered(toMoney(Math.ceil(total)))}
-              className="rounded-lg bg-slate-700 px-3 py-2 text-sm"
-            >
+            <button onClick={() => setTendered(toMoney(Math.ceil(total)))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
               Round ↑ ${toMoney(Math.ceil(total))}
             </button>
           </div>
         </div>
-
         <div className="flex justify-end gap-2 border-t border-slate-800 p-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">
-            Cancel
-          </button>
-          <button
-            onClick={() => canPay && onSubmit(amount)}
-            disabled={!canPay}
-            className="rounded-lg px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50"
-          >
+          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">Cancel</button>
+          <button onClick={() => canPay && onSubmit(amount)} disabled={!canPay}
+            className="rounded-lg px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50">
             Take Cash
           </button>
         </div>
@@ -770,101 +728,61 @@ function CashModal({
 }
 
 /* ---------------------------- Card Modal ---------------------------- */
-
 function CardModal({
-  total,
-  onClose,
-  onSubmit,
-}: {
-  total: number;
-  onClose: () => void;
-  onSubmit: (card: { brand?: string; last4?: string; auth?: string; reference?: string }) => void;
-}) {
+  total, onClose, onSubmit,
+}: { total: number; onClose: () => void; onSubmit: (card: { brand?: string; last4?: string; auth?: string; reference?: string }) => void; }) {
   const [brand, setBrand] = useState<string>("VISA");
   const [last4, setLast4] = useState<string>("");
   const [auth, setAuth] = useState<string>("");
   const [reference, setReference] = useState<string>("");
-
-  const canPay =
-    /^\d{4}$/.test(last4 || "") && (auth?.length ?? 0) >= 4; // simple local guard
+  const canPay = /^\d{4}$/.test(last4 || "") && (auth?.length ?? 0) >= 4;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
       <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-800 p-4">
           <h3 className="font-semibold">Card Payment</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
-            <X className="h-5 w-5" />
-          </button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200"><X className="h-5 w-5" /></button>
         </div>
-
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span>Total to charge</span>
             <span className="font-semibold">${toMoney(total)}</span>
           </div>
-
           <label className="block text-sm">
             Card brand
-            <select
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
-            >
-              <option>VISA</option>
-              <option>MASTERCARD</option>
-              <option>AMEX</option>
-              <option>DISCOVER</option>
+            <select value={brand} onChange={(e) => setBrand(e.target.value)}
+              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none">
+              <option>VISA</option><option>MASTERCARD</option><option>AMEX</option><option>DISCOVER</option>
               <option value="">Other / Unknown</option>
             </select>
           </label>
-
           <label className="block text-sm">
             Last 4 digits
-            <input
-              inputMode="numeric"
-              maxLength={4}
-              value={last4}
+            <input inputMode="numeric" maxLength={4} value={last4}
               onChange={(e) => setLast4(e.target.value.replace(/\D/g, ""))}
-              placeholder="1234"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
-            />
+              placeholder="1234" className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
           </label>
-
           <label className="block text-sm">
             Auth code
-            <input
-              value={auth}
-              onChange={(e) => setAuth(e.target.value)}
+            <input value={auth} onChange={(e) => setAuth(e.target.value)}
               placeholder="Gateway auth code"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
-            />
+              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
           </label>
-
           <label className="block text-sm">
             Reference (optional)
-            <input
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
+            <input value={reference} onChange={(e) => setReference(e.target.value)}
               placeholder="Transaction reference"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
-            />
+              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
           </label>
-
           <p className="text-xs text-slate-400">
             (This UI assumes you’ve already authorized the card on a terminal and are recording the result here.)
           </p>
         </div>
-
         <div className="flex justify-end gap-2 border-t border-slate-800 p-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">
-            Cancel
-          </button>
-          <button
-            onClick={() => canPay && onSubmit({ brand, last4, auth, reference })}
-            disabled={!canPay}
-            className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
-          >
+          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">Cancel</button>
+          <button onClick={() => canPay && onSubmit({ brand, last4, auth, reference })}
+            disabled={!canPay} className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50">
             Charge Card
           </button>
         </div>
