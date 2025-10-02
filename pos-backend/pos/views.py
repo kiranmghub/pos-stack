@@ -48,11 +48,27 @@ from discounts.models import (
 
 from decimal import Decimal, ROUND_HALF_UP
 
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from decimal import Decimal
+from catalog.models import Variant
+from .services.totals import LineIn, compute_receipt, serialize_receipt
+
+
 CENT = Decimal("0.01")
 def round2(x: Decimal) -> Decimal:
     # Always round half up to 2 decimals (cash register behavior)
     return (x or Decimal("0")).quantize(CENT, rounding=ROUND_HALF_UP)
 
+
+def _resolve_tenant(request):
+    # assuming middleware sets request.tenant; adjust as per your project
+    return request.tenant
+
+def _resolve_store_id(request):
+    sid = request.data.get("store_id") or request.query_params.get("store_id")
+    return int(sid) if sid else None
 
 
 # Build absolute URL when we only have a relative path (/media/...)
@@ -436,6 +452,8 @@ class POSCheckoutView(APIView):
 
                     # ------- LINE TAX RULES -------
                     line_tax = Decimal("0.00")
+                    applied_any = False
+
                     if rules_tax.exists():
                         for tr in rules_tax:
                             if tr.apply_scope != TApply.LINE:
@@ -447,6 +465,15 @@ class POSCheckoutView(APIView):
                                 line_tax += round2(net * (tr.rate or Decimal("0")))
                             else:
                                 line_tax += round2((tr.amount or Decimal("0.00")) * qty)
+                                
+                        # fallback if no LINE rule matched
+                        if not applied_any:
+                            var_rate = getattr(variant.tax_category, "rate", None)
+                            prod_rate = getattr(getattr(variant, "product", None), "tax_category", None)
+                            prod_rate = getattr(prod_rate, "rate", None)
+                            tax_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
+                            line_tax = round2(net * tax_rate)
+
                     else:
                         # Legacy fallback: use tax category rate (variant -> product -> 0)
                         var_rate = getattr(variant.tax_category, "rate", None)
@@ -711,3 +738,60 @@ class POSCheckoutView(APIView):
             status=201,
         )
 
+
+
+class POSQuoteView(APIView):
+    """
+    POST /api/v1/pos/quote
+    Body:
+    {
+      "store_id": 1,
+      "coupon_code": "HOLIDAY25",   (optional)
+      "lines": [
+        {"variant_id": 123, "qty": 2, "unit_price": "9.99"},
+        ...
+      ]
+    }
+    Response:
+    {"ok": true, "quote": { subtotal, discount_total, tax_total, grand_total, tax_by_rule: [...], lines: [...] }}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tenant = _resolve_tenant(request)
+        store_id = _resolve_store_id(request)
+        body = request.data or {}
+        lines = body.get("lines") or []
+        coupon_code = body.get("coupon_code") or None
+
+        if not store_id:
+            return Response({"ok": False, "detail": "store_id required"}, status=400)
+        if not lines:
+            return Response({"ok": True, "quote": {
+                "subtotal": "0.00", "discount_total": "0.00", "tax_total": "0.00", "grand_total": "0.00",
+                "tax_by_rule": [], "lines": []
+            }})
+
+        # We attempt to pull tax category codes from Variants so category-scoped rules work
+        variant_map = {
+            v.id: (v.tax_category.code if getattr(v, "tax_category", None) else None)
+            for v in Variant.objects.filter(id__in=[l.get("variant_id") for l in lines])
+        }
+
+        lines_in = []
+        for l in lines:
+            try:
+                vid = int(l["variant_id"])
+                qty = int(l["qty"])
+                up  = Decimal(str(l.get("unit_price")))
+            except Exception:
+                return Response({"ok": False, "detail": "Invalid line payload"}, status=400)
+            lines_in.append(LineIn(
+                variant_id=vid,
+                qty=qty,
+                unit_price=up,
+                tax_category_code=variant_map.get(vid),
+            ))
+
+        ro = compute_receipt(tenant=tenant, store_id=store_id, lines_in=lines_in, coupon_code=coupon_code)
+        return Response({"ok": True, "quote": serialize_receipt(ro)})

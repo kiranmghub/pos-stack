@@ -1,6 +1,8 @@
 # pos/urls.py
 from django.urls import path
-from .views import ProductsForPOSView, POSLookupBarcodeView, POSCheckoutView, POSStoresView
+# from .views import ProductsForPOSView, POSLookupBarcodeView, POSCheckoutView, POSStoresView
+from .views import ProductsForPOSView, POSCheckoutView, POSStoresView, POSLookupBarcodeView, POSQuoteView
+
 
 app_name = "pos"
 
@@ -9,4 +11,5 @@ urlpatterns = [
     path("products", ProductsForPOSView.as_view(), name="products"),
     path("lookup_barcode", POSLookupBarcodeView.as_view(), name="lookup_barcode"),
     path("checkout", POSCheckoutView.as_view(), name="checkout"),
+    path("quote", POSQuoteView.as_view(), name="quote"),
 ]

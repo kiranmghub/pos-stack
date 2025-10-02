@@ -1,6 +1,37 @@
 // src/features/pos/api.ts
 import { authHeaders, refreshAccessIfNeeded, logout } from "@/lib/auth";
 
+
+export type TaxBasis = "PCT" | "FLAT";
+export type TaxScope = "GLOBAL" | "STORE";
+export type ApplyScope = "LINE" | "RECEIPT";
+
+export type TaxRule = {
+  id: number;
+  code: string;
+  name: string;
+  is_active: boolean;
+  scope: TaxScope;
+  store_id?: number | null;
+  basis: TaxBasis;
+  rate?: string;   // decimal as string from API
+  amount?: string; // decimal as string from API
+  apply_scope: ApplyScope;
+  categories: { id: number; name: string; code: string }[];
+  priority: number;
+  start_at?: string | null;
+  end_at?: string | null;
+};
+
+export async function getActiveTaxRules(store_id: number): Promise<TaxRule[]> {
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/taxes/active?store_id=${store_id}`);
+  const data = await jsonOrThrow<{ ok: boolean; rules: TaxRule[] }>(res);
+  return data.rules;
+}
+
+
+
+
 const API_BASE = import.meta.env.VITE_API_BASE || ""; // "" means use Vite proxy
 
 async function readJson(res: Response) {
@@ -133,4 +164,38 @@ export async function checkout(payload: {
     body: JSON.stringify(payload),
   });
   return jsonOrThrow(res);
+}
+
+
+// === Quote (server-side totals) ===
+export type QuoteLineIn = { variant_id: number; qty: number; unit_price: string | number };
+export type QuoteRuleAmount = { rule_id: number; code: string; name: string; amount: string };
+export type QuoteOut = {
+  subtotal: string;
+  discount_total: string;
+  tax_total: string;
+  grand_total: string;
+  tax_by_rule: QuoteRuleAmount[];
+  lines: Array<{
+    variant_id: number;
+    qty: number;
+    unit_price: string;
+    line_subtotal: string;
+    line_discount: string;
+    line_net: string;
+  }>;
+};
+
+export async function quoteTotals(payload: {
+  store_id: number;
+  lines: QuoteLineIn[];
+  coupon_code?: string;
+}): Promise<QuoteOut> {
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/quote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut }>(res);
+  return data.quote;
 }

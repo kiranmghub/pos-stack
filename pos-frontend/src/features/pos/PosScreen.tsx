@@ -11,7 +11,10 @@ import {
   lookupBarcode,
   checkout,
   type StoreLite,
-  type VariantLite
+  type VariantLite,
+  // NEW: server-side quote API (make sure this exists in ./api.ts)
+  quoteTotals,
+  type QuoteOut,
 } from "./api";
 
 // ---------- tiny utils ----------
@@ -63,7 +66,7 @@ export default function PosScreen() {
     (v as any).image_url || (v as any).representative_image_url || "";
 
   const [barcode, setBarcode] = useState("");
-  const [coupon, setCoupon] = useState<string>("");        // NEW: coupon code
+  const [coupon, setCoupon] = useState<string>("");        // coupon code
   const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -243,6 +246,41 @@ img{display:block;margin:8px auto}
     }
   };
 
+  // ===== NEW: live server-side quote (totals) =====
+  const [quote, setQuote] = useState<QuoteOut | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  // payload lines for quote
+  const quoteLines = useMemo(() => {
+    return cart.map(l => ({
+      variant_id: l.variant.id,
+      qty: l.qty,
+      // send as string to avoid float drift; server is authoritative
+      unit_price: toMoney(l.variant.price),
+    }));
+  }, [cart]);
+
+  // fetch server totals on change (debounced)
+  useEffect(() => {
+    if (!storeId) { setQuote(null); return; }
+    const id = setTimeout(async () => {
+      try {
+        setQuoteError(null);
+        if (quoteLines.length === 0) { setQuote(null); return; }
+        const q = await quoteTotals({
+          store_id: storeId,
+          lines: quoteLines,
+          coupon_code: coupon || undefined,
+        });
+        setQuote(q);
+      } catch (e: any) {
+        setQuote(null);
+        setQuoteError(e?.message || "Failed to get totals");
+      }
+    }, 250); // debounce 250ms
+    return () => clearTimeout(id);
+  }, [storeId, quoteLines, coupon]);
+
   // checkout core (shared)
   async function submitCheckout(payment: Record<string, any>) {
     if (!storeId || cart.length === 0) return;
@@ -258,7 +296,7 @@ img{display:block;margin:8px auto}
           line_discount: l.line_discount ? toMoney(l.line_discount) : "0.00",
         })),
         payment,
-        coupon_code: coupon || undefined, // NEW
+        coupon_code: coupon || undefined,
       };
       const res = await checkout(payload);
 
@@ -320,16 +358,22 @@ img{display:block;margin:8px auto}
     );
   };
 
-  // Derived totals from last server receipt (authoritative)
-  const serverSub  = toNum(lastReceipt?.totals?.subtotal);
-  const serverDisc = toNum(lastReceipt?.totals?.discount);
-  const serverTax  = toNum(lastReceipt?.totals?.tax);
-  const serverFees = toNum(lastReceipt?.totals?.fees);
-  const serverGrand= toNum(lastReceipt?.totals?.grand_total);
+  // Derived totals from last server receipt (authoritative after checkout)
+  const serverSub   = toNum(lastReceipt?.totals?.subtotal);
+  const serverDisc  = toNum(lastReceipt?.totals?.discount);
+  const serverTax   = toNum(lastReceipt?.totals?.tax);
+  const serverFees  = toNum(lastReceipt?.totals?.fees);
+  const serverGrand = toNum(lastReceipt?.totals?.grand_total);
 
-  const showSub   = lastReceipt ? serverSub   : subtotal;
-  const showTax   = lastReceipt ? serverTax   : 0;
-  const showGrand = lastReceipt ? serverGrand : subtotal;
+  // Derived totals from live server quote (authoritative before checkout)
+  const quoteSub   = toNum(quote?.subtotal);
+  const quoteTax   = toNum(quote?.tax_total);
+  const quoteGrand = toNum(quote?.grand_total);
+
+  // What to show in the panel
+  const showSub   = lastReceipt ? serverSub   : (quote ? quoteSub   : subtotal);
+  const showTax   = lastReceipt ? serverTax   : (quote ? quoteTax   : 0);
+  const showGrand = lastReceipt ? serverGrand : (quote ? quoteGrand : subtotal);
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100">
@@ -487,9 +531,25 @@ img{display:block;margin:8px auto}
 
         {/* Totals + actions */}
         <div className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950">
+          {/* Optional error from quote */}
+          {quoteError && (
+            <div className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
+              {quoteError}
+            </div>
+          )}
+
           <div className="flex justify-between">
             <span>Subtotal</span><span className="tabular-nums">${toMoney(showSub)}</span>
           </div>
+
+          {/* Per-rule tax lines (from server quote, before checkout) */}
+          {!lastReceipt && (quote?.tax_by_rule || []).map((r) => (
+            <div key={r.rule_id} className="flex justify-between text-sm opacity-90">
+              <span>{r.name}</span>
+              <span className="tabular-nums">${toMoney(r.amount)}</span>
+            </div>
+          ))}
+
           <div className="flex justify-between">
             <span>Tax</span><span className="tabular-nums">${toMoney(showTax)}</span>
           </div>
