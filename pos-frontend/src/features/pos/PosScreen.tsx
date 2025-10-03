@@ -105,6 +105,11 @@ export default function PosScreen() {
         </tr>`
     ).join("");
 
+    const taxLines = (r?.totals?.tax_by_rule || [])
+      .map((t: any) =>
+        `<tr><td>${t.name}</td><td style="text-align:right">$${t.amount}</td></tr>`
+      ).join("");
+
     return `<!doctype html>
 <html><head><meta charset="utf-8"/><title>Receipt ${r?.receipt_no || ""}</title>
 <style>
@@ -129,8 +134,9 @@ img{display:block;margin:8px auto}
   <div class="bar"></div>
   <table class="totals">
     <tr><td>Subtotal</td><td style="text-align:right">$${r?.totals?.subtotal || "0.00"}</td></tr>
+    ${taxLines}
     ${r?.totals?.discount ? `<tr><td>Discount</td><td style="text-align:right">-$${r.totals.discount}</td></tr>` : ""}
-    <tr><td>Tax</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
+    <tr><td>Total Taxes</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
     ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">$${r.totals.fees}</td></tr>` : ""}
     <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>$${r?.totals?.grand_total || "0.00"}</strong></td></tr>
   </table>
@@ -299,6 +305,8 @@ img{display:block;margin:8px auto}
         coupon_code: coupon || undefined,
       };
       const res = await checkout(payload);
+      console.log("checkout response", res); // quick sanity check
+
 
       // legacy summary
       setReceipt({
@@ -327,13 +335,12 @@ img{display:block;margin:8px auto}
 
   // When cart changes, drop the last server receipt preview
   useEffect(() => {
-    if (lastReceipt) {
+    if (!receiptOpen && lastReceipt) {
       setLastReceipt(null);
       setLastQR(null);
-      setReceiptOpen(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart]);
+  }, [cart, receiptOpen]);
 
   // tiny badge for stock state
   const StockBadge: React.FC<{ remaining: number }> = ({ remaining }) => {
@@ -551,7 +558,7 @@ img{display:block;margin:8px auto}
           ))}
 
           <div className="flex justify-between">
-            <span>Tax</span><span className="tabular-nums">${toMoney(showTax)}</span>
+            <span>Total Taxes</span><span className="tabular-nums">${toMoney(showTax)}</span>
           </div>
           <div className="flex justify-between font-semibold text-lg">
             <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
@@ -673,8 +680,15 @@ img{display:block;margin:8px auto}
                     <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
                   </div>
                 )}
+                {/* NEW: per-rule tax lines, if present */}
+                {(lastReceipt?.totals?.tax_by_rule || []).map((r: any) => (
+                  <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
+                    <span>{r.name}</span>
+                    <span className="tabular-nums">${r.amount}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between">
-                  <span>Tax</span>
+                  <span>Total Taxes</span>
                   <span className="tabular-nums">${lastReceipt?.totals?.tax || "0.00"}</span>
                 </div>
                 {!!lastReceipt?.totals?.fees && (

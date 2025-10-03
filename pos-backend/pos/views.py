@@ -389,6 +389,22 @@ class POSCheckoutView(APIView):
                 rules_disc, coupon = active_discount_rules(tenant, store, coupon_code)
                 rules_tax = active_tax_rules(tenant, store)
 
+                # Track per-rule tax amounts for the receipt (rule_id -> amount, code, name)
+                tax_by_rule_map = {}  # { rule_id: {"name": str, "code": str, "amount": Decimal} }
+
+                def _add_tax_for_rule(rule, amount: Decimal):
+                    if amount <= 0:
+                        return
+                    entry = tax_by_rule_map.get(rule.id)
+                    if entry:
+                        entry["amount"] = round2(entry["amount"] + amount)
+                    else:
+                        tax_by_rule_map[rule.id] = {
+                            "name": rule.name,
+                            "code": rule.code,
+                            "amount": round2(amount),
+                        }
+
                 # Enforce coupon max uses (if applicable) before spending any work
                 if coupon and coupon.max_uses is not None and coupon.used_count >= coupon.max_uses:
                     return Response({"detail": "Coupon usage limit reached"}, status=400)
@@ -462,9 +478,14 @@ class POSCheckoutView(APIView):
                             if tr.categories.exists() and not tr.categories.filter(id=category_id).exists():
                                 continue
                             if tr.basis == TBasis.PERCENT:
-                                line_tax += round2(net * (tr.rate or Decimal("0")))
+                                amt = round2(net * (tr.rate or Decimal("0")))
                             else:
-                                line_tax += round2((tr.amount or Decimal("0.00")) * qty)
+                                amt = round2((tr.amount or Decimal("0.00")) * qty)
+
+                            if amt > 0:
+                                line_tax += amt
+                                _add_tax_for_rule(tr, amt)
+                                applied_any = True
                                 
                         # fallback if no LINE rule matched
                         if not applied_any:
@@ -554,54 +575,29 @@ class POSCheckoutView(APIView):
                     else:
                         base_net = subtotal
                     if tr.basis == TBasis.PERCENT:
-                        total_tax += round2(base_net * (tr.rate or Decimal("0")))
+                        amt = round2(base_net * (tr.rate or Decimal("0")))
                     else:
-                        total_tax += round2(tr.amount or Decimal("0.00"))
+                        amt = round2(tr.amount or Decimal("0.00"))
+
+                    if amt > 0:
+                        total_tax += amt
+                        _add_tax_for_rule(tr, amt)
 
 
-
-                # sale.total = (subtotal + total_tax + total_fee).quantize(Decimal("0.01"))
-                # sale.status = "completed"
-                # sale.save(update_fields=["total", "status"])
-
-                # # assign & persist a receipt number and snapshot
-                # receipt_no = sale.assign_receipt_no()
-                # receipt = {
-                #     "receipt_no": receipt_no,
-                #     "tenant": {"id": tenant.id, "code": tenant.code, "name": tenant.name},
-                #     "store": {"id": store.id, "code": store.code, "name": store.name},
-                #     "register": {"id": register.id},
-                #     "cashier": {"id": user.id, "username": user.username},
-                #     "created_at": timezone.localtime(sale.created_at).isoformat(),
-                #     "lines": [
-                #         {
-                #             "variant_id": sl.variant_id,
-                #             "name": sl.variant.product.name,
-                #             "sku": sl.variant.sku,
-                #             "qty": sl.qty,
-                #             "unit_price": str(sl.unit_price),
-                #             "discount": str(sl.discount),
-                #             "tax": str(sl.tax),
-                #             "fee": str(sl.fee),
-                #             "line_total": str(sl.line_total),
-                #         }
-                #         for sl in sale.lines.select_related("variant__product")
-                #     ],
-                #     "totals": {
-                #         "subtotal": str(subtotal.quantize(Decimal("0.01"))),
-                #         "tax": str(total_tax.quantize(Decimal("0.01"))),
-                #         "fees": str(total_fee.quantize(Decimal("0.01"))),
-                #         "grand_total": str(sale.total),
-                #     },
-                # }
-
-                # finalize sale totals
-                sale.subtotal = subtotal
-                sale.tax = total_tax
-                sale.fee = total_fee
                 sale.total = round2(subtotal + total_tax + total_fee)
                 sale.status = "completed"
-                sale.save(update_fields=["subtotal", "tax", "fee", "total", "status"])
+                sale.save(update_fields=["total", "status"])
+
+                # Build a sorted list of per-rule taxes: sort by rule priority then id
+                priority_by_id = {r.id: r.priority for r in rules_tax}
+                tax_by_rule = sorted(
+                    (
+                        {"rule_id": rid, "code": info["code"], "name": info["name"], "amount": str(info["amount"])}
+                        for rid, info in tax_by_rule_map.items()
+                    ),
+                    key=lambda x: (priority_by_id.get(x["rule_id"], 0), x["rule_id"])
+                )
+
 
                 # build receipt (add discount field)
                 receipt = {
@@ -631,6 +627,7 @@ class POSCheckoutView(APIView):
                         "tax": str(total_tax),
                         "fees": str(total_fee),
                         "grand_total": str(sale.total),
+                        "tax_by_rule": tax_by_rule,
                     },
                 }
 
@@ -675,6 +672,7 @@ class POSCheckoutView(APIView):
                     }
 
                 elif p_type == "CARD":
+                    # print("Received", str(received), "Amount:", amount, "Total:", sale.total)
                     # For card, require exact capture == total
                     if amount != sale.total:
                         return Response({"detail": "Card amount must match sale total."}, status=400)
