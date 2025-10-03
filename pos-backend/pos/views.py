@@ -405,6 +405,21 @@ class POSCheckoutView(APIView):
                             "amount": round2(amount),
                         }
 
+                # Helper to aggregate misc taxes (non-rule)        
+                def _add_tax_misc(key: str, name: str, code: str, amount: Decimal):
+                    """
+                    Aggregate non-rule taxes (e.g., base category tax) in tax_by_rule_map.
+                    `key` should be unique per logical bucket (e.g., 'base:PAINT').
+                    """
+                    if amount <= 0:
+                        return
+                    entry = tax_by_rule_map.get(key)
+                    if entry:
+                        entry["amount"] = round2(entry["amount"] + amount)
+                    else:
+                        tax_by_rule_map[key] = {"name": name, "code": code, "amount": round2(amount)}
+
+
                 # Enforce coupon max uses (if applicable) before spending any work
                 if coupon and coupon.max_uses is not None and coupon.used_count >= coupon.max_uses:
                     return Response({"detail": "Coupon usage limit reached"}, status=400)
@@ -503,6 +518,27 @@ class POSCheckoutView(APIView):
                         tax_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
                         line_tax = round2(net * tax_rate)
 
+                    # --- Always add base category tax (variant -> product -> 0) ---
+                    var_rate = getattr(getattr(variant, "tax_category", None), "rate", None)
+                    prod_rate = getattr(getattr(getattr(variant, "product", None), "tax_category", None), "rate", None)
+                    cat_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
+                    if cat_rate and net > 0:
+                        base_amt = round2(net * cat_rate)
+                        if base_amt > 0:
+                            line_tax += base_amt
+                            cat_code = (
+                                getattr(getattr(variant, "tax_category", None), "code", None) or
+                                getattr(getattr(getattr(variant, "product", None), "tax_category", None), "code", None) or
+                                "UNCAT"
+                            )
+                            _add_tax_misc(
+                                key=f"base:{cat_code}",
+                                name=f"Category tax ({str(cat_code).upper()})",
+                                code=f"CAT:{str(cat_code).upper()}",
+                                amount=base_amt,
+                            )
+
+
                     fee = Decimal("0.00")
                     line_total = round2(net + line_tax + fee)
 
@@ -597,6 +633,40 @@ class POSCheckoutView(APIView):
                     ),
                     key=lambda x: (priority_by_id.get(x["rule_id"], 0), x["rule_id"])
                 )
+
+                # Merge base (misc) taxes into the rule list and stringify amounts
+                rule_priority = {r.id: r.priority for r in rules_tax}
+                combined = []
+
+                # real rules
+                for rid, info in tax_by_rule_map.items():
+                    if isinstance(rid, int):  # real rule
+                        combined.append({
+                            "rule_id": rid,
+                            "code": info["code"],
+                            "name": info["name"],
+                            "amount": str(info["amount"]),
+                            "_prio": rule_priority.get(rid, 0),
+                            "_id": rid,
+                        })
+
+                # misc (base category) taxes
+                for key, info in tax_by_rule_map.items():
+                    if not isinstance(key, int):  # misc bucket
+                        combined.append({
+                            "rule_id": None,
+                            "code": info["code"],
+                            "name": info["name"],
+                            "amount": str(info["amount"]),
+                            "_prio": -1,   # show before rules, or set to 0 if you want to mix
+                            "_id": 0,
+                        })
+
+                tax_by_rule = sorted(combined, key=lambda x: (x["_prio"], x["_id"]))
+                for x in tax_by_rule:
+                    x.pop("_prio", None)
+                    x.pop("_id", None)
+
 
 
                 # build receipt (add discount field)
@@ -771,10 +841,27 @@ class POSQuoteView(APIView):
             }})
 
         # We attempt to pull tax category codes from Variants so category-scoped rules work
-        variant_map = {
-            v.id: (v.tax_category.code if getattr(v, "tax_category", None) else None)
-            for v in Variant.objects.filter(id__in=[l.get("variant_id") for l in lines])
-        }
+        # variant_map = {
+        #     v.id: (v.tax_category.code if getattr(v, "tax_category", None) else None)
+        #     for v in Variant.objects.filter(id__in=[l.get("variant_id") for l in lines])
+        # }
+
+        ids = [l.get("variant_id") for l in lines]
+        variants = (
+            Variant.objects
+            .select_related("tax_category", "product__tax_category")
+            .filter(id__in=ids)
+        )
+
+        variant_map = {}
+        for v in variants:
+            tc = getattr(v, "tax_category", None)
+            ptc = getattr(getattr(v, "product", None), "tax_category", None)
+            variant_map[v.id] = {
+                "code": getattr(tc, "code", None),
+                "var_rate": getattr(tc, "rate", None),
+                "prod_rate": getattr(ptc, "rate", None),
+            }
 
         lines_in = []
         for l in lines:
@@ -784,11 +871,16 @@ class POSQuoteView(APIView):
                 up  = Decimal(str(l.get("unit_price")))
             except Exception:
                 return Response({"ok": False, "detail": "Invalid line payload"}, status=400)
+            info = variant_map.get(vid, {})
             lines_in.append(LineIn(
                 variant_id=vid,
                 qty=qty,
                 unit_price=up,
-                tax_category_code=variant_map.get(vid),
+                # tax_category_code=variant_map.get(vid),
+                tax_category_code=info.get("code"),
+                var_tax_rate=Decimal(str(info.get("var_rate") or "0")),
+                prod_tax_rate=Decimal(str(info.get("prod_rate") or "0")),
+
             ))
 
         ro = compute_receipt(tenant=tenant, store_id=store_id, lines_in=lines_in, coupon_code=coupon_code)

@@ -20,6 +20,8 @@ class LineIn:
     qty: int
     unit_price: Decimal
     tax_category_code: Optional[str] = None
+    var_tax_rate: Optional[Decimal] = None
+    prod_tax_rate: Optional[Decimal] = None
 
 @dataclass
 class RuleAmount:
@@ -133,6 +135,30 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
     for i, l in enumerate(lines_in):
         net = (l.unit_price * l.qty) - line_discounts[i]
         net_lines.append((l, money(net)))
+
+    # --- Base variant/product category tax (percent) ---
+    base_tax_by_code: Dict[str, Decimal] = {}
+    for (lin, net) in net_lines:
+        # rate = variant.rate if present, else product.rate, else 0
+        rate = lin.var_tax_rate if lin.var_tax_rate is not None else (lin.prod_tax_rate or Decimal("0"))
+        if rate and net > 0:
+            amt = money(net * rate)
+            if amt > 0:
+                code = (lin.tax_category_code or "UNCAT").upper()
+                base_tax_by_code[code] = money(base_tax_by_code.get(code, Decimal("0")) + amt)
+
+    # fold base taxes into the same per-rule map as pseudo rules
+    # note: negative ids so they don't collide with real rule ids
+    pseudo_id = -1
+    for code, amt in sorted(base_tax_by_code.items()):
+        tax_by_rule_map[pseudo_id] = RuleAmount(
+            rule_id=pseudo_id,
+            code=f"CAT:{code}",
+            name=f"Category tax ({code})",
+            amount=amt,
+        )
+        pseudo_id -= 1
+
 
     for r in tax_rules:
         acc = Decimal("0")
