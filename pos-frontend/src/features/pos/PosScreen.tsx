@@ -376,8 +376,11 @@ img{display:block;margin:8px auto}
   const quoteSub   = toNum(quote?.subtotal);
   const quoteTax   = toNum(quote?.tax_total);
   const quoteGrand = toNum(quote?.grand_total);
+  const quoteDisc  = toNum(quote?.discount_total);
+
 
   // What to show in the panel
+  const showDisc  = lastReceipt ? serverDisc  : (quote ? quoteDisc  : 0);
   const showSub   = lastReceipt ? serverSub   : (quote ? quoteSub   : subtotal);
   const showTax   = lastReceipt ? serverTax   : (quote ? quoteTax   : 0);
   const showGrand = lastReceipt ? serverGrand : (quote ? quoteGrand : subtotal);
@@ -546,20 +549,39 @@ img{display:block;margin:8px auto}
           )}
 
           <div className="flex justify-between">
-            <span>Subtotal</span><span className="tabular-nums">${toMoney(showSub)}</span>
+            <span>Subtotal</span>
+            <span className="tabular-nums">${toMoney(showSub)}</span>
           </div>
 
+          {/* Optional per-rule discount lines (if backend ever returns them) */}
+          {!lastReceipt && (quote?.discount_by_rule || []).map((d: any) => (
+            <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
+              <span>{d.name}</span>
+              <span className="tabular-nums">-${toMoney(d.amount)}</span>
+            </div>
+          ))}
+
+          {/* Discount total (from server quote, before checkout) */}
+          {!!showDisc && !lastReceipt && (
+            <div className="flex justify-between text-sm">
+              <span>Discounts</span>
+              <span className="tabular-nums">-${toMoney(showDisc)}</span>
+            </div>
+          )}
+
           {/* Per-rule tax lines (from server quote, before checkout) */}
-          {!lastReceipt && (quote?.tax_by_rule || []).map((r) => (
-            <div key={r.rule_id} className="flex justify-between text-sm opacity-90">
+          {!lastReceipt && (quote?.tax_by_rule || []).map((r: any) => (
+            <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
               <span>{r.name}</span>
               <span className="tabular-nums">${toMoney(r.amount)}</span>
             </div>
           ))}
 
           <div className="flex justify-between">
-            <span>Total Taxes</span><span className="tabular-nums">${toMoney(showTax)}</span>
+            <span>Total Taxes</span>
+            <span className="tabular-nums">${toMoney(showTax)}</span>
           </div>
+
           <div className="flex justify-between font-semibold text-lg">
             <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
           </div>
@@ -674,6 +696,13 @@ img{display:block;margin:8px auto}
                   <span>Subtotal</span>
                   <span className="tabular-nums">${lastReceipt?.totals?.subtotal || "0.00"}</span>
                 </div>
+                {(lastReceipt?.totals?.discount_by_rule || []).map((d: any) => (
+                  <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
+                    <span>{d.name}</span>
+                    <span className="tabular-nums">-${d.amount}</span>
+                  </div>
+                ))}
+
                 {!!lastReceipt?.totals?.discount && (
                   <div className="flex justify-between">
                     <span>Discount</span>
