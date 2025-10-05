@@ -606,7 +606,61 @@ class POSCheckoutView(APIView):
                         _add_tax_for_rule(tr, amt)
 
 
-                sale.total = round2(subtotal + total_tax + total_fee)
+                # === BEGIN: canonical totals via compute_receipt (parity with quote) ===
+
+                # Build variant map with tax codes + rates (like POSQuoteView)
+                req_lines = data.get("lines") or []
+                ids = [int(l.get("variant_id")) for l in req_lines]
+                variants = (
+                    Variant.objects
+                    .select_related("tax_category", "product__tax_category")
+                    .filter(id__in=ids)
+                )
+                vmap = {}
+                for v in variants:
+                    tc = getattr(v, "tax_category", None)
+                    ptc = getattr(getattr(v, "product", None), "tax_category", None)
+                    vmap[v.id] = {
+                        "code": getattr(tc, "code", None),
+                        "var_rate": getattr(tc, "rate", None),
+                        "prod_rate": getattr(ptc, "rate", None),
+                    }
+
+                # Build LineIn[]
+                lines_in = []
+                for l in req_lines:
+                    vid = int(l["variant_id"])
+                    qty = int(l["qty"])
+                    up  = Decimal(str(l.get("unit_price")))
+                    info = vmap.get(vid, {})
+                    lines_in.append(LineIn(
+                        variant_id=vid,
+                        qty=qty,
+                        unit_price=up,
+                        tax_category_code=info.get("code"),
+                        var_tax_rate=Decimal(str(info.get("var_rate") or "0")),
+                        prod_tax_rate=Decimal(str(info.get("prod_rate") or "0")),
+                    ))
+
+                # Compute authoritative receipt
+                ro = compute_receipt(
+                    tenant=tenant,
+                    store_id=store.id if store else None,
+                    lines_in=lines_in,
+                    coupon_code=data.get("coupon_code") or None,
+                )
+
+                # Override any earlier ad-hoc totals with canonical values
+                subtotal        = Decimal(str(ro.subtotal))
+                total_discount  = Decimal(str(ro.discount_total))
+                total_tax       = Decimal(str(ro.tax_total))
+                total_fee       = Decimal("0.00")  # keep if you calculate fees separately
+                grand_total     = Decimal(str(ro.grand_total))
+
+                # === END: canonical totals via compute_receipt ===
+
+                # Persist sale with canonical total
+                sale.total = round2(grand_total)
                 sale.status = "completed"
                 sale.save(update_fields=["total", "status"])
 
@@ -678,13 +732,20 @@ class POSCheckoutView(APIView):
                         for sl in sale.lines.select_related("variant__product")
                     ],
                     "totals": {
-                        "subtotal": str(subtotal),
-                        "discount": str(total_discount),
-                        "tax": str(total_tax),
-                        "fees": str(total_fee),
-                        "grand_total": str(sale.total),
-                        "tax_by_rule": tax_by_rule,
-                    },
+                        "subtotal": str(ro.subtotal),           # pre-discount subtotal
+                            "discount": str(ro.discount_total),
+                            "tax": str(ro.tax_total),
+                            "fees": "0.00",
+                            "grand_total": str(ro.grand_total),
+                            "tax_by_rule": [
+                                {"rule_id": x.rule_id, "code": x.code, "name": x.name, "amount": str(x.amount)}
+                                for x in ro.tax_by_rule
+                            ],
+                            "discount_by_rule": [
+                                {"rule_id": x.rule_id, "code": x.code, "name": x.name, "amount": str(x.amount)}
+                                for x in ro.discount_by_rule
+                            ],
+                        },
                 }
 
 

@@ -37,6 +37,7 @@ class ReceiptOut:
     tax_total: Decimal
     grand_total: Decimal
     tax_by_rule: List[RuleAmount]
+    discount_by_rule: List[RuleAmount]
     # optional: per-line details (omit if you don't need them on UI)
     lines: List[Dict[str, Any]]
 
@@ -96,25 +97,33 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
         ordered.append(coupon_rule)
     ordered.extend(discount_rules)
 
+    discount_by_rule_map: Dict[int, RuleAmount] = {}  # NEW
+
     for r in ordered:
-        # r.apply_scope is a string like "LINE" | "RECEIPT"
+        is_pct = str(r.basis).upper() == "PCT"
+        # normalize 20 -> 0.20 (defensive; your models/serializers already normalize)
+        rate = Decimal(r.rate or 0)
+        if is_pct and rate > 1:
+            rate = rate / Decimal("100")
+
         if str(r.apply_scope).upper() == "LINE":
+            acc = Decimal("0")
             for i, l in enumerate(lines_in):
                 if not _matches_categories(l, r):
                     continue
                 base = l.unit_price * l.qty
-                # r.basis is "PCT" | "FLAT"
-                if str(r.basis).upper() == "PCT":
-                    d = money(base * Decimal(r.rate or 0))
-                else:
-                    d = money(Decimal(r.amount or 0) * l.qty)
-                # stackable/non-stackable handling can be added here
+                d = money(base * rate) if is_pct else money(Decimal(r.amount or 0) * l.qty)
                 line_discounts[i] += d
+                acc += d
+            if acc > 0:
+                discount_by_rule_map[r.id] = RuleAmount(r.id, r.code, r.name, money(discount_by_rule_map.get(r.id, RuleAmount(r.id, r.code, r.name, Decimal("0"))).amount + acc))
         else:
-            # RECEIPT
             base = sum((l.unit_price * l.qty for l in lines_in if _matches_categories(l, r)), Decimal("0"))
-            if str(r.basis).upper() == "PCT":
-                receipt_discount += money(base * Decimal(r.rate or 0))
+            d = money(base * rate) if is_pct else money(Decimal(r.amount or 0))
+            receipt_discount += d
+            if d > 0:
+                discount_by_rule_map[r.id] = RuleAmount(r.id, r.code, r.name, money(discount_by_rule_map.get(r.id, RuleAmount(r.id, r.code, r.name, Decimal("0"))).amount + d))
+
 
 
     # clamp line discounts
@@ -187,6 +196,15 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
         tax_by_rule_map.values(),
         key=lambda x: (next((t.priority for t in tax_rules if t.id == x.rule_id), 0), x.rule_id),
     )
+
+    discount_rules_all = ordered  # includes coupon first + other rules
+
+    prio_by_id_disc = {r.id: r.priority for r in discount_rules_all if r is not None}
+    discount_by_rule = sorted(
+        discount_by_rule_map.values(),
+        key=lambda x: (prio_by_id_disc.get(x.rule_id, 0), x.rule_id)
+    )
+
     tax_total = money(sum((ra.amount for ra in tax_by_rule), Decimal("0")))
     grand_total = money(subtotal - discount_total + tax_total)
 
@@ -208,6 +226,7 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
         tax_total=money(tax_total),
         grand_total=money(grand_total),
         tax_by_rule=tax_by_rule,
+        discount_by_rule=discount_by_rule,
         lines=lines_out,
     )
 
@@ -220,6 +239,10 @@ def serialize_receipt(ro: ReceiptOut) -> Dict[str, Any]:
         "tax_by_rule": [
             {"rule_id": x.rule_id, "code": x.code, "name": x.name, "amount": str(x.amount)}
             for x in ro.tax_by_rule
+        ],
+        "discount_by_rule": [
+            {"rule_id": x.rule_id, "code": x.code, "name": x.name, "amount": str(x.amount)}
+            for x in ro.discount_by_rule
         ],
         "lines": ro.lines,
     }
