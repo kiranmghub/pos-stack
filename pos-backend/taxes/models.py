@@ -3,6 +3,7 @@ from django.db import models
 from common.models import TimeStampedModel
 from catalog.models import TaxCategory  # existing
 from stores.models import Store         # existing
+from decimal import Decimal, ROUND_HALF_UP
 
 class TaxScope(models.TextChoices):
     GLOBAL = "GLOBAL", "Global (all stores)"
@@ -41,6 +42,19 @@ class TaxRule(TimeStampedModel):
     start_at    = models.DateTimeField(null=True, blank=True)
     end_at      = models.DateTimeField(null=True, blank=True)
 
+    @staticmethod
+    def _norm_pct(value: Decimal) -> Decimal:
+        """Accepts 0.2 or 20 to mean 20%. Returns normalized Decimal in [0,1]."""
+        if value is None:
+            return None
+        v = Decimal(value)
+        if v > 1:
+            v = v / Decimal("100")
+        if v < 0:
+            v = Decimal("0")
+        # quantize to 6 decimal places to avoid float noise
+        return v.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
     class Meta:
         unique_together = ("tenant", "code")
         indexes = [
@@ -49,3 +63,14 @@ class TaxRule(TimeStampedModel):
 
     def __str__(self):
         return f"{self.tenant}:{self.code} ({self.name})"
+    
+    def clean(self):
+        super().clean()
+        # Only normalize when basis is percent
+        if str(self.basis).upper() != "PCT" and self.rate is not None:
+            self.rate = type(self)._norm_pct(self.rate)
+
+    def save(self, *args, **kwargs):
+        # Ensure normalization/validation runs for all save paths (admin, API, scripts, fixtures)
+        self.full_clean()
+        return super().save(*args, **kwargs)

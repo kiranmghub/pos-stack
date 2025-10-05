@@ -115,8 +115,7 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
             base = sum((l.unit_price * l.qty for l in lines_in if _matches_categories(l, r)), Decimal("0"))
             if str(r.basis).upper() == "PCT":
                 receipt_discount += money(base * Decimal(r.rate or 0))
-            else:
-                receipt_discount += money(Decimal(r.amount or 0))
+
 
     # clamp line discounts
     for i, l in enumerate(lines_in):
