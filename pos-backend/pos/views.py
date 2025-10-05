@@ -492,6 +492,7 @@ class POSCheckoutView(APIView):
                             # category matching (if rule has categories)
                             if tr.categories.exists() and not tr.categories.filter(id=category_id).exists():
                                 continue
+                            # compute rule amount for this line
                             if tr.basis == TBasis.PERCENT:
                                 amt = round2(net * (tr.rate or Decimal("0")))
                             else:
@@ -502,21 +503,6 @@ class POSCheckoutView(APIView):
                                 _add_tax_for_rule(tr, amt)
                                 applied_any = True
                                 
-                        # fallback if no LINE rule matched
-                        if not applied_any:
-                            var_rate = getattr(variant.tax_category, "rate", None)
-                            prod_rate = getattr(getattr(variant, "product", None), "tax_category", None)
-                            prod_rate = getattr(prod_rate, "rate", None)
-                            tax_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
-                            line_tax = round2(net * tax_rate)
-
-                    else:
-                        # Legacy fallback: use tax category rate (variant -> product -> 0)
-                        var_rate = getattr(variant.tax_category, "rate", None)
-                        prod_rate = getattr(getattr(variant, "product", None), "tax_category", None)
-                        prod_rate = getattr(prod_rate, "rate", None)
-                        tax_rate = Decimal(str(var_rate if var_rate is not None else (prod_rate or 0)))
-                        line_tax = round2(net * tax_rate)
 
                     # --- Always add base category tax (variant -> product -> 0) ---
                     var_rate = getattr(getattr(variant, "tax_category", None), "rate", None)
@@ -719,6 +705,7 @@ class POSCheckoutView(APIView):
                 receipt["qr_png_data_url"] = qr_png_data_url
 
                 if p_type == "CASH":
+                    print("Received", str(received), "Total:", sale.total)
                     # Validate cash
                     if received < sale.total:
                         return Response({"detail": "Insufficient cash received"}, status=400)
