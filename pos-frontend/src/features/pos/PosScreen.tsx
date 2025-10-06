@@ -67,6 +67,9 @@ export default function PosScreen() {
 
   const [barcode, setBarcode] = useState("");
   const [coupon, setCoupon] = useState<string>("");        // coupon code
+  const [couponOk, setCouponOk] = useState<boolean | null>(null); // null = untouched
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
+
   const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -420,23 +423,50 @@ img{display:block;margin:8px auto}
         </div>
 
         {/* Coupon */}
-        <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-          <input
-            value={coupon}
-            onChange={(e) => setCoupon(e.target.value.toUpperCase())}
-            placeholder="Coupon code (optional)"
-            className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
-          />
-          {!!coupon && (
+          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+            <input
+              value={coupon}
+              onChange={(e) => {
+                setCoupon(e.target.value.toUpperCase());
+                setCouponOk(null);
+                setCouponMsg(null);
+              }}
+              placeholder="Coupon code (optional)"
+              className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+            />
             <button
-              onClick={() => setCoupon("")}
-              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600"
-              title="Clear coupon"
+              onClick={async () => {
+                try {
+                  const sub = quote ? parseFloat(quote.subtotal) : subtotal;
+                  const c = await validateCoupon(coupon, sub);
+                  setCouponOk(true);
+                  setCouponMsg(`Coupon applied: ${c.name || c.code}`);
+                } catch (err: any) {
+                  setCouponOk(false);
+                  setCouponMsg(err?.message || "Invalid coupon");
+                }
+              }}
+              disabled={!coupon.trim()}
+              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
             >
-              Clear
+              Validate
             </button>
+            {!!coupon && (
+              <button
+                onClick={() => { setCoupon(""); setCouponOk(null); setCouponMsg(null); }}
+                className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600"
+                title="Clear coupon"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {couponMsg && (
+            <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
+              {couponMsg}
+            </div>
           )}
-        </div>
+
 
         {/* Product grid */}
         <div className="flex-1 min-h-0 overflow-y-auto pr-1">

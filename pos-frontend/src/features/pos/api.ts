@@ -29,6 +29,16 @@ export async function getActiveTaxRules(store_id: number): Promise<TaxRule[]> {
   return data.rules;
 }
 
+// === Coupon validation ===
+export async function validateCoupon(code: string, subtotal?: number) {
+  const params = new URLSearchParams({ code: code.trim() });
+  if (typeof subtotal === "number") {
+    params.set("subtotal", String(subtotal.toFixed(2)));
+  }
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon?${params.toString()}`);
+  const data = await jsonOrThrow<{ ok: boolean; coupon?: any }>(res);
+  return data.coupon!;
+}
 
 
 
