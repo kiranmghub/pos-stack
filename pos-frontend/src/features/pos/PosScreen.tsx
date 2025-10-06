@@ -101,7 +101,7 @@ export default function PosScreen() {
           <td style="padding:4px 0">${l.name} (${l.sku || "-"})</td>
           <td style="text-align:right;padding:4px 0">${l.qty}</td>
           <td style="text-align:right;padding:4px 0">$${l.unit_price}</td>
-          <td style="text-align:right;padding:4px 0">$${l.line_total}</td>
+          <td style="text-align:right;padding:4px 0">$${l.line_subtotal ?? l.line_total ?? l.line_net}</td>
         </tr>`
     ).join("");
 
@@ -685,7 +685,7 @@ img{display:block;margin:8px auto}
                     </div>
                     <div className="tabular-nums text-right">
                       <div className="text-slate-400">{l.qty} × ${l.unit_price}</div>
-                      <div className="font-medium">${l.line_total}</div>
+                      <div className="font-medium">${l.line_subtotal ?? l.line_total ?? l.line_net}</div>
                     </div>
                   </div>
                 ))}

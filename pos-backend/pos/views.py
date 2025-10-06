@@ -717,18 +717,36 @@ class POSCheckoutView(APIView):
                     "register": {"id": register.id},
                     "cashier": {"id": user.id, "username": user.username},
                     "created_at": timezone.localtime(sale.created_at).isoformat(),
+
+                    # right-hand amount = price × qty (pre-discount, pre-tax)
+                    # includes helper fields for auditing and detailed analysis
                     "lines": [
-                        {
-                            "variant_id": sl.variant_id,
-                            "name": sl.variant.product.name,
-                            "sku": sl.variant.sku,
-                            "qty": sl.qty,
-                            "unit_price": str(sl.unit_price),
-                            "discount": str(sl.discount),
-                            "tax": str(sl.tax),
-                            "fee": str(sl.fee),
-                            "line_total": str(sl.line_total),
-                        }
+                        (lambda _sl=sl: (
+                            (lambda _line_subtotal, _line_net, _line_gross_after_tax: {
+                                "variant_id": _sl.variant_id,
+                                "name": _sl.variant.product.name,
+                                "sku": _sl.variant.sku or "",
+                                "qty": _sl.qty,
+                                "unit_price": str(round2(_sl.unit_price)),
+
+                                # what the UI should show on the right
+                                "line_subtotal": str(_line_subtotal),
+                                "line_total":    str(_line_subtotal),   # keep equal to subtotal for display
+
+                                # extra details for internal use
+                                "line_discount": str(round2(_sl.discount)),
+                                "line_net":      str(_line_net),
+                                "tax":           str(round2(_sl.tax)),
+                                "fee":           str(round2(_sl.fee)),
+
+                                # NEW — full gross line value after discount + tax + fee (for auditing)
+                                "line_gross_after_tax": str(_line_gross_after_tax),
+                            })(
+                                round2(_sl.unit_price * _sl.qty),                                  # line_subtotal
+                                round2((_sl.unit_price * _sl.qty) - _sl.discount),                 # line_net
+                                round2(((_sl.unit_price * _sl.qty) - _sl.discount) + _sl.tax + _sl.fee),  # line_gross_after_tax
+                            )
+                        ))()
                         for sl in sale.lines.select_related("variant__product")
                     ],
                     "totals": {
