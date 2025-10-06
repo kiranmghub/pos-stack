@@ -10,6 +10,7 @@ import {
   searchProducts,
   lookupBarcode,
   checkout,
+  validateCoupon,
   type StoreLite,
   type VariantLite,
   // NEW: server-side quote API (make sure this exists in ./api.ts)

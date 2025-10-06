@@ -327,61 +327,11 @@ class POSCheckoutView(APIView):
                     status="pending",
                 )
 
-                # subtotal = Decimal("0.00")
-                # total_tax = Decimal("0.00")
-                # total_fee = Decimal("0.00")
                 subtotal = Decimal("0.00")
                 total_tax = Decimal("0.00")
                 total_fee = Decimal("0.00")
                 total_discount = Decimal("0.00")
 
-                # Line creation + stock deduction
-                # for l in lines:
-                #     variant_id = l.get("variant_id")
-                #     qty = int(l.get("qty") or 0)
-                #     unit_price = Decimal(str(l.get("unit_price") or "0"))
-                #     line_discount = Decimal(str(l.get("line_discount") or "0"))
-
-                #     if qty <= 0:
-                #         continue
-
-                #     variant = Variant.objects.select_related("product", "tax_category").get(
-                #         id=variant_id,
-                #         product__tenant=tenant,
-                #     )
-
-                #     # tax rate from variant.tax_category.rate (nullable)
-                #     tax_rate = Decimal(str(getattr(variant.tax_category, "rate", 0) or 0))
-
-                #     net = (unit_price * qty) - line_discount
-                #     tax = (net * tax_rate).quantize(Decimal("0.01"))
-                #     fee = Decimal("0.00")
-                #     line_total = (net + tax + fee).quantize(Decimal("0.01"))
-
-                #     SaleLine.objects.create(
-                #         sale=sale,
-                #         variant=variant,
-                #         qty=qty,
-                #         unit_price=unit_price,
-                #         discount=line_discount,
-                #         tax=tax,
-                #         fee=fee,
-                #         line_total=line_total,
-                #     )
-
-                #     # deduct inventory at this store
-                #     inv, _ = InventoryItem.objects.select_for_update().get_or_create(
-                #         tenant=tenant, store=store, variant=variant, defaults={"on_hand": 0, "reserved": 0}
-                #     )
-                #     # you already subtract elsewhere; keep consistent:
-                #     inv.on_hand = (Decimal(inv.on_hand) - Decimal(qty))
-                #     if inv.on_hand < 0:
-                #         inv.on_hand = 0
-                #     inv.save()
-
-                #     subtotal += (unit_price * qty) - line_discount
-                #     total_tax += tax
-                #     total_fee += fee
                 # Optional coupon from payload
                 coupon_code = (data.get("coupon_code") or "").strip() or None
 
