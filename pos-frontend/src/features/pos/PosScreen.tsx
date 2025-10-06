@@ -139,7 +139,7 @@ img{display:block;margin:8px auto}
   <table class="totals">
     <tr><td>Subtotal</td><td style="text-align:right">$${r?.totals?.subtotal || "0.00"}</td></tr>
     ${taxLines}
-    ${r?.totals?.discount ? `<tr><td>Discount</td><td style="text-align:right">-$${r.totals.discount}</td></tr>` : ""}
+    ${r?.totals?.discount ? `<tr><td>Total Discounts</td><td style="text-align:right">-$${r.totals.discount}</td></tr>` : ""}
     <tr><td>Total Taxes</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
     ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">$${r.totals.fees}</td></tr>` : ""}
     <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>$${r?.totals?.grand_total || "0.00"}</strong></td></tr>
@@ -595,7 +595,7 @@ img{display:block;margin:8px auto}
           {/* Discount total (from server quote, before checkout) */}
           {!!showDisc && !lastReceipt && (
             <div className="flex justify-between text-sm">
-              <span>Discounts</span>
+              <span>Total Discounts</span>
               <span className="tabular-nums">-${toMoney(showDisc)}</span>
             </div>
           )}
@@ -736,7 +736,7 @@ img{display:block;margin:8px auto}
 
                 {!!lastReceipt?.totals?.discount && (
                   <div className="flex justify-between">
-                    <span>Discount</span>
+                    <span>Total Discounts</span>
                     <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
                   </div>
                 )}

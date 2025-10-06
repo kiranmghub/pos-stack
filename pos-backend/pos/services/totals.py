@@ -52,27 +52,64 @@ def _active_tax_rules(tenant, store_id: Optional[int]):
         cond |= Q(scope=TaxScope.STORE, store_id=store_id)
     return base.filter(cond).order_by("priority", "id")
 
+# def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
+#     now = timezone.now()
+#     base = (DiscountRule.objects
+#             .filter(tenant=tenant, is_active=True)
+#             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
+#             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now)))
+#     cond = Q(scope=DiscountScope.GLOBAL)
+#     if store_id:
+#         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
+#     rules = list(base.filter(cond).order_by("priority", "id"))
+
+#     coupon_rule = None
+#     if coupon_code:
+#         c = (Coupon.objects
+#              .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
+#              .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
+#              .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
+#              .first())
+#         if c:
+#             coupon_rule = c.rule
+#     return rules, coupon_rule
+
 def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
+    """
+    Returns (auto_rules, coupon_rule) where:
+      - auto_rules: active rules for tenant/store/time that are NOT bound to a Coupon
+      - coupon_rule: the single rule referenced by a valid coupon_code (if any), else None
+    """
     now = timezone.now()
     base = (DiscountRule.objects
             .filter(tenant=tenant, is_active=True)
             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now)))
+
     cond = Q(scope=DiscountScope.GLOBAL)
     if store_id:
         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
-    rules = list(base.filter(cond).order_by("priority", "id"))
+
+    # IMPORTANT: exclude rules that are bound to any Coupon
+    # (Coupon has FK -> DiscountRule with no related_name; reverse lookup name is "coupon")
+    auto_rules = (base
+                  .filter(cond)
+                  .filter(coupon__isnull=True)  # <- this line makes coupon rules opt-in only
+                  .order_by("priority", "id"))
 
     coupon_rule = None
     if coupon_code:
         c = (Coupon.objects
+             .select_related("rule")
              .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
              .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
              .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
              .first())
         if c:
             coupon_rule = c.rule
-    return rules, coupon_rule
+
+    return list(auto_rules), coupon_rule
+
 
 def _matches_categories(line: LineIn, rule) -> bool:
     cats = [c.code.upper() for c in getattr(rule, "categories").all()] if hasattr(rule, "categories") else []
