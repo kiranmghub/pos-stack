@@ -70,6 +70,9 @@ export default function PosScreen() {
   const [coupon, setCoupon] = useState<string>("");        // coupon code
   const [couponOk, setCouponOk] = useState<boolean | null>(null); // null = untouched
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  type AppliedCoupon = { code: string; name?: string };
+  const [appliedCoupons, setAppliedCoupons] = useState<AppliedCoupon[]>([]);
+
 
   const [paying, setPaying] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -274,22 +277,37 @@ img{display:block;margin:8px auto}
   useEffect(() => {
     if (!storeId) { setQuote(null); return; }
     const id = setTimeout(async () => {
+      // try {
+      //   setQuoteError(null);
+      //   if (quoteLines.length === 0) { setQuote(null); return; }
+      //   const q = await quoteTotals({
+      //     store_id: storeId,
+      //     lines: quoteLines,
+      //     coupon_code: coupon || undefined,
+      //   });
+      //   setQuote(q);
+      // } catch (e: any) {
+      //   setQuote(null);
+      //   setQuoteError(e?.message || "Failed to get totals");
+      // }
+
       try {
         setQuoteError(null);
         if (quoteLines.length === 0) { setQuote(null); return; }
         const q = await quoteTotals({
-          store_id: storeId,
+          store_id: storeId!,
           lines: quoteLines,
-          coupon_code: coupon || undefined,
+          coupon_codes: appliedCoupons.map(x => x.code),
         });
         setQuote(q);
       } catch (e: any) {
         setQuote(null);
         setQuoteError(e?.message || "Failed to get totals");
       }
+
     }, 250); // debounce 250ms
     return () => clearTimeout(id);
-  }, [storeId, quoteLines, coupon]);
+  }, [storeId, quoteLines, appliedCoupons]);
 
   // checkout core (shared)
   async function submitCheckout(payment: Record<string, any>) {
@@ -306,7 +324,7 @@ img{display:block;margin:8px auto}
           line_discount: l.line_discount ? toMoney(l.line_discount) : "0.00",
         })),
         payment,
-        coupon_code: coupon || undefined,
+        coupon_codes: appliedCoupons.map(x => x.code),
       };
       const res = await checkout(payload);
       console.log("checkout response", res); // quick sanity check
@@ -424,7 +442,7 @@ img{display:block;margin:8px auto}
         </div>
 
         {/* Coupon */}
-          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+          {/* <div className="p-4 border-b border-slate-800 flex items-center gap-2">
             <input
               value={coupon}
               onChange={(e) => {
@@ -466,7 +484,88 @@ img{display:block;margin:8px auto}
             <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
               {couponMsg}
             </div>
+          )} */}
+
+          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+            <input
+              value={coupon}
+              onChange={(e) => {
+                setCoupon(e.target.value.toUpperCase());
+                setCouponOk(null);
+                setCouponMsg(null);
+              }}
+              placeholder="Coupon code"
+              className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  const sub = quote ? parseFloat(quote.subtotal) : subtotal;
+                  const c = await validateCoupon(coupon, sub);
+                  // prevent duplicates
+                  if (!appliedCoupons.some(ac => ac.code.toUpperCase() === coupon.toUpperCase())) {
+                    setAppliedCoupons(prev => [...prev, { code: coupon.toUpperCase(), name: c.name || c.code }]);
+                  }
+                  setCouponOk(true);
+                  setCouponMsg(`Applied: ${c.name || c.code}`);
+                  setCoupon(""); // clear input
+
+                  // re-quote immediately with all coupons
+                  const q = await quoteTotals({
+                    store_id: storeId!,
+                    lines: quoteLines,
+                    coupon_codes: [...appliedCoupons.map(x => x.code.toUpperCase()), coupon.toUpperCase()],
+                  });
+                  setQuote(q);
+                } catch (err: any) {
+                  setCouponOk(false);
+                  setCouponMsg(err?.message || "Invalid coupon");
+                }
+              }}
+              disabled={!coupon.trim()}
+              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </div>
+
+          {/* Applied coupon chips */}
+          {appliedCoupons.length > 0 && (
+            <div className="px-4 pb-2 flex flex-wrap gap-2">
+              {appliedCoupons.map((ac) => (
+                <span key={ac.code} className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-sm">
+                  <span>{ac.name || ac.code}</span>
+                  <button
+                    onClick={async () => {
+                      const next = appliedCoupons.filter(x => x.code !== ac.code);
+                      setAppliedCoupons(next);
+                      setCouponOk(null);
+                      setCouponMsg(null);
+                      if (storeId && quoteLines.length) {
+                        const q = await quoteTotals({
+                          store_id: storeId,
+                          lines: quoteLines,
+                          coupon_codes: next.map(x => x.code),
+                        });
+                        setQuote(q);
+                      }
+                    }}
+                    className="rounded bg-slate-700 px-1.5 py-0.5 text-xs hover:bg-slate-600"
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
+
+          {couponMsg && (
+            <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
+              {couponMsg}
+            </div>
+          )}
+
 
 
         {/* Product grid */}

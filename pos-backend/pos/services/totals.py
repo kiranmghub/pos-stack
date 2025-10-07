@@ -74,13 +74,58 @@ def _active_tax_rules(tenant, store_id: Optional[int]):
 #             coupon_rule = c.rule
 #     return rules, coupon_rule
 
-def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
+# def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
+#     """
+#     Returns (auto_rules, coupon_rule) where:
+#       - auto_rules: active rules for tenant/store/time that are NOT bound to a Coupon
+#       - coupon_rule: the single rule referenced by a valid coupon_code (if any), else None
+#     """
+#     now = timezone.now()
+#     base = (DiscountRule.objects
+#             .filter(tenant=tenant, is_active=True)
+#             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
+#             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now)))
+
+#     cond = Q(scope=DiscountScope.GLOBAL)
+#     if store_id:
+#         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
+
+#     # IMPORTANT: exclude rules that are bound to any Coupon
+#     # (Coupon has FK -> DiscountRule with no related_name; reverse lookup name is "coupon")
+#     auto_rules = (base
+#                   .filter(cond)
+#                   .filter(coupon__isnull=True)  # <- this line makes coupon rules opt-in only
+#                   .order_by("priority", "id"))
+
+#     coupon_rule = None
+#     if coupon_code:
+#         c = (Coupon.objects
+#              .select_related("rule")
+#              .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
+#              .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
+#              .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
+#              .first())
+#         if c:
+#             coupon_rule = c.rule
+
+#     return list(auto_rules), coupon_rule
+
+from django.db.models import Q, F
+
+def _active_discount_rules(
+    tenant,
+    store_id: Optional[int],
+    coupon_codes: Optional[list] = None,
+    *,
+    subtotal_hint=None,
+):
     """
-    Returns (auto_rules, coupon_rule) where:
+    Returns (auto_rules, coupon_rules) where:
       - auto_rules: active rules for tenant/store/time that are NOT bound to a Coupon
-      - coupon_rule: the single rule referenced by a valid coupon_code (if any), else None
+      - coupon_rules: list of rules referenced by valid coupon codes (window+usage+min_subtotal ok)
     """
     now = timezone.now()
+
     base = (DiscountRule.objects
             .filter(tenant=tenant, is_active=True)
             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
@@ -90,25 +135,32 @@ def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optiona
     if store_id:
         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
 
-    # IMPORTANT: exclude rules that are bound to any Coupon
-    # (Coupon has FK -> DiscountRule with no related_name; reverse lookup name is "coupon")
-    auto_rules = (base
-                  .filter(cond)
-                  .filter(coupon__isnull=True)  # <- this line makes coupon rules opt-in only
-                  .order_by("priority", "id"))
+    # EXCLUDE rules that are bound to any coupon — they are opt-in only via coupon
+    auto_rules = list(
+        base.filter(cond)
+            .filter(coupon__isnull=True)
+            .order_by("priority", "id")
+    )
 
-    coupon_rule = None
-    if coupon_code:
-        c = (Coupon.objects
-             .select_related("rule")
-             .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
-             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
-             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
-             .first())
-        if c:
-            coupon_rule = c.rule
+    coupon_rules = []
+    if coupon_codes:
+        codes = [str(c or "").strip() for c in coupon_codes if str(c or "").strip()]
+        if codes:
+            qs = (Coupon.objects
+                  .select_related("rule")
+                  .filter(tenant=tenant, code__in=codes, is_active=True)
+                  .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
+                  .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
+                  .filter(Q(max_uses__isnull=True) | Q(used_count__lt=F("max_uses"))))
+            # optional min_subtotal check using provided hint (quote/checkout can pass subtotal)
+            if subtotal_hint is not None:
+                qs = qs.filter(Q(min_subtotal__isnull=True) | Q(min_subtotal__lte=subtotal_hint))
+            coupon_rules = [c.rule for c in qs]
 
-    return list(auto_rules), coupon_rule
+    # sort coupon rules by priority too, then return
+    coupon_rules.sort(key=lambda r: (getattr(r, "priority", 0), r.id))
+    return auto_rules, coupon_rules
+
 
 
 def _matches_categories(line: LineIn, rule) -> bool:
@@ -123,16 +175,29 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
     subtotal = money(subtotal)
 
     # 2) Discounts (simple: apply receipt-level then line-level; expand as needed)
-    discount_rules, coupon_rule = _active_discount_rules(tenant, store_id, coupon_code)
+    # discount_rules, coupon_rule = _active_discount_rules(tenant, store_id, coupon_code)
+    auto_rules, coupon_rules = _active_discount_rules(
+        tenant, store_id,
+        coupon_codes=(coupon_code if isinstance(coupon_code, list) else ([coupon_code] if coupon_code else [])),
+        subtotal_hint=subtotal,
+)
+
 
     # For this pass, we won’t fully model targets; feel free to expand to PRODUCT/VARIANT
     line_discounts = [Decimal("0") for _ in lines_in]
     receipt_discount = Decimal("0")
 
-    ordered = []
-    if coupon_rule:
-        ordered.append(coupon_rule)
-    ordered.extend(discount_rules)
+    # ordered = []
+    # if coupon_rule:
+    #     ordered.append(coupon_rule)
+    # ordered.extend(discount_rules)
+
+    # Merge coupon + auto rules by priority
+    ordered = sorted(
+        list(coupon_rules) + list(auto_rules),
+        key=lambda r: (getattr(r, "priority", 0), r.id)
+    )
+
 
     discount_by_rule_map: Dict[int, RuleAmount] = {}  # NEW
 

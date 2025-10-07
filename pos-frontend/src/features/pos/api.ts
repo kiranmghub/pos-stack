@@ -196,15 +196,36 @@ export type QuoteOut = {
   }>;
 };
 
+// export async function quoteTotals(payload: {
+//   store_id: number;
+//   lines: QuoteLineIn[];
+//   coupon_code?: string;
+// }): Promise<QuoteOut> {
+//   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/quote`, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(payload),
+//   });
+//   const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut }>(res);
+//   return data.quote;
+// }
+
+
 export async function quoteTotals(payload: {
   store_id: number;
   lines: QuoteLineIn[];
-  coupon_code?: string;
+  coupon_code?: string;      // backward-compat
+  coupon_codes?: string[];   // NEW multi-coupon
 }): Promise<QuoteOut> {
+  const body = { ...payload };
+  // prefer coupon_codes if present, else if coupon_code present wrap into array
+  if (!body.coupon_codes && body.coupon_code) {
+    body.coupon_codes = [body.coupon_code];
+  }
   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/quote`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut }>(res);
   return data.quote;

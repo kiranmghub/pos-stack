@@ -333,7 +333,11 @@ class POSCheckoutView(APIView):
                 total_discount = Decimal("0.00")
 
                 # Optional coupon from payload
-                coupon_code = (data.get("coupon_code") or "").strip() or None
+                # coupon_code = (data.get("coupon_code") or "").strip() or None
+                # accept either single 'coupon_code' or list 'coupon_codes'
+                cc_single = data.get("coupon_code")
+                cc_list = data.get("coupon_codes") or ([] if not cc_single else [cc_single])
+
 
                 # Load rules once
                 rules_disc, coupon = active_discount_rules(tenant, store, coupon_code)
@@ -597,7 +601,8 @@ class POSCheckoutView(APIView):
                     tenant=tenant,
                     store_id=store.id if store else None,
                     lines_in=lines_in,
-                    coupon_code=data.get("coupon_code") or None,
+                    # coupon_code=data.get("coupon_code") or None,
+                    coupon_code=cc_list, # accept list of codes
                 )
 
                 # Override any earlier ad-hoc totals with canonical values
@@ -846,7 +851,11 @@ class POSQuoteView(APIView):
         store_id = _resolve_store_id(request)
         body = request.data or {}
         lines = body.get("lines") or []
-        coupon_code = body.get("coupon_code") or None
+        # coupon_code = body.get("coupon_code") or None
+        # accept either single 'coupon_code' or list 'coupon_codes'
+        cc_single = body.get("coupon_code")
+        cc_list = body.get("coupon_codes") or ([] if not cc_single else [cc_single])
+
 
         if not store_id:
             return Response({"ok": False, "detail": "store_id required"}, status=400)
@@ -899,5 +908,5 @@ class POSQuoteView(APIView):
 
             ))
 
-        ro = compute_receipt(tenant=tenant, store_id=store_id, lines_in=lines_in, coupon_code=coupon_code)
+        ro = compute_receipt(tenant=tenant, store_id=store_id, lines_in=lines_in, coupon_code=cc_list)
         return Response({"ok": True, "quote": serialize_receipt(ro)})
