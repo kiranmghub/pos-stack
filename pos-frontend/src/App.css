@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+
+@keyframes pop { 0% { transform: scale(0.6); } 100% { transform: scale(1); } }
+.pop {
+  animation: pop 150ms ease-in-out;
+}

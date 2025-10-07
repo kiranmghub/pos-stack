@@ -80,6 +80,11 @@ export default function PosScreen() {
   // legacy small summary (kept)
   const [receipt, setReceipt] = useState<ReceiptInfo | null>(null);
 
+  // total items in cart (sum of quantities)
+  const cartCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
+  // In the furture if we want the cart badge to show distic items count instead of total qty:
+  // const cartCount = useMemo(() => cart.length, [cart]);
+
   // modals
   const [showCash, setShowCash] = useState(false);
   const [showCard, setShowCard] = useState(false);
@@ -620,11 +625,28 @@ img{display:block;margin:8px auto}
       <div className="w-[420px] h-screen flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-slate-800">
           <h2 className="flex items-center gap-2 font-semibold">
-            <ShoppingCart className="h-5 w-5" /> Cart
+            <span className="relative inline-block" aria-label={`Cart (${cartCount} items)`}>
+              <ShoppingCart className="h-5 w-5" />
+              {cartCount > 0 && (
+                <span
+                  className="
+                    absolute -top-2 -right-2 min-w-[1.1rem] h-[1.1rem]
+                    rounded-full bg-emerald-500 px-1 text-[0.70rem] leading-[1.1rem]
+                    text-slate-900 font-bold text-center shadow
+                    ring-2 ring-slate-950
+                    animate-[pop_150ms_ease-in-out]
+                  "
+                >
+                  {cartCount}
+                </span>
+              )}
+            </span>
+            Cart
           </h2>
-          <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
+
+          {/* <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
             <LogOut className="h-4 w-4" /> Logout
-          </button>
+          </button> */}
         </div>
 
         {/* Barcode */}
