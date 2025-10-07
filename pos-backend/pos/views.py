@@ -20,6 +20,7 @@ from catalog.models import Variant
 from inventory.models import InventoryItem
 from orders.models import Sale, SaleLine, SalePayment
 from rest_framework import status, permissions
+from django.db.models import F
 
 import io
 import base64
@@ -340,7 +341,7 @@ class POSCheckoutView(APIView):
 
 
                 # Load rules once
-                rules_disc, coupon = active_discount_rules(tenant, store, coupon_code)
+                rules_disc, coupon = active_discount_rules(tenant, store, cc_list[0] if cc_list else None)
                 rules_tax = active_tax_rules(tenant, store)
 
                 # Track per-rule tax amounts for the receipt (rule_id -> amount, code, name)
@@ -806,8 +807,17 @@ class POSCheckoutView(APIView):
                 sale.save(update_fields=["receipt_no", "receipt_data"])
 
                 # If a coupon was applied, mark usage (safe to do inside the same transaction)
-                if coupon:
-                    Coupon.objects.filter(id=coupon.id).update(used_count=F("used_count") + 1)
+                # if coupon:
+                #     Coupon.objects.filter(id=coupon.id).update(used_count=F("used_count") + 1)
+                # If coupons were applied, mark usage for all codes (inside same transaction)
+                codes_used = cc_list
+                if codes_used:
+                    Coupon.objects.filter(
+                        tenant=tenant,
+                        code__in=codes_used,
+                        is_active=True,
+                    ).update(used_count=F("used_count") + 1)
+
 
 
         except Variant.DoesNotExist:
