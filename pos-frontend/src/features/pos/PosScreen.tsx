@@ -369,6 +369,9 @@ img{display:block;margin:8px auto}
       setMsg(`Sale #${res.sale_id} completed`);
       clearCart();
       setRefreshTick(t => t + 1);
+      setAppliedCoupons([]); // clear applied coupons on successful checkout
+      setCouponOk(null); // reset validation state
+      setCouponMsg(null); // clear the “Applied:” message
     } catch (e: any) {
       setMsg(e.message || "Checkout failed");
     } finally {
@@ -493,21 +496,25 @@ img{display:block;margin:8px auto}
                   try {
                     const sub = quote ? parseFloat(quote.subtotal) : subtotal;
                     const c = await validateCoupon(coupon, sub);
-                    // prevent duplicates
-                    if (!appliedCoupons.some(ac => ac.code.toUpperCase() === coupon.toUpperCase())) {
-                      setAppliedCoupons(prev => [...prev, { code: coupon.toUpperCase(), name: c.name || c.code }]);
-                    }
+                    // build next list (avoid duplicates)
+                    const newEntry = { code: coupon.toUpperCase(), name: c.name || c.code };
+                    const next = appliedCoupons.some(ac => ac.code.toUpperCase() === newEntry.code)
+                      ? appliedCoupons
+                      : [...appliedCoupons, newEntry];
+
+                    setAppliedCoupons(next);
                     setCouponOk(true);
-                    setCouponMsg(`Applied: ${c.name || c.code}`);
+                    setCouponMsg(`Applied: ${next.map(x => x.name || x.code).join(", ")}`);
                     setCoupon(""); // clear input
 
                     // re-quote immediately with all coupons
                     const q = await quoteTotals({
                       store_id: storeId!,
                       lines: quoteLines,
-                      coupon_codes: [...appliedCoupons.map(x => x.code.toUpperCase()), coupon.toUpperCase()],
+                      coupon_codes: next.map(x => x.code),
                     });
                     setQuote(q);
+
                   } catch (err: any) {
                     setCouponOk(false);
                     setCouponMsg(err?.message || "Invalid coupon");
@@ -530,8 +537,16 @@ img{display:block;margin:8px auto}
                       onClick={async () => {
                         const next = appliedCoupons.filter(x => x.code !== ac.code);
                         setAppliedCoupons(next);
-                        setCouponOk(null);
-                        setCouponMsg(null);
+
+                        // keep status/message in sync with what remains
+                        if (next.length > 0) {
+                          setCouponOk(true);
+                          setCouponMsg(`Applied: ${next.map(x => x.name || x.code).join(", ")}`);
+                        } else {
+                          setCouponOk(null);
+                          setCouponMsg(null);
+                        }
+
                         if (storeId && quoteLines.length) {
                           const q = await quoteTotals({
                             store_id: storeId,
