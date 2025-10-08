@@ -6,6 +6,38 @@ export type TaxBasis = "PCT" | "FLAT";
 export type TaxScope = "GLOBAL" | "STORE";
 export type ApplyScope = "LINE" | "RECEIPT";
 
+export type DiscountBasis = "PCT" | "FLAT";
+// export type ApplyScope = "LINE" | "RECEIPT";
+export type DiscountTarget = "ALL" | "CATEGORY" | "PRODUCT" | "VARIANT";
+
+export type RuleCategory = { id: number; code: string; name?: string };
+
+export type DiscountRule = {
+  id: number;
+  name: string;
+  code: string;
+  basis: DiscountBasis;
+  rate?: string | null;
+  amount?: string | null;
+  apply_scope: ApplyScope;
+  target: DiscountTarget;
+  categories?: RuleCategory[];
+  product_ids?: number[];
+  variant_ids?: number[];
+  priority: number;
+};
+
+export type CouponWithRule = {
+  code: string;
+  name?: string;
+  min_subtotal?: string | null;
+  max_uses?: number | null;
+  used_count?: number;
+  start_at?: string | null;
+  end_at?: string | null;
+  rule: DiscountRule;  // ← important for tile badges
+};
+
 export type TaxRule = {
   id: number;
   code: string;
@@ -23,6 +55,12 @@ export type TaxRule = {
   end_at?: string | null;
 };
 
+export async function getActiveDiscountRules(store_id: number): Promise<DiscountRule[]> {
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/active?store_id=${store_id}`);
+  const data = await jsonOrThrow<{ ok: boolean; rules: DiscountRule[] }>(res);
+  return data.rules ?? [];
+}
+
 export async function getActiveTaxRules(store_id: number): Promise<TaxRule[]> {
   const res = await fetchWithAuth(`${API_BASE}/api/v1/taxes/active?store_id=${store_id}`);
   const data = await jsonOrThrow<{ ok: boolean; rules: TaxRule[] }>(res);
@@ -30,15 +68,26 @@ export async function getActiveTaxRules(store_id: number): Promise<TaxRule[]> {
 }
 
 // === Coupon validation ===
-export async function validateCoupon(code: string, subtotal?: number) {
+// export async function validateCoupon(code: string, subtotal?: number) {
+//   const params = new URLSearchParams({ code: code.trim() });
+//   if (typeof subtotal === "number") {
+//     params.set("subtotal", String(subtotal.toFixed(2)));
+//   }
+//   const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon?${params.toString()}`);
+//   const data = await jsonOrThrow<{ ok: boolean; coupon?: any }>(res);
+//   return data.coupon!;
+// }
+
+export async function validateCoupon(code: string, subtotal?: number): Promise<CouponWithRule> {
   const params = new URLSearchParams({ code: code.trim() });
-  if (typeof subtotal === "number") {
-    params.set("subtotal", String(subtotal.toFixed(2)));
-  }
-  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon?${params.toString()}`);
-  const data = await jsonOrThrow<{ ok: boolean; coupon?: any }>(res);
-  return data.coupon!;
+  if (typeof subtotal === "number") params.set("subtotal", String(subtotal.toFixed(2)));
+
+  // trailing slash works with/without APPEND_SLASH; either is fine
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon/?${params.toString()}`);
+  const data = await jsonOrThrow<{ ok: boolean; coupon: CouponWithRule }>(res);
+  return data.coupon;
 }
+
 
 
 

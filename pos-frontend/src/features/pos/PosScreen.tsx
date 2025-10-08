@@ -16,6 +16,8 @@ import {
   // NEW: server-side quote API (make sure this exists in ./api.ts)
   quoteTotals,
   type QuoteOut,
+  getActiveDiscountRules,
+  type DiscountRule,
 } from "./api";
 
 // ---------- tiny utils ----------
@@ -72,6 +74,11 @@ export default function PosScreen() {
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
   type AppliedCoupon = { code: string; name?: string };
   const [appliedCoupons, setAppliedCoupons] = useState<AppliedCoupon[]>([]);
+  // discount rules: auto rules from backend + coupon rules for applied coupons
+  const [autoDiscRules, setAutoDiscRules] = useState<DiscountRule[]>([]);
+  const [couponDiscRules, setCouponDiscRules] = useState<DiscountRule[]>([]);
+  const [couponRuleByCode, setCouponRuleByCode] = useState<Record<string, DiscountRule>>({});
+
 
 
   const [paying, setPaying] = useState(false);
@@ -246,6 +253,20 @@ img{display:block;margin:8px auto}
       }
     })();
   }, [storeId, query, refreshTick]);
+
+  // Load auto discount rules when store changes
+  useEffect(() => {
+    if (!storeId) { setAutoDiscRules([]); return; }
+    (async () => {
+      try {
+        const rules = await getActiveDiscountRules(storeId);
+        setAutoDiscRules(rules || []);
+      } catch {
+        setAutoDiscRules([]);
+      }
+    })();
+  }, [storeId]);
+
 
   // persist cart
   useEffect(() => {
@@ -431,6 +452,9 @@ img{display:block;margin:8px auto}
       setAppliedCoupons([]); // clear applied coupons on successful checkout
       setCouponOk(null); // reset validation state
       setCouponMsg(null); // clear the “Applied:” message
+      setCouponDiscRules([]);
+      setCouponRuleByCode({});
+
     } catch (e: any) {
       setMsg(e.message || "Checkout failed");
     } finally {
@@ -491,6 +515,63 @@ img{display:block;margin:8px auto}
   const showSub = lastReceipt ? serverSub : (quote ? quoteSub : subtotal);
   const showTax = lastReceipt ? serverTax : (quote ? quoteTax : 0);
   const showGrand = lastReceipt ? serverGrand : (quote ? quoteGrand : subtotal);
+
+  function pctText(rate?: string | null) {
+    const r = Number(rate || 0);
+    if (!isFinite(r) || r <= 0) return null;
+    return `${Math.round(r * 100)}% OFF`;
+  }
+  function moneyText(amount?: string | null) {
+    const a = Number(amount || 0);
+    if (!isFinite(a) || a <= 0) return null;
+    return `-$${a.toFixed(2)}`;
+  }
+
+  function ruleMatchesVariant(rule: DiscountRule, v: VariantLite): boolean {
+    const target = (rule.target || "ALL").toUpperCase();
+    const vcat = ((v as any).tax_category?.code || (v as any).tax_category_code || "").toString().toUpperCase();
+    const prodId = (v as any).product_id ?? (v as any).product?.id;
+
+    if (target === "ALL") return true;
+
+    if (target === "CATEGORY") {
+      const codes = (rule.categories || []).map(c => (c.code || "").toUpperCase());
+      if (codes.length === 0) return true;
+      return codes.includes(vcat);
+    }
+
+    if (target === "PRODUCT") {
+      const ids = rule.product_ids || [];
+      if (!prodId) return false;
+      return ids.includes(Number(prodId));
+    }
+
+    if (target === "VARIANT") {
+      const ids = rule.variant_ids || [];
+      return ids.includes(Number(v.id));
+    }
+
+    return false;
+  }
+
+  function badgeForVariant(v: VariantLite, autoRules: DiscountRule[], couponRules: DiscountRule[]) {
+    const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
+    for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
+    for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
+
+    if (cands.length === 0) return null;
+
+    cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
+    const pick = cands[0];
+    const r = pick.rule;
+
+    let text = r.basis === "PCT" ? pctText(r.rate) : moneyText(r.amount);
+    if (!text) text = "Discount";
+    if (r.apply_scope === "RECEIPT") text += " (receipt)";
+    if (pick.kind === "coupon") text = `Coupon: ${text}`;
+    return { text, kind: pick.kind };
+  }
+
 
   return (
     <>
@@ -562,6 +643,15 @@ img{display:block;margin:8px auto}
                       : [...appliedCoupons, newEntry];
 
                     setAppliedCoupons(next);
+                    // save coupon rule (for tile badges)
+                    if ((c as any).rule) {
+                      setCouponRuleByCode(prev => ({ ...prev, [newEntry.code]: (c as any).rule }));
+                      setCouponDiscRules(prev => {
+                        const r = (c as any).rule as DiscountRule;
+                        return prev.some(x => x.id === r.id) ? prev : [...prev, r];
+                      });
+                    }
+
                     setCouponOk(true);
                     setCouponMsg(`Applied: ${next.map(x => x.name || x.code).join(", ")}`);
                     setCoupon(""); // clear input
@@ -596,6 +686,17 @@ img{display:block;margin:8px auto}
                       onClick={async () => {
                         const next = appliedCoupons.filter(x => x.code !== ac.code);
                         setAppliedCoupons(next);
+
+                        // remove its rule (if we stored it)
+                        setCouponDiscRules(prev => {
+                          const r = couponRuleByCode[ac.code];
+                          return r ? prev.filter(x => x.id !== r.id) : prev;
+                        });
+                        setCouponRuleByCode(prev => {
+                          const { [ac.code]: _, ...rest } = prev;
+                          return rest;
+                        });
+
 
                         // keep status/message in sync with what remains
                         if (next.length > 0) {
@@ -651,7 +752,21 @@ img{display:block;margin:8px auto}
                         }`}
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
-                      <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                        {/* DISCOUNT BADGE */}
+                        {(() => {
+                          const b = badgeForVariant(p, autoDiscRules, couponDiscRules);
+                          return b ? (
+                            <span
+                              className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold shadow
+                                          ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
+                              title={b.text}
+                            >
+                              {b.text}
+                            </span>
+                          ) : null;
+                        })()}
+
                         {imgFor(p) ? (
                           <img
                             src={imgFor(p)}
@@ -663,6 +778,7 @@ img{display:block;margin:8px auto}
                           <span className="text-slate-400">🛒</span>
                         )}
                       </div>
+
 
                       <div className="font-medium truncate">{p.name}</div>
                       <div className="text-xs text-slate-300 mt-0.5 truncate">

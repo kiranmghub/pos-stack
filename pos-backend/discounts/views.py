@@ -30,7 +30,9 @@ class ActiveDiscountRulesView(APIView):
         if store_id:
             cond = cond | Q(scope=DiscountScope.STORE, store_id=store_id)
 
-        qs = qs.filter(cond).order_by("priority", "id")
+        # qs = qs.filter(cond).order_by("priority", "id")
+        qs = qs.filter(cond).filter(coupon__isnull=True).order_by("priority", "id")
+
         data = DiscountRuleSerializer(qs, many=True).data
         return Response({"ok": True, "rules": data})
 
@@ -81,21 +83,24 @@ class CouponLookupView(APIView):
                 return Response({"ok": False, "detail": f"Minimum subtotal ${c.min_subtotal} required"}, status=400)
 
         # Return lightweight coupon + rule info
-        rule = c.rule
-        payload = {
-            "code": c.code,
-            "name": c.name or rule.name,
-            "min_subtotal": str(c.min_subtotal) if c.min_subtotal is not None else None,
-            "max_uses": c.max_uses,
-            "used_count": c.used_count,
-            "rule": {
-                "id": rule.id,
-                "name": rule.name,
-                "basis": rule.basis,   # "PCT" or "FLAT"
-                "rate": str(rule.rate) if rule.rate is not None else None,
-                "amount": str(rule.amount) if rule.amount is not None else None,
-                "apply_scope": rule.apply_scope,  # "LINE" or "RECEIPT"
-                "target": rule.target,            # "ALL"/"CATEGORY"/"PRODUCT"/"VARIANT"
-            },
-        }
-        return Response({"ok": True, "coupon": payload})
+        # rule = c.rule
+        # payload = {
+        #     "code": c.code,
+        #     "name": c.name or rule.name,
+        #     "min_subtotal": str(c.min_subtotal) if c.min_subtotal is not None else None,
+        #     "max_uses": c.max_uses,
+        #     "used_count": c.used_count,
+        #     "rule": {
+        #         "id": rule.id,
+        #         "name": rule.name,
+        #         "basis": rule.basis,   # "PCT" or "FLAT"
+        #         "rate": str(rule.rate) if rule.rate is not None else None,
+        #         "amount": str(rule.amount) if rule.amount is not None else None,
+        #         "apply_scope": rule.apply_scope,  # "LINE" or "RECEIPT"
+        #         "target": rule.target,            # "ALL"/"CATEGORY"/"PRODUCT"/"VARIANT"
+        #     },
+        # }
+        # return Response({"ok": True, "coupon": payload})
+        # Return full coupon w/ rule (including categories/product_ids/variant_ids if your serializer exposes them)
+        return Response({"ok": True, "coupon": CouponSerializer(c).data})
+
