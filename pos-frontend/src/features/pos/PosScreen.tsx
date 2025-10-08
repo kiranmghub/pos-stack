@@ -96,6 +96,12 @@ export default function PosScreen() {
 
   const barcodeRef = useRef<HTMLInputElement>(null);
 
+  // cart list container + highlight tracking
+  const cartListRef = useRef<HTMLDivElement>(null);
+  const [lastAddedId, setLastAddedId] = useState<number | null>(null);
+  const [flashToken, setFlashToken] = useState<number>(0);
+
+
   // print helpers
   function printHtml(html: string) {
     const w = window.open("", "_blank", "width=420,height=700");
@@ -220,6 +226,23 @@ img{display:block;margin:8px auto}
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart]);
 
+  // scroll the cart to the most recently added/updated line
+  useEffect(() => {
+    if (!cartListRef.current || lastAddedId == null) return;
+    const el = cartListRef.current.querySelector<HTMLElement>(`[data-vid="${lastAddedId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [cart, lastAddedId]);
+
+  useEffect(() => {
+    if (!flashToken) return;
+    const t = setTimeout(() => setFlashToken(0), 900);
+    return () => clearTimeout(t);
+  }, [flashToken]);
+
+
+
   // cart helpers
   const qtyInCart = (variantId: number) =>
     cart.find(l => l.variant.id === variantId)?.qty ?? 0;
@@ -238,9 +261,17 @@ img{display:block;margin:8px auto}
       }
       return [...prev, { variant: v, qty: 1 }];
     });
+      // mark for scroll + flash
+      setLastAddedId(v.id);
+      setFlashToken(Date.now());
+
   };
 
   const changeQty = (id: number, delta: number) => {
+      if (delta > 0) {
+        setLastAddedId(id);
+        setFlashToken(Date.now());
+      }
     const v = products.find(p => p.id === id);
     const onHand = toInt((v as any)?.on_hand, 0);
     setCart(prev =>
@@ -587,8 +618,8 @@ img{display:block;margin:8px auto}
                       onClick={() => addToCart(p)}
                       disabled={disabled}
                       className={`rounded-xl p-3 text-left transition-colors ${disabled
-                          ? "bg-slate-800/60 cursor-not-allowed opacity-60"
-                          : "bg-slate-800 hover:bg-slate-700"
+                        ? "bg-slate-800/60 cursor-not-allowed opacity-60"
+                        : "bg-slate-800 hover:bg-slate-700"
                         }`}
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
@@ -662,9 +693,17 @@ img{display:block;margin:8px auto}
             </form>
 
             {/* Lines */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div ref={cartListRef} className="flex-1 overflow-y-auto p-4 space-y-3">
               {cart.map((l) => (
-                <div key={l.variant.id} className="flex items-center justify-between bg-slate-800 rounded-lg p-3">
+                <div
+                  key={l.variant.id}
+                  data-vid={l.variant.id}
+                  className={`flex items-center justify-between rounded-lg p-3 transition-colors
+                              ${l.variant.id === lastAddedId && flashToken
+                                ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
+                                : "bg-slate-800"
+                              }`}
+                >
                   <div className="min-w-0">
                     <div className="font-medium truncate">{l.variant.name}</div>
                     <div className="text-sm text-slate-400 truncate">
