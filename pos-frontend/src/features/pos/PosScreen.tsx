@@ -100,6 +100,10 @@ export default function PosScreen() {
   const cartListRef = useRef<HTMLDivElement>(null);
   const [lastAddedId, setLastAddedId] = useState<number | null>(null);
   const [flashToken, setFlashToken] = useState<number>(0);
+  // measure sticky totals (footer) so items don't hide beneath it
+  const cartTotalsRef = useRef<HTMLDivElement>(null);
+  const [footerH, setFooterH] = useState(0);
+
 
 
   // print helpers
@@ -170,6 +174,28 @@ img{display:block;margin:8px auto}
   // trigger for refetching products after checkout
   const [refreshTick, setRefreshTick] = useState(0);
 
+  // keep footer height so the list can pad its bottom accordingly
+  useEffect(() => {
+    const el = cartTotalsRef.current;
+    if (!el) return;
+
+    const update = () => setFooterH(el.offsetHeight || 0);
+    update();
+
+    // observe size changes (safer than window resize only)
+    const RO = (window as any).ResizeObserver;
+    if (RO) {
+      const ro = new RO(update);
+      ro.observe(el);
+      return () => ro.disconnect();
+    } else {
+      // fallback
+      const onResize = () => update();
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    }
+  }, []);
+
   // fetch stores once
   useEffect(() => {
     (async () => {
@@ -231,9 +257,11 @@ img{display:block;margin:8px auto}
     if (!cartListRef.current || lastAddedId == null) return;
     const el = cartListRef.current.querySelector<HTMLElement>(`[data-vid="${lastAddedId}"]`);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      // 'end' positions the item flush above the sticky footer (with our padding)
+      el.scrollIntoView({ behavior: "smooth", block: "end" });
     }
-  }, [cart, lastAddedId]);
+  }, [cart, lastAddedId, footerH]);
+
 
   useEffect(() => {
     if (!flashToken) return;
@@ -261,17 +289,17 @@ img{display:block;margin:8px auto}
       }
       return [...prev, { variant: v, qty: 1 }];
     });
-      // mark for scroll + flash
-      setLastAddedId(v.id);
-      setFlashToken(Date.now());
+    // mark for scroll + flash
+    setLastAddedId(v.id);
+    setFlashToken(Date.now());
 
   };
 
   const changeQty = (id: number, delta: number) => {
-      if (delta > 0) {
-        setLastAddedId(id);
-        setFlashToken(Date.now());
-      }
+    if (delta > 0) {
+      setLastAddedId(id);
+      setFlashToken(Date.now());
+    }
     const v = products.find(p => p.id === id);
     const onHand = toInt((v as any)?.on_hand, 0);
     setCart(prev =>
@@ -693,16 +721,22 @@ img{display:block;margin:8px auto}
             </form>
 
             {/* Lines */}
-            <div ref={cartListRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div
+              ref={cartListRef}
+              className="flex-1 overflow-y-auto p-4 space-y-3"
+              style={{ paddingBottom: footerH ? footerH + 16 : undefined }}  // +16 for a little breathing room
+            >
+
               {cart.map((l) => (
                 <div
                   key={l.variant.id}
                   data-vid={l.variant.id}
+                  style={{ scrollMarginBottom: footerH ? footerH + 16 : undefined }}
                   className={`flex items-center justify-between rounded-lg p-3 transition-colors
                               ${l.variant.id === lastAddedId && flashToken
-                                ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
-                                : "bg-slate-800"
-                              }`}
+                      ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
+                      : "bg-slate-800"
+                    }`}
                 >
                   <div className="min-w-0">
                     <div className="font-medium truncate">{l.variant.name}</div>
@@ -731,7 +765,10 @@ img{display:block;margin:8px auto}
             </div>
 
             {/* Totals + actions */}
-            <div className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950">
+            <div
+              ref={cartTotalsRef}
+              className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950"
+            >
               {/* Optional error from quote */}
               {quoteError && (
                 <div className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
