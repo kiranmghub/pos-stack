@@ -529,30 +529,46 @@ img{display:block;margin:8px auto}
 
   function ruleMatchesVariant(rule: DiscountRule, v: VariantLite): boolean {
     const target = (rule.target || "ALL").toUpperCase();
-    const vcat = ((v as any).tax_category?.code || (v as any).tax_category_code || "").toString().toUpperCase();
-    const prodId = (v as any).product_id ?? (v as any).product?.id;
+
+    // Try multiple places/keys for tax category & product id that appear in your payloads
+    const vcat = (
+        (v as any).tax_category?.code ||
+        (v as any).tax_category_code ||
+        (v as any).product?.tax_category?.code ||            // ← product-level category
+        (v as any).product_tax_category_code ||              // ← flat product cat code, if present
+        ""
+    ).toString().toUpperCase();
+
+    const prodIdRaw =
+        (v as any).product_id ??
+        (v as any).product?.id ??
+        (v as any).productId ??                              // ← be liberal with naming
+        (v as any).productID ??
+        null;
+    const prodId = prodIdRaw != null ? Number(prodIdRaw) : null;
 
     if (target === "ALL") return true;
 
     if (target === "CATEGORY") {
       const codes = (rule.categories || []).map(c => (c.code || "").toUpperCase());
-      if (codes.length === 0) return true;
-      return codes.includes(vcat);
+      if (codes.length === 0) return true;                  // empty set means "all"
+      return vcat !== "" && codes.includes(vcat);
     }
 
     if (target === "PRODUCT") {
-      const ids = rule.product_ids || [];
-      if (!prodId) return false;
-      return ids.includes(Number(prodId));
+      const ids = (rule.product_ids || []).map(Number);
+      return prodId != null && ids.includes(prodId);
     }
 
     if (target === "VARIANT") {
-      const ids = rule.variant_ids || [];
-      return ids.includes(Number(v.id));
+      const ids = (rule.variant_ids || []).map(Number);
+      return ids.includes(Number((v as any).id));
     }
 
     return false;
   }
+
+
 
   function badgeForVariant(v: VariantLite, autoRules: DiscountRule[], couponRules: DiscountRule[]) {
     const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];

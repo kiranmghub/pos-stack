@@ -252,6 +252,9 @@ class ProductsForPOSView(APIView):
                 "barcode": v.barcode,
                 "on_hand": int(v.on_hand or 0),
                 "tax_rate": str(v.tax_rate or 0),
+                "product_id": v.product_id,  # needed for product-level discount rules
+                "tax_category_code": getattr(v.tax_category, "code", None),  # variant tax category
+                "product_tax_category_code": getattr(getattr(v.product, "tax_category", None), "code", None),  # product fallback
                 "image_url": variant_image_url(v),  # ← NEW
                 "representative_image_url": variant_image_url(v),
             }
