@@ -83,7 +83,7 @@ export async function validateCoupon(code: string, subtotal?: number): Promise<C
   if (typeof subtotal === "number") params.set("subtotal", String(subtotal.toFixed(2)));
 
   // trailing slash works with/without APPEND_SLASH; either is fine
-  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon/?${params.toString()}`);
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon?${params.toString()}`);
   const data = await jsonOrThrow<{ ok: boolean; coupon: CouponWithRule }>(res);
   return data.coupon;
 }
