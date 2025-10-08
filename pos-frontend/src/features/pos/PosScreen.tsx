@@ -170,12 +170,30 @@ img{display:block;margin:8px auto}
       try {
         const list = await getMyStores();
         const safe = Array.isArray(list) ? list : (list as any).results || [];
+        // setStores(safe);
+        // if (!storeId && safe.length > 0) {
+        //   const first = safe[0];
+        //   setStoreId(first.id);
+        //   localStorage.setItem(STORE_KEY, String(first.id));
+        // }
         setStores(safe);
-        if (!storeId && safe.length > 0) {
-          const first = safe[0];
-          setStoreId(first.id);
-          localStorage.setItem(STORE_KEY, String(first.id));
+        if (safe.length > 0) {
+          if (!storeId) {
+            const first = safe[0];
+            setStoreId(first.id);
+            localStorage.setItem(STORE_KEY, String(first.id));
+          } else if (!safe.some(s => s.id === storeId)) {
+            // previously selected store is no longer accessible
+            const first = safe[0];
+            setStoreId(first.id);
+            localStorage.setItem(STORE_KEY, String(first.id));
+          }
+        } else {
+          // no stores accessible for this user
+          setStoreId(null);
+          localStorage.removeItem(STORE_KEY);
         }
+
       } catch (e: any) {
         setMsg(e.message || "Failed to load stores");
         setStores([]);
@@ -393,533 +411,502 @@ img{display:block;margin:8px auto}
   };
 
   // Derived totals from last server receipt (authoritative after checkout)
-  const serverSub   = toNum(lastReceipt?.totals?.subtotal);
-  const serverDisc  = toNum(lastReceipt?.totals?.discount);
-  const serverTax   = toNum(lastReceipt?.totals?.tax);
-  const serverFees  = toNum(lastReceipt?.totals?.fees);
+  const serverSub = toNum(lastReceipt?.totals?.subtotal);
+  const serverDisc = toNum(lastReceipt?.totals?.discount);
+  const serverTax = toNum(lastReceipt?.totals?.tax);
+  const serverFees = toNum(lastReceipt?.totals?.fees);
   const serverGrand = toNum(lastReceipt?.totals?.grand_total);
 
   // Derived totals from live server quote (authoritative before checkout)
-  const quoteSub   = toNum(quote?.subtotal);
-  const quoteTax   = toNum(quote?.tax_total);
+  const quoteSub = toNum(quote?.subtotal);
+  const quoteTax = toNum(quote?.tax_total);
   const quoteGrand = toNum(quote?.grand_total);
-  const quoteDisc  = toNum(quote?.discount_total);
+  const quoteDisc = toNum(quote?.discount_total);
 
 
   // What to show in the panel
-  const showDisc  = lastReceipt ? serverDisc  : (quote ? quoteDisc  : 0);
-  const showSub   = lastReceipt ? serverSub   : (quote ? quoteSub   : subtotal);
-  const showTax   = lastReceipt ? serverTax   : (quote ? quoteTax   : 0);
+  const showDisc = lastReceipt ? serverDisc : (quote ? quoteDisc : 0);
+  const showSub = lastReceipt ? serverSub : (quote ? quoteSub : subtotal);
+  const showTax = lastReceipt ? serverTax : (quote ? quoteTax : 0);
   const showGrand = lastReceipt ? serverGrand : (quote ? quoteGrand : subtotal);
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100">
-      {/* Left: Catalog */}
-      <div className="flex-1 flex flex-col min-h-0 border-r border-slate-800 p-4">
-        {/* Store selector + Search */}
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
-            <Store className="h-4 w-4 text-slate-400" />
-            <select
-              value={storeId ?? ""}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                setStoreId(v);
-                localStorage.setItem(STORE_KEY, String(v));
-              }}
-              className="bg-transparent outline-none"
-            >
-              {stores.map(s => (
-                <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-1 items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
-            <Search className="h-5 w-5 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name / SKU / barcode…"
-              className="flex-1 bg-transparent placeholder:text-slate-400 focus:outline-none"
-            />
+    <>
+      {stores.length === 0 && (
+        <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 p-6">
+          <div className="max-w-lg w-full rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow">
+            <h2 className="text-xl font-semibold mb-2">No store access</h2>
+            <p className="text-slate-300">
+              You are not assigned to any store. Please contact your store administrator.
+            </p>
           </div>
         </div>
+      )}
 
-        {/* Coupon */}
-          {/* <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-            <input
-              value={coupon}
-              onChange={(e) => {
-                setCoupon(e.target.value.toUpperCase());
-                setCouponOk(null);
-                setCouponMsg(null);
-              }}
-              placeholder="Coupon code (optional)"
-              className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
-            />
-            <button
-              onClick={async () => {
-                try {
-                  const sub = quote ? parseFloat(quote.subtotal) : subtotal;
-                  const c = await validateCoupon(coupon, sub);
-                  setCouponOk(true);
-                  setCouponMsg(`Coupon applied: ${c.name || c.code}`);
-                } catch (err: any) {
-                  setCouponOk(false);
-                  setCouponMsg(err?.message || "Invalid coupon");
-                }
-              }}
-              disabled={!coupon.trim()}
-              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
-            >
-              Validate
-            </button>
-            {!!coupon && (
-              <button
-                onClick={() => { setCoupon(""); setCouponOk(null); setCouponMsg(null); }}
-                className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600"
-                title="Clear coupon"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {couponMsg && (
-            <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
-              {couponMsg}
-            </div>
-          )} */}
-
-          <div className="p-4 border-b border-slate-800 flex items-center gap-2">
-            <input
-              value={coupon}
-              onChange={(e) => {
-                setCoupon(e.target.value.toUpperCase());
-                setCouponOk(null);
-                setCouponMsg(null);
-              }}
-              placeholder="Coupon code"
-              className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
-            />
-            <button
-              onClick={async () => {
-                try {
-                  const sub = quote ? parseFloat(quote.subtotal) : subtotal;
-                  const c = await validateCoupon(coupon, sub);
-                  // prevent duplicates
-                  if (!appliedCoupons.some(ac => ac.code.toUpperCase() === coupon.toUpperCase())) {
-                    setAppliedCoupons(prev => [...prev, { code: coupon.toUpperCase(), name: c.name || c.code }]);
-                  }
-                  setCouponOk(true);
-                  setCouponMsg(`Applied: ${c.name || c.code}`);
-                  setCoupon(""); // clear input
-
-                  // re-quote immediately with all coupons
-                  const q = await quoteTotals({
-                    store_id: storeId!,
-                    lines: quoteLines,
-                    coupon_codes: [...appliedCoupons.map(x => x.code.toUpperCase()), coupon.toUpperCase()],
-                  });
-                  setQuote(q);
-                } catch (err: any) {
-                  setCouponOk(false);
-                  setCouponMsg(err?.message || "Invalid coupon");
-                }
-              }}
-              disabled={!coupon.trim()}
-              className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
-            >
-              Apply
-            </button>
-          </div>
-
-          {/* Applied coupon chips */}
-          {appliedCoupons.length > 0 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-2">
-              {appliedCoupons.map((ac) => (
-                <span key={ac.code} className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-sm">
-                  <span>{ac.name || ac.code}</span>
-                  <button
-                    onClick={async () => {
-                      const next = appliedCoupons.filter(x => x.code !== ac.code);
-                      setAppliedCoupons(next);
-                      setCouponOk(null);
-                      setCouponMsg(null);
-                      if (storeId && quoteLines.length) {
-                        const q = await quoteTotals({
-                          store_id: storeId,
-                          lines: quoteLines,
-                          coupon_codes: next.map(x => x.code),
-                        });
-                        setQuote(q);
-                      }
-                    }}
-                    className="rounded bg-slate-700 px-1.5 py-0.5 text-xs hover:bg-slate-600"
-                    title="Remove"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {couponMsg && (
-            <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
-              {couponMsg}
-            </div>
-          )}
-
-
-
-        {/* Product grid */}
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {products.map((p) => {
-              const onHand = toInt((p as any).on_hand, 0);
-              const remaining = Math.max(0, onHand - qtyInCart(p.id));
-              const disabled = remaining <= 0;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  disabled={disabled}
-                  className={`rounded-xl p-3 text-left transition-colors ${
-                    disabled
-                      ? "bg-slate-800/60 cursor-not-allowed opacity-60"
-                      : "bg-slate-800 hover:bg-slate-700"
-                  }`}
-                  title={disabled ? "Out of stock" : "Add to cart"}
+      {stores.length > 0 && (
+        <div className="flex h-screen bg-slate-950 text-slate-100">
+          {/* Left: Catalog */}
+          <div className="flex-1 flex flex-col min-h-0 border-r border-slate-800 p-4">
+            {/* Store selector + Search */}
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
+                <Store className="h-4 w-4 text-slate-400" />
+                <select
+                  value={storeId ?? ""}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setStoreId(v);
+                    localStorage.setItem(STORE_KEY, String(v));
+                  }}
+                  className="bg-transparent outline-none"
                 >
-                  <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                    {imgFor(p) ? (
-                      <img
-                        src={imgFor(p)}
-                        alt={p.name}
-                        className="h-full w-full object-contain"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      />
-                    ) : (
-                      <span className="text-slate-400">🛒</span>
-                    )}
-                  </div>
+                  {stores.map(s => (
+                    <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                  <div className="font-medium truncate">{p.name}</div>
-                  <div className="text-xs text-slate-300 mt-0.5 truncate">
-                    {(p as any).variant_name || p.sku || ""}
-                  </div>
-                  <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
-                  <StockBadge remaining={remaining} />
-                </button>
-              );
-            })}
-            {products.length === 0 && (
-              <div className="col-span-full text-slate-400">No products</div>
+              <div className="flex flex-1 items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
+                <Search className="h-5 w-5 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search name / SKU / barcode…"
+                  className="flex-1 bg-transparent placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+              <input
+                value={coupon}
+                onChange={(e) => {
+                  setCoupon(e.target.value.toUpperCase());
+                  setCouponOk(null);
+                  setCouponMsg(null);
+                }}
+                placeholder="Coupon code"
+                className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                onClick={async () => {
+                  try {
+                    const sub = quote ? parseFloat(quote.subtotal) : subtotal;
+                    const c = await validateCoupon(coupon, sub);
+                    // prevent duplicates
+                    if (!appliedCoupons.some(ac => ac.code.toUpperCase() === coupon.toUpperCase())) {
+                      setAppliedCoupons(prev => [...prev, { code: coupon.toUpperCase(), name: c.name || c.code }]);
+                    }
+                    setCouponOk(true);
+                    setCouponMsg(`Applied: ${c.name || c.code}`);
+                    setCoupon(""); // clear input
+
+                    // re-quote immediately with all coupons
+                    const q = await quoteTotals({
+                      store_id: storeId!,
+                      lines: quoteLines,
+                      coupon_codes: [...appliedCoupons.map(x => x.code.toUpperCase()), coupon.toUpperCase()],
+                    });
+                    setQuote(q);
+                  } catch (err: any) {
+                    setCouponOk(false);
+                    setCouponMsg(err?.message || "Invalid coupon");
+                  }
+                }}
+                disabled={!coupon.trim()}
+                className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
+              >
+                Apply
+              </button>
+            </div>
+
+            {/* Applied coupon chips */}
+            {appliedCoupons.length > 0 && (
+              <div className="px-4 pb-2 flex flex-wrap gap-2">
+                {appliedCoupons.map((ac) => (
+                  <span key={ac.code} className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-sm">
+                    <span>{ac.name || ac.code}</span>
+                    <button
+                      onClick={async () => {
+                        const next = appliedCoupons.filter(x => x.code !== ac.code);
+                        setAppliedCoupons(next);
+                        setCouponOk(null);
+                        setCouponMsg(null);
+                        if (storeId && quoteLines.length) {
+                          const q = await quoteTotals({
+                            store_id: storeId,
+                            lines: quoteLines,
+                            coupon_codes: next.map(x => x.code),
+                          });
+                          setQuote(q);
+                        }
+                      }}
+                      className="rounded bg-slate-700 px-1.5 py-0.5 text-xs hover:bg-slate-600"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* Right: Cart */}
-      <div className="w-[420px] h-screen flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-slate-800">
-          <h2 className="flex items-center gap-2 font-semibold">
-            <span className="relative inline-block" aria-label={`Cart (${cartCount} items)`}>
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <span
-                  className="
+            {couponMsg && (
+              <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
+                {couponMsg}
+              </div>
+            )}
+
+
+
+            {/* Product grid */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {products.map((p) => {
+                  const onHand = toInt((p as any).on_hand, 0);
+                  const remaining = Math.max(0, onHand - qtyInCart(p.id));
+                  const disabled = remaining <= 0;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => addToCart(p)}
+                      disabled={disabled}
+                      className={`rounded-xl p-3 text-left transition-colors ${disabled
+                          ? "bg-slate-800/60 cursor-not-allowed opacity-60"
+                          : "bg-slate-800 hover:bg-slate-700"
+                        }`}
+                      title={disabled ? "Out of stock" : "Add to cart"}
+                    >
+                      <div className="h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                        {imgFor(p) ? (
+                          <img
+                            src={imgFor(p)}
+                            alt={p.name}
+                            className="h-full w-full object-contain"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                        ) : (
+                          <span className="text-slate-400">🛒</span>
+                        )}
+                      </div>
+
+                      <div className="font-medium truncate">{p.name}</div>
+                      <div className="text-xs text-slate-300 mt-0.5 truncate">
+                        {(p as any).variant_name || p.sku || ""}
+                      </div>
+                      <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
+                      <StockBadge remaining={remaining} />
+                    </button>
+                  );
+                })}
+                {products.length === 0 && (
+                  <div className="col-span-full text-slate-400">No products</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Cart */}
+          <div className="w-[420px] h-screen flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+              <h2 className="flex items-center gap-2 font-semibold">
+                <span className="relative inline-block" aria-label={`Cart (${cartCount} items)`}>
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartCount > 0 && (
+                    <span
+                      className="
                     absolute -top-2 -right-2 min-w-[1.1rem] h-[1.1rem]
                     rounded-full bg-emerald-500 px-1 text-[0.70rem] leading-[1.1rem]
                     text-slate-900 font-bold text-center shadow
                     ring-2 ring-slate-950
                     animate-[pop_150ms_ease-in-out]
                   "
-                >
-                  {cartCount}
+                    >
+                      {cartCount}
+                    </span>
+                  )}
                 </span>
-              )}
-            </span>
-            Cart
-          </h2>
+                Cart
+              </h2>
 
-          {/* <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
+              {/* <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
             <LogOut className="h-4 w-4" /> Logout
           </button> */}
-        </div>
-
-        {/* Barcode */}
-        <form onSubmit={onBarcodeSubmit} className="p-4 border-b border-slate-800 flex items-center gap-2">
-          <ScanLine className="h-5 w-5 text-slate-400" />
-          <input
-            ref={barcodeRef}
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            placeholder="Scan barcode then Enter"
-            className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
-          />
-        </form>
-
-        {/* Lines */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.map((l) => (
-            <div key={l.variant.id} className="flex items-center justify-between bg-slate-800 rounded-lg p-3">
-              <div className="min-w-0">
-                <div className="font-medium truncate">{l.variant.name}</div>
-                <div className="text-sm text-slate-400 truncate">
-                  {(l.variant as any).variant_name || l.variant.sku || ""}
-                </div>
-                <div className="text-sm text-slate-400">
-                  ${toMoney(l.variant.price)} × {l.qty}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => changeQty(l.variant.id, -1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="tabular-nums min-w-[1.5rem] text-center">{l.qty}</span>
-                <button onClick={() => changeQty(l.variant.id, +1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button onClick={() => removeLine(l.variant.id)} className="text-red-400 hover:text-red-300">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-          {cart.length === 0 && <div className="text-center text-slate-400">No items yet</div>}
-        </div>
-
-        {/* Totals + actions */}
-        <div className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950">
-          {/* Optional error from quote */}
-          {quoteError && (
-            <div className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
-              {quoteError}
-            </div>
-          )}
-
-          <div className="flex justify-between">
-            <span>Subtotal</span>
-            <span className="tabular-nums">${toMoney(showSub)}</span>
-          </div>
-
-          {/* Optional per-rule discount lines (if backend ever returns them) */}
-          {!lastReceipt && (quote?.discount_by_rule || []).map((d: any) => (
-            <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
-              <span>{d.name}</span>
-              <span className="tabular-nums">-${toMoney(d.amount)}</span>
-            </div>
-          ))}
-
-          {/* Discount total (from server quote, before checkout) */}
-          {!!showDisc && !lastReceipt && (
-            <div className="flex justify-between text-sm">
-              <span>Total Discounts</span>
-              <span className="tabular-nums">-${toMoney(showDisc)}</span>
-            </div>
-          )}
-
-          {/* Per-rule tax lines (from server quote, before checkout) */}
-          {!lastReceipt && (quote?.tax_by_rule || []).map((r: any) => (
-            <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
-              <span>{r.name}</span>
-              <span className="tabular-nums">${toMoney(r.amount)}</span>
-            </div>
-          ))}
-
-          <div className="flex justify-between">
-            <span>Total Taxes</span>
-            <span className="tabular-nums">${toMoney(showTax)}</span>
-          </div>
-
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 pt-3">
-            <button
-              onClick={() => setShowCash(true)}
-              disabled={paying || cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2 font-medium hover:bg-green-500 disabled:opacity-50"
-            >
-              <Wallet className="h-4 w-4" /> Cash
-            </button>
-            <button
-              onClick={() => setShowCard(true)}
-              disabled={paying || cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
-            >
-              <CreditCard className="h-4 w-4" /> Card
-            </button>
-            <button
-              onClick={() => setMsg("Order placed on hold (client-only for now)")}
-              disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-yellow-600 py-2 font-medium hover:bg-yellow-500 col-span-2 disabled:opacity-50"
-            >
-              <PauseCircle className="h-4 w-4" /> Hold
-            </button>
-            <button
-              onClick={() => { clearCart(); setMsg("Order voided (client-only)"); }}
-              disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500 col-span-2 disabled:opacity-50"
-            >
-              <XCircle className="h-4 w-4" /> Void
-            </button>
-          </div>
-
-          {msg && <div className="mt-3 rounded-lg bg-slate-800 p-2 text-sm text-slate-200">{msg}</div>}
-        </div>
-      </div>
-
-      {/* ---- CASH MODAL ---- */}
-      {showCash && (
-        <CashModal
-          total={showGrand}
-          onClose={() => setShowCash(false)}
-          onSubmit={(cashAmount) =>
-            submitCheckout({
-              type: "CASH",
-              amount: toMoney(showGrand),
-              received: toMoney(cashAmount),
-            })
-          }
-        />
-      )}
-
-      {/* ---- CARD MODAL ---- */}
-      {showCard && (
-        <CardModal
-          total={showGrand}
-          onClose={() => setShowCard(false)}
-          onSubmit={(card) =>
-            submitCheckout({
-              type: "CARD",
-              amount: toMoney(showGrand),
-              card_brand: card.brand,
-              card_last4: card.last4,
-              card_auth_code: card.auth,
-              card_reference: card.reference,
-            })
-          }
-        />
-      )}
-
-      {/* ---- RECEIPT MODAL ---- */}
-      {receiptOpen && lastReceipt && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
-          onClick={() => setReceiptOpen(false)}
-        >
-          <div
-            className="w-[520px] max-w-[90vw] rounded-xl bg-slate-900 text-slate-100 shadow-2xl ring-1 ring-slate-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-slate-800 p-4">
-              <div className="font-semibold">Receipt #{lastReceipt?.receipt_no}</div>
-              <div className="text-slate-400 text-sm">
-                {lastReceipt?.store?.code} — {lastReceipt?.store?.name}
-              </div>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto p-4 space-y-3">
-              <div className="text-sm text-slate-400">
-                {new Date(lastReceipt?.created_at || Date.now()).toLocaleString()}
-              </div>
+            {/* Barcode */}
+            <form onSubmit={onBarcodeSubmit} className="p-4 border-b border-slate-800 flex items-center gap-2">
+              <ScanLine className="h-5 w-5 text-slate-400" />
+              <input
+                ref={barcodeRef}
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                placeholder="Scan barcode then Enter"
+                className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              />
+            </form>
 
-              <div className="rounded-lg bg-slate-800 p-3">
-                {(lastReceipt?.lines || []).map((l: any) => (
-                  <div key={`${l.variant_id}-${l.sku}-${l.name}`} className="flex items-center justify-between py-1">
-                    <div className="min-w-0 pr-2">
-                      <div className="truncate">{l.name}</div>
-                      <div className="text-xs text-slate-400">{l.sku || "-"}</div>
+            {/* Lines */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {cart.map((l) => (
+                <div key={l.variant.id} className="flex items-center justify-between bg-slate-800 rounded-lg p-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{l.variant.name}</div>
+                    <div className="text-sm text-slate-400 truncate">
+                      {(l.variant as any).variant_name || l.variant.sku || ""}
                     </div>
-                    <div className="tabular-nums text-right">
-                      <div className="text-slate-400">{l.qty} × ${l.unit_price}</div>
-                      <div className="font-medium">${l.line_subtotal ?? l.line_total ?? l.line_net}</div>
+                    <div className="text-sm text-slate-400">
+                      ${toMoney(l.variant.price)} × {l.qty}
                     </div>
                   </div>
-                ))}
-              </div>
-
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span className="tabular-nums">${lastReceipt?.totals?.subtotal || "0.00"}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => changeQty(l.variant.id, -1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="tabular-nums min-w-[1.5rem] text-center">{l.qty}</span>
+                    <button onClick={() => changeQty(l.variant.id, +1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => removeLine(l.variant.id)} className="text-red-400 hover:text-red-300">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                {(lastReceipt?.totals?.discount_by_rule || []).map((d: any) => (
-                  <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
-                    <span>{d.name}</span>
-                    <span className="tabular-nums">-${d.amount}</span>
-                  </div>
-                ))}
+              ))}
+              {cart.length === 0 && <div className="text-center text-slate-400">No items yet</div>}
+            </div>
 
-                {!!lastReceipt?.totals?.discount && (
-                  <div className="flex justify-between">
-                    <span>Total Discounts</span>
-                    <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
-                  </div>
-                )}
-                {/* NEW: per-rule tax lines, if present */}
-                {(lastReceipt?.totals?.tax_by_rule || []).map((r: any) => (
-                  <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
-                    <span>{r.name}</span>
-                    <span className="tabular-nums">${r.amount}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between">
-                  <span>Total Taxes</span>
-                  <span className="tabular-nums">${lastReceipt?.totals?.tax || "0.00"}</span>
-                </div>
-                {!!lastReceipt?.totals?.fees && (
-                  <div className="flex justify-between">
-                    <span>Fees</span>
-                    <span className="tabular-nums">${lastReceipt?.totals?.fees}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>Total</span>
-                  <span className="tabular-nums">${lastReceipt?.totals?.grand_total || "0.00"}</span>
-                </div>
-              </div>
-
-              {lastReceipt?.payment && (
-                <div className="rounded-lg bg-slate-800 p-3 text-sm">
-                  <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
-                  {lastReceipt.payment.received && (<div>Received: ${lastReceipt.payment.received}</div>)}
-                  {lastReceipt.payment.change && (<div>Change: ${lastReceipt.payment.change}</div>)}
+            {/* Totals + actions */}
+            <div className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950">
+              {/* Optional error from quote */}
+              {quoteError && (
+                <div className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
+                  {quoteError}
                 </div>
               )}
 
-              {lastQR && (
-                <div className="flex justify-center">
-                  <img src={lastQR} alt="QR" className="h-40 w-40 rounded bg-white p-2" />
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span className="tabular-nums">${toMoney(showSub)}</span>
+              </div>
+
+              {/* Optional per-rule discount lines (if backend ever returns them) */}
+              {!lastReceipt && (quote?.discount_by_rule || []).map((d: any) => (
+                <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
+                  <span>{d.name}</span>
+                  <span className="tabular-nums">-${toMoney(d.amount)}</span>
+                </div>
+              ))}
+
+              {/* Discount total (from server quote, before checkout) */}
+              {!!showDisc && !lastReceipt && (
+                <div className="flex justify-between text-sm">
+                  <span>Total Discounts</span>
+                  <span className="tabular-nums">-${toMoney(showDisc)}</span>
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
-              <button
-                onClick={() => {
-                  const html = buildReceiptHtml(lastReceipt, lastQR);
-                  printHtml(html);
-                }}
-                className="rounded-lg bg-indigo-600 px-3 py-2 font-medium hover:bg-indigo-500"
-              >
-                Print
-              </button>
-              <button
-                onClick={() => setReceiptOpen(false)}
-                className="rounded-lg bg-slate-700 px-3 py-2 font-medium hover:bg-slate-600"
-              >
-                Close
-              </button>
+              {/* Per-rule tax lines (from server quote, before checkout) */}
+              {!lastReceipt && (quote?.tax_by_rule || []).map((r: any) => (
+                <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
+                  <span>{r.name}</span>
+                  <span className="tabular-nums">${toMoney(r.amount)}</span>
+                </div>
+              ))}
+
+              <div className="flex justify-between">
+                <span>Total Taxes</span>
+                <span className="tabular-nums">${toMoney(showTax)}</span>
+              </div>
+
+              <div className="flex justify-between font-semibold text-lg">
+                <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-3">
+                <button
+                  onClick={() => setShowCash(true)}
+                  disabled={paying || cart.length === 0}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2 font-medium hover:bg-green-500 disabled:opacity-50"
+                >
+                  <Wallet className="h-4 w-4" /> Cash
+                </button>
+                <button
+                  onClick={() => setShowCard(true)}
+                  disabled={paying || cart.length === 0}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
+                >
+                  <CreditCard className="h-4 w-4" /> Card
+                </button>
+                <button
+                  onClick={() => setMsg("Order placed on hold (client-only for now)")}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-yellow-600 py-2 font-medium hover:bg-yellow-500 col-span-2 disabled:opacity-50"
+                >
+                  <PauseCircle className="h-4 w-4" /> Hold
+                </button>
+                <button
+                  onClick={() => { clearCart(); setMsg("Order voided (client-only)"); }}
+                  disabled={cart.length === 0}
+                  className="flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500 col-span-2 disabled:opacity-50"
+                >
+                  <XCircle className="h-4 w-4" /> Void
+                </button>
+              </div>
+
+              {msg && <div className="mt-3 rounded-lg bg-slate-800 p-2 text-sm text-slate-200">{msg}</div>}
             </div>
           </div>
+
+          {/* ---- CASH MODAL ---- */}
+          {showCash && (
+            <CashModal
+              total={showGrand}
+              onClose={() => setShowCash(false)}
+              onSubmit={(cashAmount) =>
+                submitCheckout({
+                  type: "CASH",
+                  amount: toMoney(showGrand),
+                  received: toMoney(cashAmount),
+                })
+              }
+            />
+          )}
+
+          {/* ---- CARD MODAL ---- */}
+          {showCard && (
+            <CardModal
+              total={showGrand}
+              onClose={() => setShowCard(false)}
+              onSubmit={(card) =>
+                submitCheckout({
+                  type: "CARD",
+                  amount: toMoney(showGrand),
+                  card_brand: card.brand,
+                  card_last4: card.last4,
+                  card_auth_code: card.auth,
+                  card_reference: card.reference,
+                })
+              }
+            />
+          )}
+
+          {/* ---- RECEIPT MODAL ---- */}
+          {receiptOpen && lastReceipt && (
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+              onClick={() => setReceiptOpen(false)}
+            >
+              <div
+                className="w-[520px] max-w-[90vw] rounded-xl bg-slate-900 text-slate-100 shadow-2xl ring-1 ring-slate-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-slate-800 p-4">
+                  <div className="font-semibold">Receipt #{lastReceipt?.receipt_no}</div>
+                  <div className="text-slate-400 text-sm">
+                    {lastReceipt?.store?.code} — {lastReceipt?.store?.name}
+                  </div>
+                </div>
+
+                <div className="max-h-[70vh] overflow-y-auto p-4 space-y-3">
+                  <div className="text-sm text-slate-400">
+                    {new Date(lastReceipt?.created_at || Date.now()).toLocaleString()}
+                  </div>
+
+                  <div className="rounded-lg bg-slate-800 p-3">
+                    {(lastReceipt?.lines || []).map((l: any) => (
+                      <div key={`${l.variant_id}-${l.sku}-${l.name}`} className="flex items-center justify-between py-1">
+                        <div className="min-w-0 pr-2">
+                          <div className="truncate">{l.name}</div>
+                          <div className="text-xs text-slate-400">{l.sku || "-"}</div>
+                        </div>
+                        <div className="tabular-nums text-right">
+                          <div className="text-slate-400">{l.qty} × ${l.unit_price}</div>
+                          <div className="font-medium">${l.line_subtotal ?? l.line_total ?? l.line_net}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span className="tabular-nums">${lastReceipt?.totals?.subtotal || "0.00"}</span>
+                    </div>
+                    {(lastReceipt?.totals?.discount_by_rule || []).map((d: any) => (
+                      <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
+                        <span>{d.name}</span>
+                        <span className="tabular-nums">-${d.amount}</span>
+                      </div>
+                    ))}
+
+                    {!!lastReceipt?.totals?.discount && (
+                      <div className="flex justify-between">
+                        <span>Total Discounts</span>
+                        <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
+                      </div>
+                    )}
+                    {/* NEW: per-rule tax lines, if present */}
+                    {(lastReceipt?.totals?.tax_by_rule || []).map((r: any) => (
+                      <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
+                        <span>{r.name}</span>
+                        <span className="tabular-nums">${r.amount}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between">
+                      <span>Total Taxes</span>
+                      <span className="tabular-nums">${lastReceipt?.totals?.tax || "0.00"}</span>
+                    </div>
+                    {!!lastReceipt?.totals?.fees && (
+                      <div className="flex justify-between">
+                        <span>Fees</span>
+                        <span className="tabular-nums">${lastReceipt?.totals?.fees}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-semibold">
+                      <span>Total</span>
+                      <span className="tabular-nums">${lastReceipt?.totals?.grand_total || "0.00"}</span>
+                    </div>
+                  </div>
+
+                  {lastReceipt?.payment && (
+                    <div className="rounded-lg bg-slate-800 p-3 text-sm">
+                      <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
+                      {lastReceipt.payment.received && (<div>Received: ${lastReceipt.payment.received}</div>)}
+                      {lastReceipt.payment.change && (<div>Change: ${lastReceipt.payment.change}</div>)}
+                    </div>
+                  )}
+
+                  {lastQR && (
+                    <div className="flex justify-center">
+                      <img src={lastQR} alt="QR" className="h-40 w-40 rounded bg-white p-2" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
+                  <button
+                    onClick={() => {
+                      const html = buildReceiptHtml(lastReceipt, lastQR);
+                      printHtml(html);
+                    }}
+                    className="rounded-lg bg-indigo-600 px-3 py-2 font-medium hover:bg-indigo-500"
+                  >
+                    Print
+                  </button>
+                  <button
+                    onClick={() => setReceiptOpen(false)}
+                    className="rounded-lg bg-slate-700 px-3 py-2 font-medium hover:bg-slate-600"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

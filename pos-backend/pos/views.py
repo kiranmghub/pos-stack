@@ -149,12 +149,35 @@ class POSStoresView(ListAPIView):
     """GET /api/v1/pos/stores  -> stores for tenant"""
     permission_classes = [IsAuthenticated]
 
+    # Override to filter by tenant + user membership + store assignment
     def list(self, request, *args, **kwargs):
         tenant = _resolve_request_tenant(request)
         if tenant is None:
             return Response([], status=200)
-        rows = Store.objects.filter(tenant=tenant).values("id", "code", "name")
+
+        # Resolve membership for this tenant+user
+        tu = (TenantUser.objects
+            .select_related("tenant", "user")
+            .filter(tenant=tenant, user=request.user, is_active=True)
+            .first())
+
+        if tu is None:
+            # No membership at all → no access
+            return Response([], status=200)
+
+        # IMPORTANT: empty tu.stores means NO ACCESS to any store
+        assigned_ids = list(tu.stores.values_list("id", flat=True))
+        if not assigned_ids:
+            return Response([], status=200)
+
+        # Otherwise return only assigned stores (optionally filter active)
+        qs = Store.objects.filter(tenant=tenant, id__in=assigned_ids)
+        if hasattr(Store, "is_active"):
+            qs = qs.filter(is_active=True)
+
+        rows = qs.order_by("id").values("id", "code", "name")
         return Response(list(rows), status=200)
+
 
 
 class ProductsForPOSView(APIView):
