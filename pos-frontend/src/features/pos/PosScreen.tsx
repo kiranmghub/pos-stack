@@ -569,24 +569,41 @@ img{display:block;margin:8px auto}
   }
 
 
+ type Badge = { id: number; text: string; kind: "auto" | "coupon" };
 
-  function badgeForVariant(v: VariantLite, autoRules: DiscountRule[], couponRules: DiscountRule[]) {
+  function badgesForVariant(
+    v: VariantLite,
+    autoRules: DiscountRule[],
+    couponRules: DiscountRule[],
+  ): Badge[] {
+    const seen = new Set<number>();
+    const out: Badge[] = [];
+
+    // collect matches
     const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
     for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
     for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
 
-    if (cands.length === 0) return null;
+    if (cands.length === 0) return out;
 
+    // sort by priority → id
     cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
-    const pick = cands[0];
-    const r = pick.rule;
 
-    let text = r.basis === "PCT" ? pctText(r.rate) : moneyText(r.amount);
-    if (!text) text = "Discount";
-    if (r.apply_scope === "RECEIPT") text += " (receipt)";
-    if (pick.kind === "coupon") text = `Coupon: ${text}`;
-    return { text, kind: pick.kind };
+    // format label per rule
+    for (const { rule, kind } of cands) {
+      if (seen.has(rule.id)) continue; // de-dupe just in case
+      seen.add(rule.id);
+
+      let text = rule.basis === "PCT" ? pctText(rule.rate) : moneyText(rule.amount);
+      if (!text) text = "Discount";
+      if (rule.apply_scope === "RECEIPT") text += " (receipt)";
+      if (kind === "coupon") text = `Coupon: ${text}`;
+
+      out.push({ id: rule.id, text, kind });
+    }
+    return out;
   }
+
 
 
   return (
@@ -769,19 +786,39 @@ img{display:block;margin:8px auto}
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
                       <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                        {/* DISCOUNT BADGE */}
-                        {(() => {
-                          const b = badgeForVariant(p, autoDiscRules, couponDiscRules);
-                          return b ? (
-                            <span
-                              className={`absolute top-2 left-2 rounded-full px-2 py-0.5 text-xs font-semibold shadow
-                                          ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
-                              title={b.text}
-                            >
-                              {b.text}
-                            </span>
-                          ) : null;
-                        })()}
+                          {/* DISCOUNT BADGES (multi) */}
+                          {(() => {
+                            const list = badgesForVariant(p, autoDiscRules, couponDiscRules);
+                            if (list.length === 0) return null;
+
+                            const shown = list.slice(0, 1);
+                            const extra = list.length - shown.length;
+
+                            return (
+                              <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                {shown.map(b => (
+                                  <span
+                                    key={b.id}
+                                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold shadow
+                                                ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
+                                    title={b.text}
+                                  >
+                                    {b.text}
+                                  </span>
+                                ))}
+                                {extra > 0 && (
+                                  <span
+                                    className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow"
+                                    title={list.slice(3).map(b => b.text).join(", ")}
+                                  >
+                                    +{extra} more
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+ 
 
                         {imgFor(p) ? (
                           <img
