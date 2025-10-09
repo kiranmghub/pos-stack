@@ -568,8 +568,7 @@ img{display:block;margin:8px auto}
     return false;
   }
 
-
-type Badge = {
+  type Badge = {
   id: number;
   name: string;
   text: string;     // short value like "20% OFF" or "-$5.00 (receipt)"
@@ -577,37 +576,87 @@ type Badge = {
   kind: "auto" | "coupon";
 };
 
-function badgesForVariant(
-  v: VariantLite,
-  autoRules: DiscountRule[],
-  couponRules: DiscountRule[],
-): Badge[] {
-  const seen = new Set<number>();
-  const out: Badge[] = [];
 
-  const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
-  for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
-  for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
-  if (cands.length === 0) return out;
+  function badgesForVariant(
+    v: VariantLite,
+    autoRules: DiscountRule[],
+    couponRules: DiscountRule[],
+  ): Badge[] {
+    const seen = new Set<number>();
+    const out: Badge[] = [];
 
-  cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
+    const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
+    for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
+    for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
+    if (cands.length === 0) return out;
 
-  for (const { rule, kind } of cands) {
-    if (seen.has(rule.id)) continue;
-    seen.add(rule.id);
+    // sort by priority → id
+    cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
 
-    let text = rule.basis === "PCT" ? pctText(rule.rate) : moneyText(rule.amount);
-    if (!text) text = "Discount";
-    if (rule.apply_scope === "RECEIPT") text += " (receipt)";
+    for (const { rule, kind } of cands) {
+      if (seen.has(rule.id)) continue; // de-dupe just in case
+      seen.add(rule.id);
 
-    const name = rule.name || rule.code || "Discount";
-    const baseLabel = `${name} — ${text}`;
-    const label = kind === "coupon" ? `Coupon: ${baseLabel}` : baseLabel;
+      let text = rule.basis === "PCT" ? pctText(rule.rate) : moneyText(rule.amount);
+      if (!text) text = "Discount";
+      if (rule.apply_scope === "RECEIPT") text += " (receipt)";
 
-    out.push({ id: rule.id, name, text, label, kind });
+      const name = rule.name || rule.code || "Discount";
+      const baseLabel = `${name} — ${text}`;
+      const label = kind === "coupon" ? `Coupon: ${baseLabel}` : baseLabel;
+
+      out.push({ id: rule.id, name, text, label, kind });
+    }
+    return out;
   }
-  return out;
-}
+
+  type PricePreview = { orig: number; final: number; hasReceipt: boolean };
+
+  function pricePreviewForVariant(
+    v: VariantLite,
+    autoRules: DiscountRule[],
+    couponRules: DiscountRule[],
+  ): PricePreview | null {
+    const orig = Number((v as any).price ?? v.price);
+    if (!isFinite(orig) || orig <= 0) return null;
+
+    // collect all rules that touch this variant
+    const lineRules = [...autoRules, ...couponRules]
+      .filter(r => (r.apply_scope || "LINE").toUpperCase() === "LINE")
+      .filter(r => ruleMatchesVariant(r, v));
+
+    const receiptRulesExist = [...autoRules, ...couponRules]
+      .some(r => (r.apply_scope || "LINE").toUpperCase() === "RECEIPT" && ruleMatchesVariant(r, v));
+
+    if (lineRules.length === 0) {
+      // No line discount; only show a hint if receipt-level savings exist
+      return receiptRulesExist ? { orig, final: orig, hasReceipt: true } : null;
+    }
+
+    // Sort by priority then id (matches your badge ordering)
+    lineRules.sort((a, b) => (a.priority - b.priority) || (a.id - b.id));
+
+    // Backend sums percent-and-flat against the same base (non-compounding).
+    // Mirror that: each rule is applied on 'orig'.
+    let discount = 0;
+    for (const r of lineRules) {
+      const basis = (r.basis || "PCT").toUpperCase();
+      const rate = Number(r.rate ?? 0);
+      const amount = Number(r.amount ?? 0);
+
+      const amt = basis === "PCT" ? orig * rate : amount;
+      if (amt > 0) discount += amt;
+
+      // respect non-stackable when present
+      const stackable = (r as any).stackable;
+      if (stackable === false) break;
+    }
+
+    if (discount > orig) discount = orig;
+    const final = Math.max(0, orig - discount);
+    return { orig, final, hasReceipt: receiptRulesExist };
+  }
+
 
 
 
@@ -792,65 +841,65 @@ function badgesForVariant(
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
                       {/* DISCOUNT BADGES (multi) — positioned at card level to avoid clipping */}
-                        {(() => {
-                          const list = badgesForVariant(p, autoDiscRules, couponDiscRules);
-                          if (list.length === 0) return null;
+                      {(() => {
+                        const list = badgesForVariant(p, autoDiscRules, couponDiscRules);
+                        if (list.length === 0) return null;
 
-                          const shown = list.slice(0, 1);           // show up to 3 pills
-                          const extra = list.length - shown.length; // rest go in tooltip
+                        const shown = list.slice(0, 1);           // show up to n pills
+                        const extra = list.length - shown.length; // rest go in tooltip
 
-                          return (
-                            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
-                              {shown.map(b => (
-                                <span
-                                  key={b.id}
-                                  className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow max-w-[14rem] truncate
+                        return (
+                          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
+                            {shown.map(b => (
+                              <span
+                                key={b.id}
+                                className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow max-w-[14rem] truncate
                                               ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
-                                  title={b.label}   // full on native hover as well
-                                >
-                                  {b.label}
+                                title={b.label}   // full on native hover as well
+                              >
+                                {b.label}
+                              </span>
+                            ))}
+
+                            {extra > 0 && (
+                              <div className="relative group pointer-events-auto">
+                                <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow">
+                                  +{extra} more
                                 </span>
-                              ))}
-
-                              {extra > 0 && (
-                                <div className="relative group pointer-events-auto">
-                                  <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow">
-                                    +{extra} more
-                                  </span>
-                                  {/* Hover tooltip */}
-                                  <div
-                                    className="absolute left-0 top-full mt-1 hidden group-hover:block z-20
+                                {/* Hover tooltip */}
+                                <div
+                                  className="absolute left-0 top-full mt-1 hidden group-hover:block z-20
                                               max-w-[16rem] rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 shadow-lg"
-                                  >
-                                    <ul className="space-y-1">
-                                      {list.slice(shown.length).map(b => (
-                                        <li key={`more-${b.id}`} className="flex items-center gap-2">
-                                          <span className={`inline-block h-2.5 w-2.5 rounded-full
+                                >
+                                  <ul className="space-y-1">
+                                    {list.slice(shown.length).map(b => (
+                                      <li key={`more-${b.id}`} className="flex items-center gap-2">
+                                        <span className={`inline-block h-2.5 w-2.5 rounded-full
                                                             ${b.kind === "coupon" ? "bg-indigo-400" : "bg-emerald-400"}`} />
-                                          <span className="truncate">{b.label}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
+                                        <span className="truncate">{b.label}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
 
-                        <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                          {imgFor(p) ? (
-                            <img
-                              src={imgFor(p)}
-                              alt={p.name}
-                              className="h-full w-full object-contain"
-                              onError={(e) => { e.currentTarget.style.display = "none"; }}
-                            />
-                          ) : (
-                            <span className="text-slate-400">🛒</span>
-                          )}
-                        </div>
+                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                        {imgFor(p) ? (
+                          <img
+                            src={imgFor(p)}
+                            alt={p.name}
+                            className="h-full w-full object-contain"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                        ) : (
+                          <span className="text-slate-400">🛒</span>
+                        )}
+                      </div>
 
 
 
@@ -861,7 +910,36 @@ function badgesForVariant(
                       <div className="text-xs text-slate-300 mt-0.5 truncate">
                         {(p as any).variant_name || p.sku || ""}
                       </div>
-                      <div className="text-sm text-slate-400">${toMoney(p.price)}</div>
+                      {/* <div className="text-sm text-slate-400">${toMoney(p.price)}</div> */}
+                      {(() => {
+                        const pv = pricePreviewForVariant(p, autoDiscRules, couponDiscRules);
+                        if (!pv) {
+                          return <div className="text-sm text-slate-400">${toMoney(p.price)}</div>;
+                        }
+                        const orig = toMoney(pv.orig);
+                        const fin = toMoney(pv.final);
+                        return (
+                          <div className="text-sm">
+                            {pv.final < pv.orig ? (
+                              <>
+                                <span className="text-slate-400 line-through mr-2">${orig}</span>
+                                <span className="text-emerald-300 font-semibold">${fin}</span>
+                                {pv.hasReceipt && (
+                                  <span className="ml-2 text-xs text-slate-400">(more at checkout)</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-slate-200">${orig}</span>
+                                {pv.hasReceipt && (
+                                  <span className="ml-2 text-xs text-slate-400">(savings at checkout)</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       <StockBadge remaining={remaining} />
                     </button>
                   );
