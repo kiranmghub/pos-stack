@@ -532,19 +532,19 @@ img{display:block;margin:8px auto}
 
     // Try multiple places/keys for tax category & product id that appear in your payloads
     const vcat = (
-        (v as any).tax_category?.code ||
-        (v as any).tax_category_code ||
-        (v as any).product?.tax_category?.code ||            // ← product-level category
-        (v as any).product_tax_category_code ||              // ← flat product cat code, if present
-        ""
+      (v as any).tax_category?.code ||
+      (v as any).tax_category_code ||
+      (v as any).product?.tax_category?.code ||            // ← product-level category
+      (v as any).product_tax_category_code ||              // ← flat product cat code, if present
+      ""
     ).toString().toUpperCase();
 
     const prodIdRaw =
-        (v as any).product_id ??
-        (v as any).product?.id ??
-        (v as any).productId ??                              // ← be liberal with naming
-        (v as any).productID ??
-        null;
+      (v as any).product_id ??
+      (v as any).product?.id ??
+      (v as any).productId ??                              // ← be liberal with naming
+      (v as any).productID ??
+      null;
     const prodId = prodIdRaw != null ? Number(prodIdRaw) : null;
 
     if (target === "ALL") return true;
@@ -569,7 +569,7 @@ img{display:block;margin:8px auto}
   }
 
 
- type Badge = { id: number; text: string; kind: "auto" | "coupon" };
+  type Badge = { id: number; text: string; kind: "auto" | "coupon" };
 
   function badgesForVariant(
     v: VariantLite,
@@ -779,58 +779,77 @@ img{display:block;margin:8px auto}
                       key={p.id}
                       onClick={() => addToCart(p)}
                       disabled={disabled}
-                      className={`rounded-xl p-3 text-left transition-colors ${disabled
+                      className={`relative rounded-xl p-3 text-left transition-colors ${disabled
                         ? "bg-slate-800/60 cursor-not-allowed opacity-60"
                         : "bg-slate-800 hover:bg-slate-700"
                         }`}
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
-                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
-                          {/* DISCOUNT BADGES (multi) */}
-                          {(() => {
-                            const list = badgesForVariant(p, autoDiscRules, couponDiscRules);
-                            if (list.length === 0) return null;
+                      {/* DISCOUNT BADGES (multi) — positioned at card level to avoid clipping */}
+                        {(() => {
+                          const list = badgesForVariant(p, autoDiscRules, couponDiscRules);
+                          if (list.length === 0) return null;
 
-                            const shown = list.slice(0, 1);
-                            const extra = list.length - shown.length;
+                          const shown = list.slice(0, 1);           // show up to 3 pills
+                          const extra = list.length - shown.length; // rest go in tooltip
 
-                            return (
-                              <div className="absolute top-2 left-2 flex flex-col gap-1">
-                                {shown.map(b => (
-                                  <span
-                                    key={b.id}
-                                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold shadow
-                                                ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
-                                    title={b.text}
-                                  >
-                                    {b.text}
-                                  </span>
-                                ))}
-                                {extra > 0 && (
-                                  <span
-                                    className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow"
-                                    title={list.slice(3).map(b => b.text).join(", ")}
-                                  >
+                          return (
+                            <div className="absolute top-2 left-2 z-10 flex flex-col gap-1 pointer-events-none">
+                              {shown.map(b => (
+                                <span
+                                  key={b.id}
+                                  className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow
+                                              ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
+                                >
+                                  {b.text}
+                                </span>
+                              ))}
+
+                              {extra > 0 && (
+                                <div className="relative group pointer-events-auto">
+                                  <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow">
                                     +{extra} more
                                   </span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                                  {/* Hover tooltip */}
+                                  <div
+                                    className="absolute left-0 top-full mt-1 hidden group-hover:block z-20
+                                              max-w-[16rem] rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 shadow-lg"
+                                  >
+                                    <ul className="space-y-1">
+                                      {list.slice(shown.length).map(b => (   /* ← use shown.length, not 3 */
+                                        <li key={`more-${b.id}`} className="flex items-center gap-2">
+                                          <span
+                                            className={`inline-block h-2.5 w-2.5 rounded-full
+                                                        ${b.kind === "coupon" ? "bg-indigo-400" : "bg-emerald-400"}`}
+                                          />
+                                          <span>{b.text}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
- 
 
-                        {imgFor(p) ? (
-                          <img
-                            src={imgFor(p)}
-                            alt={p.name}
-                            className="h-full w-full object-contain"
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                          />
-                        ) : (
-                          <span className="text-slate-400">🛒</span>
-                        )}
-                      </div>
+                        <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                          {imgFor(p) ? (
+                            <img
+                              src={imgFor(p)}
+                              alt={p.name}
+                              className="h-full w-full object-contain"
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                          ) : (
+                            <span className="text-slate-400">🛒</span>
+                          )}
+                        </div>
+
+
+
+
 
 
                       <div className="font-medium truncate">{p.name}</div>
