@@ -569,40 +569,46 @@ img{display:block;margin:8px auto}
   }
 
 
-  type Badge = { id: number; text: string; kind: "auto" | "coupon" };
+type Badge = {
+  id: number;
+  name: string;
+  text: string;     // short value like "20% OFF" or "-$5.00 (receipt)"
+  label: string;    // "RULE NAME — 20% OFF"
+  kind: "auto" | "coupon";
+};
 
-  function badgesForVariant(
-    v: VariantLite,
-    autoRules: DiscountRule[],
-    couponRules: DiscountRule[],
-  ): Badge[] {
-    const seen = new Set<number>();
-    const out: Badge[] = [];
+function badgesForVariant(
+  v: VariantLite,
+  autoRules: DiscountRule[],
+  couponRules: DiscountRule[],
+): Badge[] {
+  const seen = new Set<number>();
+  const out: Badge[] = [];
 
-    // collect matches
-    const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
-    for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
-    for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
+  const cands: Array<{ rule: DiscountRule; kind: "auto" | "coupon" }> = [];
+  for (const r of autoRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "auto" });
+  for (const r of couponRules) if (ruleMatchesVariant(r, v)) cands.push({ rule: r, kind: "coupon" });
+  if (cands.length === 0) return out;
 
-    if (cands.length === 0) return out;
+  cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
 
-    // sort by priority → id
-    cands.sort((a, b) => (a.rule.priority - b.rule.priority) || (a.rule.id - b.rule.id));
+  for (const { rule, kind } of cands) {
+    if (seen.has(rule.id)) continue;
+    seen.add(rule.id);
 
-    // format label per rule
-    for (const { rule, kind } of cands) {
-      if (seen.has(rule.id)) continue; // de-dupe just in case
-      seen.add(rule.id);
+    let text = rule.basis === "PCT" ? pctText(rule.rate) : moneyText(rule.amount);
+    if (!text) text = "Discount";
+    if (rule.apply_scope === "RECEIPT") text += " (receipt)";
 
-      let text = rule.basis === "PCT" ? pctText(rule.rate) : moneyText(rule.amount);
-      if (!text) text = "Discount";
-      if (rule.apply_scope === "RECEIPT") text += " (receipt)";
-      if (kind === "coupon") text = `Coupon: ${text}`;
+    const name = rule.name || rule.code || "Discount";
+    const baseLabel = `${name} — ${text}`;
+    const label = kind === "coupon" ? `Coupon: ${baseLabel}` : baseLabel;
 
-      out.push({ id: rule.id, text, kind });
-    }
-    return out;
+    out.push({ id: rule.id, name, text, label, kind });
   }
+  return out;
+}
+
 
 
 
@@ -798,10 +804,11 @@ img{display:block;margin:8px auto}
                               {shown.map(b => (
                                 <span
                                   key={b.id}
-                                  className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow
+                                  className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow max-w-[14rem] truncate
                                               ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
+                                  title={b.label}   // full on native hover as well
                                 >
-                                  {b.text}
+                                  {b.label}
                                 </span>
                               ))}
 
@@ -816,13 +823,11 @@ img{display:block;margin:8px auto}
                                               max-w-[16rem] rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 shadow-lg"
                                   >
                                     <ul className="space-y-1">
-                                      {list.slice(shown.length).map(b => (   /* ← use shown.length, not 3 */
+                                      {list.slice(shown.length).map(b => (
                                         <li key={`more-${b.id}`} className="flex items-center gap-2">
-                                          <span
-                                            className={`inline-block h-2.5 w-2.5 rounded-full
-                                                        ${b.kind === "coupon" ? "bg-indigo-400" : "bg-emerald-400"}`}
-                                          />
-                                          <span>{b.text}</span>
+                                          <span className={`inline-block h-2.5 w-2.5 rounded-full
+                                                            ${b.kind === "coupon" ? "bg-indigo-400" : "bg-emerald-400"}`} />
+                                          <span className="truncate">{b.label}</span>
                                         </li>
                                       ))}
                                     </ul>
