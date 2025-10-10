@@ -86,6 +86,18 @@ export default function PosScreen() {
 
   // legacy small summary (kept)
   const [receipt, setReceipt] = useState<ReceiptInfo | null>(null);
+  // track which cart lines are expanded (by variant id)
+  const [expandedLines, setExpandedLines] = useState<Record<number, boolean>>({});
+
+  const LineToggle: React.FC<{ open: boolean; onClick: () => void }> = ({ open, onClick }) => (
+    <button
+      onClick={onClick}
+      className="text-xs rounded px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-100"
+      title={open ? "Hide details" : "Show details"}
+    >
+      {open ? "Hide details" : "Details"}
+    </button>
+);
 
   // total items in cart (sum of quantities)
   const cartCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
@@ -952,7 +964,7 @@ img{display:block;margin:8px auto}
           </div>
 
           {/* Right: Cart */}
-          <div className="w-[420px] h-screen flex flex-col">
+          <div className="w-[30rem] h-screen flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-slate-800">
               <h2 className="flex items-center gap-2 font-semibold">
                 <span className="relative inline-block" aria-label={`Cart (${cartCount} items)`}>
@@ -1003,20 +1015,123 @@ img{display:block;margin:8px auto}
                   key={l.variant.id}
                   data-vid={l.variant.id}
                   style={{ scrollMarginBottom: footerH ? footerH + 16 : undefined }}
-                  className={`flex items-center justify-between rounded-lg p-3 transition-colors
+                  className={`flex flex-col gap-2 rounded-xl p-4 shadow-sm border border-slate-700 bg-slate-800/90 transition-colors
                               ${l.variant.id === lastAddedId && flashToken
                       ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
                       : "bg-slate-800"
                     }`}
                 >
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{l.variant.name}</div>
-                    <div className="text-sm text-slate-400 truncate">
+                    <div className="text-sm font-medium leading-snug break-words whitespace-normal">
+                      {l.variant.name}
+                    </div>
+                    <div className="text-xs text-slate-400 break-words whitespace-normal">
                       {(l.variant as any).variant_name || l.variant.sku || ""}
                     </div>
+
+                    <hr className="border-slate-700/60 my-1" />
                     <div className="text-sm text-slate-400">
                       ${toMoney(l.variant.price)} × {l.qty}
+                      {(() => {
+                        const qLine = quote?.lines?.find(
+                          (ln: any) => ln.variant_id === l.variant.id
+                        );
+                        if (!qLine) return null;
+
+                        const dSum = qLine.discounts
+                          ? qLine.discounts.reduce((s: number, x: any) => s + parseFloat(x.amount || "0"), 0)
+                          : 0;
+                        const tSum = qLine.taxes
+                          ? qLine.taxes.reduce((s: number, x: any) => s + parseFloat(x.amount || "0"), 0)
+                          : 0;
+
+                        if (dSum === 0 && tSum === 0) return null;
+
+                        return (
+                          <span className="ml-2">
+                            {dSum > 0 && (
+                              <span className="text-emerald-400/90">
+                                {" "}–${toMoney(dSum)} discounts
+                              </span>
+                            )}
+                            {tSum > 0 && (
+                              <span className="text-amber-400/90">
+                                {dSum > 0 ? ", " : " "}
+                                +${toMoney(tSum)} tax
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
                     </div>
+                    
+
+                    {/* Per-line breakdown (expand/collapse with smooth transition) */}
+                    <div
+                      className={`transition-all duration-600 ease-in-out overflow-hidden ${
+                        expandedLines[l.variant.id]
+                          ? "max-h-64 opacity-100 mt-2"
+                          : "max-h-0 opacity-0"
+                      }`}
+                    >
+                      {expandedLines[l.variant.id] && (() => {
+                        const qLine = quote?.lines?.find((ln: any) => ln.variant_id === l.variant.id);
+                        if (!qLine) return null;
+
+                        const hasDisc = Array.isArray(qLine.discounts) && qLine.discounts.length > 0;
+                        const hasTax  = Array.isArray(qLine.taxes)     && qLine.taxes.length > 0;
+                        if (!hasDisc && !hasTax)
+                          return <div className="text-xs text-slate-400">No adjustments on this line.</div>;
+
+                        return (
+                          <div className="rounded-lg bg-slate-900/80 border border-slate-700 p-3 shadow-inner space-y-1">
+                            {hasDisc && (
+                              <>
+                                <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1">
+                                  Discounts
+                                </div>
+                                <ul className="mb-2 space-y-0.5">
+                                  {qLine.discounts.map((d: any, idx: number) => (
+                                    <li
+                                      key={`${d.rule_id ?? d.code ?? idx}`}
+                                      className="flex justify-between text-xs"
+                                    >
+                                      <span className="truncate">{d.name}</span>
+                                      <span className="tabular-nums">-${toMoney(d.amount)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+
+                            {hasTax && (
+                              <>
+                                <div className="text-[11px] font-semibold text-amber-400 uppercase tracking-wide mb-1">
+                                  Taxes
+                                </div>
+                                <ul className="space-y-0.5">
+                                  {qLine.taxes.map((t: any, idx: number) => (
+                                    <li
+                                      key={`${t.rule_id ?? t.code ?? idx}`}
+                                      className="flex justify-between text-xs"
+                                    >
+                                      <span className="truncate">{t.name}</span>
+                                      <span className="tabular-nums">+${toMoney(t.amount)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+
+
+
+
+
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => changeQty(l.variant.id, -1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
@@ -1029,6 +1144,13 @@ img{display:block;margin:8px auto}
                     <button onClick={() => removeLine(l.variant.id)} className="text-red-400 hover:text-red-300">
                       <Trash2 className="h-4 w-4" />
                     </button>
+                    <LineToggle
+                      open={!!expandedLines[l.variant.id]}
+                      onClick={() =>
+                        setExpandedLines(prev => ({ ...prev, [l.variant.id]: !prev[l.variant.id] }))
+                      }
+                    />
+
                   </div>
                 </div>
               ))}

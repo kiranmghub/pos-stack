@@ -175,6 +175,11 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
 
     discount_by_rule_map: Dict[int, RuleAmount] = {}
 
+    # Track per-line breakdowns
+    line_discount_breakdown: List[List[RuleAmount]] = [[] for _ in lines_in]
+    line_tax_breakdown: List[List[RuleAmount]] = [[] for _ in lines_in]
+
+
     # 1) LINE rules — apply against each line's remaining base and reduce it
     for r in ordered:
         if str(r.apply_scope).upper() != "LINE":
@@ -201,6 +206,10 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
                 line_discounts[i] += d
                 remaining_per_line[i] = money(base - d)
                 acc += d
+                line_discount_breakdown[i].append(
+                    RuleAmount(r.id, r.code, r.name, d)
+                )
+
 
         if acc > 0:
             prev = discount_by_rule_map.get(r.id)
@@ -260,6 +269,22 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
         if getattr(r, "stackable", True) is False and d > 0:
             break
 
+    
+    # Prorate receipt-level discounts back onto each line for UI display
+    if receipt_discount > 0 and subtotal > 0:
+        # total line net before receipt discounts
+        total_line_net = sum(remaining_per_line, Decimal("0"))
+        for i, l in enumerate(lines_in):
+            share = (remaining_per_line[i] / total_line_net) if total_line_net > 0 else Decimal("0")
+            for r in ordered:
+                if str(r.apply_scope).upper() != "RECEIPT":
+                    continue
+                amt_share = money(receipt_discount * share)
+                if amt_share > 0:
+                    line_discount_breakdown[i].append(
+                        RuleAmount(r.id, r.code, r.name, amt_share)
+                    )
+
 
 
     # clamp line discounts
@@ -312,9 +337,15 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
                 if not _matches_categories(l, r):
                     continue
                 if str(r.basis).upper() == "PCT":
-                    acc += money(net * Decimal(r.rate or 0))
+                    amt = money(net * Decimal(r.rate or 0))
                 else:
-                    acc += money(Decimal(r.amount or 0) * l.qty)
+                    amt = money(Decimal(r.amount or 0) * l.qty)
+                acc += amt
+                if amt > 0:
+                    # record per-line tax detail
+                    line_tax_breakdown[lines_in.index(l)].append(
+                        RuleAmount(r.id, r.code, r.name, amt)
+                    )
         else:
             # RECEIPT
             base = sum((net for (l, net) in net_lines if _matches_categories(l, r)), Decimal("0"))
@@ -332,6 +363,17 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
         tax_by_rule_map.values(),
         key=lambda x: (next((t.priority for t in tax_rules if t.id == x.rule_id), 0), x.rule_id),
     )
+
+    for i, (lin, net) in enumerate(net_lines):
+        rate = lin.var_tax_rate if lin.var_tax_rate is not None else (lin.prod_tax_rate or Decimal("0"))
+        if rate and net > 0:
+            amt = money(net * rate)
+            if amt > 0:
+                code = (lin.tax_category_code or "UNCAT").upper()
+                line_tax_breakdown[i].append(
+                    RuleAmount(-1, f"CAT:{code}", f"Category tax ({code})", amt)
+                )
+
 
     discount_rules_all = ordered  # includes coupon first + other rules
 
@@ -354,6 +396,14 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
             "line_subtotal": str(money(l.unit_price * l.qty)),
             "line_discount": str(money(line_discounts[i])),
             "line_net": str(net),
+                "discounts": [
+                    {"rule_id": d.rule_id, "name": d.name, "amount": str(d.amount)}
+                    for d in line_discount_breakdown[i]
+                ],
+                "taxes": [
+                    {"rule_id": t.rule_id, "name": t.name, "amount": str(t.amount)}
+                    for t in line_tax_breakdown[i]
+                ],
         })
 
     return ReceiptOut(
