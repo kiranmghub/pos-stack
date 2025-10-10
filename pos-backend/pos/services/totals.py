@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, F
+
 
 from taxes.models import TaxRule, TaxScope, ApplyScope
 from discounts.models import DiscountRule, DiscountScope, Coupon
@@ -17,6 +18,7 @@ def money(q: Decimal) -> Decimal:
 @dataclass
 class LineIn:
     variant_id: int
+    product_id: Optional[int]
     qty: int
     unit_price: Decimal
     tax_category_code: Optional[str] = None
@@ -52,65 +54,34 @@ def _active_tax_rules(tenant, store_id: Optional[int]):
         cond |= Q(scope=TaxScope.STORE, store_id=store_id)
     return base.filter(cond).order_by("priority", "id")
 
-# def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
-#     now = timezone.now()
-#     base = (DiscountRule.objects
-#             .filter(tenant=tenant, is_active=True)
-#             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
-#             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now)))
-#     cond = Q(scope=DiscountScope.GLOBAL)
-#     if store_id:
-#         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
-#     rules = list(base.filter(cond).order_by("priority", "id"))
 
-#     coupon_rule = None
-#     if coupon_code:
-#         c = (Coupon.objects
-#              .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
-#              .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
-#              .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
-#              .first())
-#         if c:
-#             coupon_rule = c.rule
-#     return rules, coupon_rule
+def _matches_rule_targets(line: LineIn, rule) -> bool:
+    """
+    Return True if the line matches the rule's target:
+      ALL → always True
+      CATEGORY → match by tax_category_code
+      PRODUCT → match by product id
+      VARIANT → match by variant id
+    """
+    target = str(getattr(rule, "target", "ALL")).upper()
 
-# def _active_discount_rules(tenant, store_id: Optional[int], coupon_code: Optional[str]):
-#     """
-#     Returns (auto_rules, coupon_rule) where:
-#       - auto_rules: active rules for tenant/store/time that are NOT bound to a Coupon
-#       - coupon_rule: the single rule referenced by a valid coupon_code (if any), else None
-#     """
-#     now = timezone.now()
-#     base = (DiscountRule.objects
-#             .filter(tenant=tenant, is_active=True)
-#             .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
-#             .filter(Q(end_at__isnull=True) | Q(end_at__gte=now)))
+    if target == "ALL":
+        return True
 
-#     cond = Q(scope=DiscountScope.GLOBAL)
-#     if store_id:
-#         cond |= Q(scope=DiscountScope.STORE, store_id=store_id)
+    if target == "CATEGORY":
+        cats = [c.code.upper() for c in getattr(rule, "categories").all()]
+        return (not cats) or ((line.tax_category_code or "").upper() in cats)
 
-#     # IMPORTANT: exclude rules that are bound to any Coupon
-#     # (Coupon has FK -> DiscountRule with no related_name; reverse lookup name is "coupon")
-#     auto_rules = (base
-#                   .filter(cond)
-#                   .filter(coupon__isnull=True)  # <- this line makes coupon rules opt-in only
-#                   .order_by("priority", "id"))
+    if target == "PRODUCT":
+        ids = set(getattr(rule, "products").values_list("id", flat=True))
+        return (not ids) or (line.product_id is not None and line.product_id in ids)
 
-#     coupon_rule = None
-#     if coupon_code:
-#         c = (Coupon.objects
-#              .select_related("rule")
-#              .filter(tenant=tenant, code__iexact=coupon_code.strip(), is_active=True)
-#              .filter(Q(start_at__isnull=True) | Q(start_at__lte=now))
-#              .filter(Q(end_at__isnull=True) | Q(end_at__gte=now))
-#              .first())
-#         if c:
-#             coupon_rule = c.rule
+    if target == "VARIANT":
+        ids = set(getattr(rule, "variants").values_list("id", flat=True))
+        return (not ids) or (line.variant_id in ids)
 
-#     return list(auto_rules), coupon_rule
+    return True
 
-from django.db.models import Q, F
 
 def _active_discount_rules(
     tenant,
@@ -187,44 +158,101 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
     line_discounts = [Decimal("0") for _ in lines_in]
     receipt_discount = Decimal("0")
 
-    # ordered = []
-    # if coupon_rule:
-    #     ordered.append(coupon_rule)
-    # ordered.extend(discount_rules)
-
     # Merge coupon + auto rules by priority
     ordered = sorted(
         list(coupon_rules) + list(auto_rules),
         key=lambda r: (getattr(r, "priority", 0), r.id)
     )
 
+    # Remaining base per line after applying line-level discounts (start at full)
+    remaining_per_line = [money(l.unit_price * l.qty) for l in lines_in]
+    # Remaining base at receipt level (starts at sum of remaining after all line rules; we will set it after line loop)
+    receipt_remaining = None
 
-    discount_by_rule_map: Dict[int, RuleAmount] = {}  # NEW
+    discount_by_rule_map: Dict[int, RuleAmount] = {}
 
+    # 1) LINE rules — apply against each line's remaining base and reduce it
     for r in ordered:
+        if str(r.apply_scope).upper() != "LINE":
+            continue
+
         is_pct = str(r.basis).upper() == "PCT"
-        # normalize 20 -> 0.20 (defensive; your models/serializers already normalize)
         rate = Decimal(r.rate or 0)
         if is_pct and rate > 1:
             rate = rate / Decimal("100")
 
-        if str(r.apply_scope).upper() == "LINE":
-            acc = Decimal("0")
-            for i, l in enumerate(lines_in):
-                if not _matches_categories(l, r):
-                    continue
-                base = l.unit_price * l.qty
-                d = money(base * rate) if is_pct else money(Decimal(r.amount or 0) * l.qty)
-                line_discounts[i] += d
-                acc += d
-            if acc > 0:
-                discount_by_rule_map[r.id] = RuleAmount(r.id, r.code, r.name, money(discount_by_rule_map.get(r.id, RuleAmount(r.id, r.code, r.name, Decimal("0"))).amount + acc))
-        else:
-            base = sum((l.unit_price * l.qty for l in lines_in if _matches_categories(l, r)), Decimal("0"))
-            d = money(base * rate) if is_pct else money(Decimal(r.amount or 0))
-            receipt_discount += d
+        acc = Decimal("0")
+        for i, lin in enumerate(lines_in):
+            if not _matches_rule_targets(lin, r):
+                continue
+            base = remaining_per_line[i]
+            if base <= 0:
+                continue
+
+            d = money(base * rate) if is_pct else money(Decimal(r.amount or 0) * lin.qty)
+            if d > base:
+                d = base  # cap to what's left on this line
+
             if d > 0:
-                discount_by_rule_map[r.id] = RuleAmount(r.id, r.code, r.name, money(discount_by_rule_map.get(r.id, RuleAmount(r.id, r.code, r.name, Decimal("0"))).amount + d))
+                line_discounts[i] += d
+                remaining_per_line[i] = money(base - d)
+                acc += d
+
+        if acc > 0:
+            prev = discount_by_rule_map.get(r.id)
+            discount_by_rule_map[r.id] = RuleAmount(
+                r.id, r.code, r.name,
+                money((prev.amount if prev else Decimal("0")) + acc)
+            )
+
+        # respect non-stackable at the rule level (stop after applying)
+        if getattr(r, "stackable", True) is False and acc > 0:
+            break
+
+    # Set receipt_remaining to the sum of what's left after line rules
+    receipt_remaining = money(sum(remaining_per_line, Decimal("0")))
+
+    # 2) RECEIPT rules — apply against the current receipt_remaining and reduce it
+    for r in ordered:
+        if str(r.apply_scope).upper() != "RECEIPT":
+            continue
+
+        is_pct = str(r.basis).upper() == "PCT"
+        rate = Decimal(r.rate or 0)
+        if is_pct and rate > 1:
+            rate = rate / Decimal("100")
+
+        # base subject to this rule (by target)
+        eligible = money(sum(
+            (lines_in[i].unit_price * lines_in[i].qty)
+            for i, lin in enumerate(lines_in)
+            if _matches_rule_targets(lin, r)
+        ))
+        # reduce by the portion already consumed by line discounts on those lines
+        eligible_after_lines = money(sum(
+            remaining_per_line[i]
+            for i, lin in enumerate(lines_in)
+            if _matches_rule_targets(lin, r)
+        ))
+
+        # the actual available receipt base is the min of what's eligible and what's still remaining globally
+        base = min(eligible_after_lines, receipt_remaining)
+
+        d = money(base * rate) if is_pct else money(Decimal(r.amount or 0))
+        if d > base:
+            d = base  # cap to remaining
+
+        if d > 0:
+            receipt_discount += d
+            receipt_remaining = money(receipt_remaining - d)
+            prev = discount_by_rule_map.get(r.id)
+            discount_by_rule_map[r.id] = RuleAmount(
+                r.id, r.code, r.name,
+                money((prev.amount if prev else Decimal("0")) + d)
+            )
+
+        if getattr(r, "stackable", True) is False and d > 0:
+            break
 
 
 

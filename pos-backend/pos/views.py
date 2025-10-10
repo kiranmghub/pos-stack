@@ -602,6 +602,7 @@ class POSCheckoutView(APIView):
                     tc = getattr(v, "tax_category", None)
                     ptc = getattr(getattr(v, "product", None), "tax_category", None)
                     vmap[v.id] = {
+                        "product_id": v.product_id, 
                         "code": getattr(tc, "code", None),
                         "var_rate": getattr(tc, "rate", None),
                         "prod_rate": getattr(ptc, "rate", None),
@@ -616,6 +617,7 @@ class POSCheckoutView(APIView):
                     info = vmap.get(vid, {})
                     lines_in.append(LineIn(
                         variant_id=vid,
+                        product_id=info.get("product_id"), 
                         qty=qty,
                         unit_price=up,
                         tax_category_code=info.get("code"),
@@ -919,6 +921,7 @@ class POSQuoteView(APIView):
             tc = getattr(v, "tax_category", None)
             ptc = getattr(getattr(v, "product", None), "tax_category", None)
             variant_map[v.id] = {
+                "product_id": v.product_id,
                 "code": getattr(tc, "code", None),
                 "var_rate": getattr(tc, "rate", None),
                 "prod_rate": getattr(ptc, "rate", None),
@@ -935,6 +938,7 @@ class POSQuoteView(APIView):
             info = variant_map.get(vid, {})
             lines_in.append(LineIn(
                 variant_id=vid,
+                product_id=info.get("product_id"),
                 qty=qty,
                 unit_price=up,
                 # tax_category_code=variant_map.get(vid),
