@@ -72,6 +72,8 @@ urlpatterns = [
     path("api/v1/tenant_admin/", include("tenant_admin.urls")),
     path("api/v1/discounts/", include("discounts.urls", namespace="discounts")),
     path("api/v1/taxes/", include("taxes.urls", namespace="taxes")),
+    path("api/v1/tenant-admin/", include("tenant_admin.urls")),
+
 ]
 
 if settings.DEBUG:
