@@ -13,7 +13,11 @@ from discounts.models import DiscountRule, DiscountScope, Coupon
 CENTS = Decimal("0.01")
 
 def money(q: Decimal) -> Decimal:
+    # tolerate ints/floats when a sum() returns 0 or similar
+    if not isinstance(q, Decimal):
+        q = Decimal(str(q))
     return q.quantize(CENTS, rounding=ROUND_HALF_UP)
+
 
 @dataclass
 class LineIn:
@@ -223,17 +227,19 @@ def compute_receipt(*, tenant, store_id: Optional[int], lines_in: List[LineIn], 
             rate = rate / Decimal("100")
 
         # base subject to this rule (by target)
-        eligible = money(sum(
+        eligible = money(sum((
             (lines_in[i].unit_price * lines_in[i].qty)
             for i, lin in enumerate(lines_in)
             if _matches_rule_targets(lin, r)
-        ))
+        ), Decimal("0")))
         # reduce by the portion already consumed by line discounts on those lines
-        eligible_after_lines = money(sum(
+        eligible_after_lines = money(sum((
             remaining_per_line[i]
             for i, lin in enumerate(lines_in)
             if _matches_rule_targets(lin, r)
-        ))
+        ), Decimal("0")))
+
+
 
         # the actual available receipt base is the min of what's eligible and what's still remaining globally
         base = min(eligible_after_lines, receipt_remaining)
