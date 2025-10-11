@@ -36,6 +36,7 @@ class Store(TimeStampedModel):
 
     class Meta:
         unique_together = ("tenant", "code")
+        ordering = ["code", "id"]
 
     def __str__(self):
         return f"{self.tenant.code}:{self.code}"
@@ -51,3 +52,4 @@ class Register(TimeStampedModel):
 
     class Meta:
         unique_together = ("store", "code")
+        ordering = ["code", "id"]

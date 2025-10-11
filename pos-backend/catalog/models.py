@@ -21,6 +21,7 @@ class TaxCategory(TimeStampedModel):
         ]
         verbose_name = "Tax category"
         verbose_name_plural = "Tax categories"
+        ordering = ["code", "id"]
 
     def __str__(self):
         return f"{self.name} ({self.code}) – {self.tenant}"

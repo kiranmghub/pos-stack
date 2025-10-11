@@ -70,6 +70,7 @@ class DiscountRule(TimeStampedModel):
     class Meta:
         unique_together = ("tenant", "code")
         indexes = [models.Index(fields=["tenant", "is_active", "scope", "priority"])]
+        ordering = ["priority", "id"]
 
     def __str__(self):
         return f"{self.tenant}:{self.code}"
@@ -102,6 +103,10 @@ class Coupon(TimeStampedModel):
 
     start_at    = models.DateTimeField(null=True, blank=True)
     end_at      = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["code", "id"]
+
 
     def __str__(self):
         return f"{self.tenant}:{self.code}"

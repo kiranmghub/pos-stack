@@ -60,6 +60,7 @@ class TaxRule(TimeStampedModel):
         indexes = [
             models.Index(fields=["tenant", "is_active", "scope", "priority"]),
         ]
+        ordering = ["priority", "id"]
 
     def __str__(self):
         return f"{self.tenant}:{self.code} ({self.name})"
