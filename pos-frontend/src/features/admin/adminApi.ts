@@ -1,220 +1,76 @@
 // src/features/admin/adminApi.ts
 import { ensureAuthedFetch } from "@/components/AppShell";
 
-const API = import.meta.env.VITE_API_BASE;
+// pos-frontend/src/features/admin/adminApi.ts
+//import { fetchWithAuth } from "@/features/pos/api"; // you already use this in POS
+// jsonOrThrow may exist in your POS api file. If not, add a tiny helper here:
+async function jsonOrThrow<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    let detail = "";
+    try { const j = await res.json(); detail = j?.detail || JSON.stringify(j); } catch {}
+    throw new Error(detail || `${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
 
-/* =========================
- * Users
- * ========================= */
+const BASE = "/api/v1/tenant-admin";
 
-export type TenantUserRow = {
-  id: number;
-  role: string;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-    is_active: boolean;
-  };
+export type Page<T> = { count?: number; results?: T[] } | T[];
+
+// --- typed shapes (minimal, for table columns) ---
+export type AdminUser = {
+  id: number; role: string; is_active: boolean;
+  user: { id: number; username: string; email: string; first_name?: string; last_name?: string };
+  stores: number[];
+};
+export type Store = { id: number; code: string; name: string; is_active: boolean };
+export type Register = { id: number; code: string; is_active: boolean; store: number };
+export type TaxCategory = { id: number; code: string; name: string; rate: string };
+export type TaxRule = {
+  id:number; code:string; name:string; is_active:boolean; scope:string; basis:string;
+  apply_scope:string; priority:number; rate?:string|null; amount?:string|null;
+};
+export type DiscountRule = {
+  id:number; code:string; name:string; is_active:boolean; scope:string; basis:string;
+  apply_scope:string; target:string; stackable:boolean; priority:number; rate?:string|null; amount?:string|null;
+};
+export type Coupon = {
+  id:number; code:string; name?:string; is_active:boolean; rule: { id:number; name:string; code:string };
+  min_subtotal?:string|null; max_uses?:number|null; used_count?:number; remaining_uses?:number|null;
 };
 
-export async function listTenantUsers(q = ""): Promise<TenantUserRow[]> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`);
-  if (!res.ok) throw new Error("Failed to load users");
-  return res.json();
-}
-
-export async function upsertTenantUser(payload: {
-  username: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  password?: string;
-  role: string;
-  is_active?: boolean;
-}): Promise<TenantUserRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/users`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function updateTenantUser(
-  id: number,
-  patch: Partial<{ email: string; first_name: string; last_name: string; password: string; role: string; is_active: boolean }>
-): Promise<TenantUserRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/users/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function deleteTenantUser(id: number): Promise<void> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/users/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-/* =========================
- * Stores
- * ========================= */
-
-// export type StoreRow = { id: number; code: string; name: string };
-
-export type StoreRow = {
-  id: number;
-  code: string;
-  name: string;
-  timezone?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-  is_active?: boolean;
+export type Query = {
+  search?: string;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+  // plus any filter fields; pass-through
+  [k:string]: any;
 };
 
-export async function listStoresAdmin(q = ""): Promise<StoreRow[]> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores${q ? `?q=${encodeURIComponent(q)}` : ""}`);
-  if (!res.ok) throw new Error("Failed to load stores");
-  return res.json();
-}
-// export async function createStore(payload: { code: string; name: string }): Promise<StoreRow> {
-//   const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores`, {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(payload),
-//   });
-//   if (!res.ok) throw new Error(await res.text());
-//   return res.json();
-// }
-// export async function updateStore(id: number, patch: Partial<{ code: string; name: string }>): Promise<StoreRow> {
-//   const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores/${id}`, {
-//     method: "PATCH",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(patch),
-//   });
-//   if (!res.ok) throw new Error(await res.text());
-//   return res.json();
-// }
-
-export async function createStore(payload: {
-  code: string;
-  name: string;
-  timezone?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  postal_code?: string;
-  country?: string;
-  is_active?: boolean;
-}): Promise<StoreRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+function qs(q?: Query) {
+  const p = new URLSearchParams();
+  if (!q) return "";
+  Object.entries(q).forEach(([k,v])=>{
+    if (v===undefined || v===null || v==="") return;
+    p.set(k, String(v));
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const s = p.toString();
+  return s ? `?${s}` : "";
 }
 
-export async function updateStore(
-  id: number,
-  patch: Partial<StoreRow>
-): Promise<StoreRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-export async function deleteStore(id: number): Promise<void> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/stores/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await res.text());
+// Generic GET
+async function getList<T>(path: string, query?: Query): Promise<Page<T>> {
+  const res = await ensureAuthedFetch(`${BASE}/${path}${qs(query)}`);
+  return jsonOrThrow<Page<T>>(res);
 }
 
-/* =========================
- * Registers
- * ========================= */
-
-export type RegisterRow = { id: number; code: string; name: string; store: number };
-
-export async function listRegistersAdmin(store_id?: number): Promise<RegisterRow[]> {
-  const res = await ensureAuthedFetch(
-    `${API}/api/v1/tenant_admin/registers${store_id ? `?store_id=${encodeURIComponent(String(store_id))}` : ""}`
-  );
-  if (!res.ok) throw new Error("Failed to load registers");
-  return res.json();
-}
-export async function createRegister(payload: { store: number; code: string; name?: string }): Promise<RegisterRow> {
-  // backend expects a nested object or primary key; we’ll send {store,id}
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/registers`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ store: payload.store, code: payload.code, name: payload.name ?? payload.code }),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-export async function updateRegister(
-  id: number,
-  patch: Partial<{ code: string; name: string; store: number }>
-): Promise<RegisterRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/registers/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-export async function deleteRegister(id: number): Promise<void> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/registers/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await res.text());
-}
-
-/* =========================
- * Tax Categories
- * ========================= */
-
-export type TaxCategoryRow = { id: number; name: string; code: string; rate: string };
-
-export async function listTaxCategoriesAdmin(q = ""): Promise<TaxCategoryRow[]> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/tax_categories${q ? `?q=${encodeURIComponent(q)}` : ""}`);
-  if (!res.ok) throw new Error("Failed to load tax categories");
-  return res.json();
-}
-export async function createTaxCategory(payload: { name: string; code: string; rate: number | string }): Promise<TaxCategoryRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/tax_categories`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-export async function updateTaxCategory(
-  id: number,
-  patch: Partial<{ name: string; code: string; rate: number | string }>
-): Promise<TaxCategoryRow> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/tax_categories/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-export async function deleteTaxCategory(id: number): Promise<void> {
-  const res = await ensureAuthedFetch(`${API}/api/v1/tenant_admin/tax_categories/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error(await res.text());
-}
+export const AdminAPI = {
+  users:   (q?: Query) => getList<AdminUser>("users/", q),
+  stores:  (q?: Query) => getList<Store>("stores/", q),
+  registers:(q?: Query) => getList<Register>("registers/", q),
+  taxCats: (q?: Query) => getList<TaxCategory>("tax-categories/", q),
+  taxRules:(q?: Query) => getList<TaxRule>("tax-rules/", q),
+  discRules:(q?: Query) => getList<DiscountRule>("discount-rules/", q),
+  coupons: (q?: Query) => getList<Coupon>("coupons/", q),
+};
