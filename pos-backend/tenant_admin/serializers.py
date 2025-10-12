@@ -1,38 +1,10 @@
-# tenant_admin/serializers.py
+# pos-backend/tenant_admin/serializers.py
 from rest_framework import serializers
 from discounts.models import DiscountRule, Coupon
 from taxes.models import TaxRule, TaxBasis, TaxScope, ApplyScope
 # Lazy import fix — declare at module level
 from catalog.models import Product, Variant
 
-class DiscountRuleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DiscountRule
-        fields = "__all__"
-
-class CouponSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Coupon
-        fields = "__all__"
-
-class TaxRuleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TaxRule
-        fields = "__all__"
-
-
-class TaxRuleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TaxRule
-        fields = (
-            "id", "name", "code", "is_active",
-            "scope", "store",
-            "basis", "rate", "amount",
-            "apply_scope", "categories", "priority",
-            "start_at", "end_at",
-        )
-
-# pos-backend/tenant_admin/serializers.py
 from decimal import Decimal
 from rest_framework import serializers
 
@@ -77,13 +49,17 @@ class TenantUserSerializer(serializers.ModelSerializer):
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
-        fields = ("id", "tenant", "code", "name", "is_active", "created_at", "updated_at")
+        fields = (
+            "id", "tenant", "code", "name", "timezone",
+            "street", "city", "state", "postal_code", "country",
+            "is_active", "address_meta", "created_at", "updated_at"
+        )
         read_only_fields = ("tenant", "created_at", "updated_at")
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Register
-        fields = ("id", "store", "code", "is_active", "meta", "created_at", "updated_at")
+        fields = ("id", "store", "name", "code", "hardware_profile", "is_active", "created_at", "updated_at")
         read_only_fields = ("created_at", "updated_at")
 
 class TaxCategorySerializer(serializers.ModelSerializer):
