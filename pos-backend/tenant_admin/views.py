@@ -37,6 +37,9 @@ class TenantScopedMixin:
         # Register: join via store.tenant
         if qs.model is Register:
             return qs.filter(store__tenant=tenant)
+        # Ensure stable default ordering for paginated lists
+        if qs.model.__name__ == "TenantUser":
+            qs = qs.order_by("id")
         return qs
 
     def perform_create(self, serializer):
@@ -54,6 +57,7 @@ class TenantUserViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["role", "is_active", "stores"]
     search_fields = ["user__username", "user__email", "user__first_name", "user__last_name"]
+    ordering = ["id"]
     ordering_fields = ["id", "role", "is_active"]
 
 class StoreViewSet(TenantScopedMixin, viewsets.ModelViewSet):
