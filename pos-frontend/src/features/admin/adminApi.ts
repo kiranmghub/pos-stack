@@ -106,6 +106,18 @@ export const AdminAPI = {
     });
     return jsonOrThrow(res);
   },
+
+  deleteUser: async (id: number) => {
+    const res = await ensureAuthedFetch(`/api/v1/tenant-admin/users/${id}/`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || "Failed to delete user");
+    }
+    return true;
+  },
+
 };
 
 

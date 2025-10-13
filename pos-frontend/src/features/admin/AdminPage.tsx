@@ -4,6 +4,9 @@ import { AdminAPI, Query, AdminUser, Store, Register, TaxCategory, TaxRule, Disc
 import { DataTable } from "./components/DataTable";
 import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
 import UserModal from "./components/UserModal";
+import DeleteConfirmModal from "./components/DeleteConfirmModal";
+import { Trash2 } from "lucide-react";
+
 
 type TabKey = "users"|"stores"|"registers"|"taxcats"|"taxrules"|"discrules"|"coupons";
 
@@ -27,6 +30,8 @@ export default function AdminPage() {
 
   const [showUserModal, setShowUserModal] = useState(false);
   const [editUser, setEditUser] = useState<any|null>(null);
+  const [deleteUser, setDeleteUser] = useState<any | null>(null);
+
 
   // Fetch per tab
   useEffect(()=>{
@@ -82,13 +87,22 @@ export default function AdminPage() {
           )},
           { key:"stores", header:"Stores", render:(r:AdminUser)=> r.stores?.length ?? 0, align:"right" as const },
           { key: "actions", header: "", render: (r: AdminUser) => (
-            <button
+            <div className="flex items-center gap-3 justify-end">
+              <button
                 onClick={() => { setEditUser(r); setShowUserModal(true); }}
                 className="text-xs text-blue-400 hover:underline"
-            >
+              >
                 Edit
-            </button>
-            ) },
+              </button>
+              <button
+                onClick={() => setDeleteUser(r)}
+                className="text-xs text-red-400 hover:text-red-300"
+                title="Delete user"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          )},
         ];
       }
       case "stores": {
@@ -201,8 +215,6 @@ export default function AdminPage() {
         onQueryChange={(q)=> setQuery(prev=> ({ ...prev, ...q }))}
       />
 
-      {/* TODO: Create/Edit modals per tab (placeholders) */}
-
       {/* Modals */}
       <UserModal
         open={showUserModal}
@@ -212,6 +224,22 @@ export default function AdminPage() {
             setShowUserModal(false);
             setQuery({ ...query }); // triggers refresh
         }}
+      />
+      <DeleteConfirmModal
+        open={!!deleteUser}
+        title="Delete User"
+        message={
+          deleteUser
+            ? `Are you sure you want to delete "${deleteUser.user?.username}"? This cannot be undone.`
+            : ""
+        }
+        onConfirm={async () => {
+          if (deleteUser) {
+            await AdminAPI.deleteUser(deleteUser.id);
+            setQuery({ ...query }); // refresh table
+          }
+        }}
+        onClose={() => setDeleteUser(null)}
       />
     </div>    
   );
