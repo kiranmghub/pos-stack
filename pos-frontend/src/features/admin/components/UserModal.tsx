@@ -8,23 +8,22 @@ type Props = {
   editUser?: AdminUser | null;
 };
 
-const roles = [
-  { value: "owner", label: "Owner" },
-  { value: "admin", label: "Admin" },
-  { value: "manager", label: "Manager" },
-  { value: "cashier", label: "Cashier" },
-];
+
+
+
 
 export default function UserModal({ open, onClose, onSave, editUser }: Props) {
   const isEdit = !!editUser;
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("cashier");
   const [isActive, setIsActive] = useState(true);
   const [stores, setStores] = useState<number[]>([]);
   const [storeList, setStoreList] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roleOptions, setRoleOptions] = useState<{value:string; label:string}[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +38,25 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
       }
     })();
   }, []);
+
+  useEffect(() => {
+  (async () => {
+    try {
+      const r = await AdminAPI.getTenantRoles();
+      setRoleOptions(r);
+    } catch (e) {
+      console.error(e);
+      setRoleOptions([
+        { value:"owner", label:"Owner" },
+        { value:"admin", label:"Admin" },
+        { value:"manager", label:"Manager" },
+        { value:"cashier", label:"Cashier" },
+        { value:"accountant", label:"Accountant" },
+        { value:"auditor", label:"Auditor" },
+      ]);
+    }
+  })();
+}, []);
 
   useEffect(() => {
     if (isEdit && editUser) {
@@ -58,30 +76,33 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
 
   if (!open) return null;
 
-  const handleSubmit = async () => {
-    setSaving(true);
-    try {
-      const payload = {
-        username,
-        email,
-        role,
-        is_active: isActive,
-        stores,
+const handleSubmit = async () => {
+  setSaving(true);
+  try {
+    if (isEdit && editUser) {
+      const payload: any = {
+        role, is_active: isActive, stores,
       };
-      if (isEdit) {
-        // TODO: update user endpoint once backend provides it
-        console.log("Edit payload", payload);
-      } else {
-        console.log("Create payload", payload);
-      }
-      onSave();
-      onClose();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSaving(false);
+      if (username && username !== editUser.user?.username) payload.username = username;
+      if (email !== editUser.user?.email) payload.email = email;
+      if (password) payload.password = password;
+      await AdminAPI.updateUser(editUser.id, payload);
+    } else {
+      // Create — inline user
+      await AdminAPI.createUser({
+        username, email, password, role, is_active: isActive, stores,
+      });
     }
-  };
+    onSave();
+    onClose();
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.message || "Failed to save user");
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -115,20 +136,39 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
           <p className="text-xs text-slate-400 mt-1">Used for notifications and identification.</p>
         </div>
 
+        {/* Password (optional on edit) */}
+        <div>
+        <label className="block text-sm font-medium text-slate-200">
+            Password {isEdit ? <span className="text-slate-400 font-normal">(leave blank to keep)</span> : null}
+        </label>
+        <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            placeholder={isEdit ? "••••••••" : "Set an initial password"}
+        />
+        <p className="text-xs text-slate-400 mt-1">
+            {isEdit ? "Only set if you need to change this user's password." : "Required for new users."}
+        </p>
+        </div>
+
+
         {/* Role */}
         <div>
           <label className="block text-sm font-medium text-slate-200">Role</label>
-          <select
+            <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
             className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
-          >
-            {roles.map((r) => (
-              <option key={r.value} value={r.value}>
+            >
+            {roleOptions.map((r) => (
+                <option key={r.value} value={r.value}>
                 {r.label}
-              </option>
+                </option>
             ))}
-          </select>
+            </select>
+
           <p className="text-xs text-slate-400 mt-1">Select user’s permission level.</p>
         </div>
 

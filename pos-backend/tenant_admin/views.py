@@ -28,6 +28,9 @@ from .serializers import (
 )
 from .permissions import IsTenantAdmin
 
+
+
+
 # ---------- helpers ----------
 class TenantScopedMixin:
     """Filter base queryset by request.tenant where applicable."""
@@ -120,3 +123,16 @@ class CouponViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ["is_active", "rule", "start_at", "end_at"]
     search_fields = ["code", "name", "rule__name", "rule__code"]
     ordering_fields = ["code", "name", "max_uses", "used_count", "start_at", "end_at"]
+
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsTenantAdmin])
+def tenant_roles(request):
+    """
+    GET /api/v1/tenant-admin/roles/tenant
+    Returns [{"value":"owner","label":"Owner"}, ...]
+    """
+    data = [{"value": c.value, "label": c.label} for c in TenantRole]
+    return Response({"ok": True, "roles": data})

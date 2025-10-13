@@ -65,6 +65,8 @@ async function getList<T>(path: string, query?: Query): Promise<Page<T>> {
   return jsonOrThrow<Page<T>>(res);
 }
 
+export type RoleOption = { value: string; label: string };
+
 export const AdminAPI = {
   users:   (q?: Query) => getList<AdminUser>("users/", q),
   stores:  (q?: Query) => getList<Store>("stores/", q),
@@ -73,4 +75,38 @@ export const AdminAPI = {
   taxRules:(q?: Query) => getList<TaxRule>("tax-rules/", q),
   discRules:(q?: Query) => getList<DiscountRule>("discount-rules/", q),
   coupons: (q?: Query) => getList<Coupon>("coupons/", q),
+
+  getTenantRoles: async (): Promise<RoleOption[]> => {
+    const res = await ensureAuthedFetch(`/api/v1/tenant-admin/roles/tenant`);
+    const j = await jsonOrThrow<{ ok: boolean; roles: RoleOption[] }>(res);
+    return j.roles || [];
+  },
+
+  createUser: async (payload: {
+    username?: string; email?: string; password?: string;
+    user_id?: number;
+    role: string; is_active: boolean; stores: number[];
+  }) => {
+    const res = await ensureAuthedFetch(`/api/v1/tenant-admin/users/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return jsonOrThrow(res);
+  },
+
+  updateUser: async (id: number, payload: {
+    username?: string; email?: string; password?: string;
+    role?: string; is_active?: boolean; stores?: number[];
+  }) => {
+    const res = await ensureAuthedFetch(`/api/v1/tenant-admin/users/${id}/`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return jsonOrThrow(res);
+  },
 };
+
+
+
