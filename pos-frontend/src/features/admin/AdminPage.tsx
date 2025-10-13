@@ -28,6 +28,8 @@ export default function AdminPage() {
   useEffect(()=>{
     let mounted = true;
     (async ()=>{
+      // NEW: clear stale rows as soon as tab/query changes
+      setData([]); setTotal(undefined);
       setLoading(true);
       try {
         let page:any;
@@ -57,12 +59,17 @@ export default function AdminPage() {
   const cols = useMemo(()=>{
     switch (active) {
       case "users": {
-        const renderName = (u:AdminUser)=>(
-          <div className="leading-tight">
-            <div className="font-medium">{u.user.username}</div>
-            <div className="text-xs text-slate-400">{u.user.email}</div>
-          </div>
+        const renderName = (u: AdminUser) => {
+        const uname = u?.user?.username ?? "—";
+        const email = u?.user?.email ?? "—";
+        return (
+            <div className="leading-tight">
+            <div className="font-medium">{uname}</div>
+            <div className="text-xs text-slate-400">{email}</div>
+            </div>
         );
+        };
+
         return [
           { key:"user", header:"User", render:renderName },
           { key:"role", header:"Role" },

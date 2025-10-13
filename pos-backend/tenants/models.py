@@ -34,6 +34,7 @@ class TenantUser(models.Model):
 
     class Meta:
         unique_together = ("tenant", "user")
+        ordering = ["id"]  # stable default for pagination
 
     def __str__(self):
         return f"{self.user} @ {self.tenant} ({self.role})"
