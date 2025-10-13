@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AdminAPI, Query, AdminUser, Store, Register, TaxCategory, TaxRule, DiscountRule, Coupon } from "./adminApi";
 import { DataTable } from "./components/DataTable";
 import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
+import UserModal from "./components/UserModal";
 
 type TabKey = "users"|"stores"|"registers"|"taxcats"|"taxrules"|"discrules"|"coupons";
 
@@ -23,6 +24,9 @@ export default function AdminPage() {
   const [total, setTotal] = useState<number|undefined>(undefined);
 
   const [query, setQuery] = useState<Query>({ search:"", ordering:"" });
+
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editUser, setEditUser] = useState<any|null>(null);
 
   // Fetch per tab
   useEffect(()=>{
@@ -77,6 +81,14 @@ export default function AdminPage() {
             <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active?"bg-emerald-600/30 text-emerald-200":"bg-slate-600/30 text-slate-300"}`}>{r.is_active?"Yes":"No"}</span>
           )},
           { key:"stores", header:"Stores", render:(r:AdminUser)=> r.stores?.length ?? 0, align:"right" as const },
+          { key: "actions", header: "", render: (r: AdminUser) => (
+            <button
+                onClick={() => { setEditUser(r); setShowUserModal(true); }}
+                className="text-xs text-blue-400 hover:underline"
+            >
+                Edit
+            </button>
+            ) },
         ];
       }
       case "stores": {
@@ -148,6 +160,7 @@ export default function AdminPage() {
     }
   }, [active]);
 
+
   return (
     <div className="p-4 space-y-4">
       {/* Tabs */}
@@ -164,6 +177,19 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* New button for Users tab */}
+        {active === "users" && (
+            <div className="flex justify-end">
+                <button
+                onClick={() => { setEditUser(null); setShowUserModal(true); }}
+                className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+                >
+                + New User
+                </button>
+            </div>
+        )}
+
+
       {/* Table */}
       <DataTable
         title={tabs.find(t=>t.key===active)?.label || ""}
@@ -176,6 +202,17 @@ export default function AdminPage() {
       />
 
       {/* TODO: Create/Edit modals per tab (placeholders) */}
-    </div>
+
+      {/* Modals */}
+      <UserModal
+        open={showUserModal}
+        editUser={editUser}
+        onClose={() => setShowUserModal(false)}
+        onSave={() => {
+            setShowUserModal(false);
+            setQuery({ ...query }); // triggers refresh
+        }}
+      />
+    </div>    
   );
 }
