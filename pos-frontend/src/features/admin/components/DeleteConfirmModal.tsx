@@ -1,6 +1,7 @@
 // pos-frontend/src/features/admin/components/DeleteConfirmModal.tsx
 
 import React, { useState } from "react";
+import { useToast } from "./Toast";
 
 type Props = {
   open: boolean;
@@ -18,6 +19,8 @@ export default function DeleteConfirmModal({
   onClose,
 }: Props) {
   const [loading, setLoading] = useState(false);
+  const { push } = useToast();
+
 
   if (!open) return null;
 
@@ -25,10 +28,11 @@ export default function DeleteConfirmModal({
     setLoading(true);
     try {
       await onConfirm();
+      push({ kind: "success", msg: "User deleted" });
       onClose();
     } catch (err) {
       console.error(err);
-      alert((err as any)?.message || "Failed to delete");
+      push({ kind: "error", msg: (err as any)?.message || "Failed to delete" });
     } finally {
       setLoading(false);
     }

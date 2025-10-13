@@ -1,5 +1,9 @@
+// pos-frontend/src/features/admin/components/UserModal.tsx
 import React, { useEffect, useState } from "react";
 import { AdminAPI, AdminUser, Store } from "../adminApi";
+import { useToast } from "./Toast";
+
+
 
 type Props = {
   open: boolean;
@@ -7,9 +11,6 @@ type Props = {
   onSave: () => void;
   editUser?: AdminUser | null;
 };
-
-
-
 
 
 export default function UserModal({ open, onClose, onSave, editUser }: Props) {
@@ -24,6 +25,8 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{value:string; label:string}[]>([]);
+  const { push } = useToast();
+
 
   useEffect(() => {
     (async () => {
@@ -93,11 +96,12 @@ const handleSubmit = async () => {
         username, email, password, role, is_active: isActive, stores,
       });
     }
+    push({ kind: "success", msg: isEdit ? "User updated" : "User created" });
     onSave();
     onClose();
   } catch (err: any) {
     console.error(err);
-    alert(err?.message || "Failed to save user");
+    push({ kind: "error", msg: (err as any)?.message || "Failed to save user" });
   } finally {
     setSaving(false);
   }

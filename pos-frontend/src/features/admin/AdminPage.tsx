@@ -6,6 +6,8 @@ import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPerc
 import UserModal from "./components/UserModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import { Trash2 } from "lucide-react";
+import { useToast } from "./components/Toast";
+
 
 
 type TabKey = "users"|"stores"|"registers"|"taxcats"|"taxrules"|"discrules"|"coupons";
@@ -31,6 +33,8 @@ export default function AdminPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [editUser, setEditUser] = useState<any|null>(null);
   const [deleteUser, setDeleteUser] = useState<any | null>(null);
+  const { push } = useToast();
+
 
 
   // Fetch per tab
@@ -56,6 +60,7 @@ export default function AdminPage() {
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e) {
         console.error(e);
+        push({ kind: "error", msg: "Failed to load data" });
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
