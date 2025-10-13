@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [editUser, setEditUser] = useState<any|null>(null);
   const [deleteUser, setDeleteUser] = useState<any | null>(null);
+  const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const { push } = useToast();
 
 
@@ -69,6 +70,23 @@ export default function AdminPage() {
     return ()=>{ mounted = false; };
   }, [active, query]);
 
+  // Handlers
+  const onToggleActive = async (u: AdminUser) => {
+    setUpdatingIds(prev => [...prev, u.id]);
+    try {
+      await AdminAPI.updateUser(u.id, { is_active: !u.is_active });
+      // optimistic local update so the row reflects immediately
+      setData(prev => prev.map(r => (r.id === u.id ? { ...r, is_active: !u.is_active } : r)));
+      push({ kind: u.is_active ? "warn" : "success", msg: u.is_active ? `User "${u.user?.username}" deactivated` : `User "${u.user?.username}" activated` });
+    } catch (e: any) {
+      console.error(e);
+      push({ kind: "error", msg: e?.message || "Failed to update user status" });
+    } finally {
+      setUpdatingIds(prev => prev.filter(id => id !== u.id));
+    }
+  };
+
+
   // Column definitions per tab
   const cols = useMemo(()=>{
     switch (active) {
@@ -88,7 +106,19 @@ export default function AdminPage() {
           { key:"user", header:"User", render:renderName },
           { key:"role", header:"Role" },
           { key:"is_active", header:"Active", render:(r:AdminUser)=>(
-            <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active?"bg-emerald-600/30 text-emerald-200":"bg-slate-600/30 text-slate-300"}`}>{r.is_active?"Yes":"No"}</span>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!r.is_active}
+                disabled={updatingIds.includes(r.id)}
+                onChange={() => onToggleActive(r)}
+                className="h-4 w-4 accent-emerald-500"
+                title={r.is_active ? "Deactivate user" : "Activate user"}
+              />
+              <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+                {r.is_active ? "Active" : "Inactive"}
+              </span>
+            </label>
           )},
           { key: "stores", header: "Stores", render: (r: AdminUser) => (
             <div className="flex flex-wrap gap-1 max-w-[8rem]">
