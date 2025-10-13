@@ -90,7 +90,23 @@ export default function AdminPage() {
           { key:"is_active", header:"Active", render:(r:AdminUser)=>(
             <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active?"bg-emerald-600/30 text-emerald-200":"bg-slate-600/30 text-slate-300"}`}>{r.is_active?"Yes":"No"}</span>
           )},
-          { key:"stores", header:"Stores", render:(r:AdminUser)=> r.stores?.length ?? 0, align:"right" as const },
+          { key: "stores", header: "Stores", render: (r: AdminUser) => (
+            <div className="flex flex-wrap gap-1 max-w-[8rem]">
+              {(r.store_objects || []).slice(0, 3).map((s:any) => (
+                <span
+                  key={s.id}
+                  className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200 truncate"
+                  title={s.name}
+                >
+                  {s.name}
+                </span>
+              ))}
+              {(r.store_objects || []).length > 3 && (
+                <span className="text-xs text-slate-400">+{(r.store_objects || []).length - 3}</span>
+              )}
+            </div>
+          ), align:"left" as const },
+
           { key: "actions", header: "", render: (r: AdminUser) => (
             <div className="flex items-center gap-3 justify-end">
               <button
@@ -196,17 +212,75 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* New button for Users tab */}
+        {/* Filters + New button for Users tab */}
         {active === "users" && (
-            <div className="flex justify-end">
-                <button
-                onClick={() => { setEditUser(null); setShowUserModal(true); }}
-                className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
-                >
-                + New User
-                </button>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Left: filters */}
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {/* Role filter */}
+              <select
+                value={query.role || ""}
+                onChange={(e) => setQuery((p) => ({ ...p, role: e.target.value || undefined }))}
+                className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+              >
+                <option value="">All Roles</option>
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="cashier">Cashier</option>
+                <option value="accountant">Accountant</option>
+                <option value="auditor">Auditor</option>
+              </select>
+
+              {/* Active filter */}
+              <select
+                value={
+                  query.is_active === true
+                    ? "true"
+                    : query.is_active === false
+                    ? "false"
+                    : ""
+                }
+                onChange={(e) =>
+                  setQuery((p) => ({
+                    ...p,
+                    is_active:
+                      e.target.value === ""
+                        ? undefined
+                        : e.target.value === "true",
+                  }))
+                }
+                className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+              >
+                <option value="">All Users</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+
+              {/* Search */}
+              <input
+                value={query.search || ""}
+                onChange={(e) =>
+                  setQuery((p) => ({ ...p, search: e.target.value || undefined }))
+                }
+                placeholder="Search username or email…"
+                className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+              />
             </div>
+
+            {/* Right: add new user */}
+            <button
+              onClick={() => {
+                setEditUser(null);
+                setShowUserModal(true);
+              }}
+              className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+            >
+              + New User
+            </button>
+          </div>
         )}
+
 
 
       {/* Table */}

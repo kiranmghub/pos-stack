@@ -50,12 +50,14 @@ class TenantUserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(write_only=True, required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, allow_blank=False, style={"input_type":"password"})
     stores = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all(), many=True, required=False)
+    store_objects = StoreLiteSerializer(many=True, read_only=True, source="stores")
+
 
     class Meta:
         model = TenantUser
         fields = ("id", "tenant", "user", "user_id",
                   "username", "email", "password",
-                  "role", "is_active", "stores")
+                  "role", "is_active", "stores", "store_objects")
         read_only_fields = ("tenant",)
 
     def validate(self, attrs):
