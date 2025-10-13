@@ -15,6 +15,9 @@ from catalog.models import TaxCategory
 from taxes.models import TaxRule
 from discounts.models import DiscountRule, Coupon
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+
 User = get_user_model()
 
 # ---------- LITE HELPERS ----------
@@ -34,17 +37,88 @@ class TaxCategoryLiteSerializer(serializers.ModelSerializer):
         fields = ("id", "code", "name", "rate")
 
 # ---------- CORE ENTITIES ----------
+
+
 class TenantUserSerializer(serializers.ModelSerializer):
+    # existing nested read
     user = UserLiteSerializer(read_only=True)
+    # existing: supply an existing user
     user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(),
-                                                 source="user", write_only=True)
-    stores = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all(),
-                                                many=True, required=False)
+                                                 source="user", write_only=True, required=False)
+    # NEW: inline user creation/update fields
+    username = serializers.CharField(write_only=True, required=False, allow_blank=False)
+    email = serializers.EmailField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=False, style={"input_type":"password"})
+    stores = serializers.PrimaryKeyRelatedField(queryset=Store.objects.all(), many=True, required=False)
 
     class Meta:
         model = TenantUser
-        fields = ("id", "tenant", "user", "user_id", "role", "is_active", "stores")
+        fields = ("id", "tenant", "user", "user_id",
+                  "username", "email", "password",
+                  "role", "is_active", "stores")
         read_only_fields = ("tenant",)
+
+    def validate(self, attrs):
+        # For create, either user_id OR (username + password) must be present
+        creating = self.instance is None
+        if creating:
+            if not attrs.get("user") and not attrs.get("username"):
+                raise serializers.ValidationError("Provide either user_id or username/password.")
+            if attrs.get("username") and not attrs.get("password"):
+                raise serializers.ValidationError("Password is required when creating a new user.")
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated):
+        tenant = self.context["request"].tenant
+        # If user supplied, just bind membership
+        user = validated.pop("user", None)
+        username = validated.pop("username", None)
+        email = validated.pop("email", "")
+        password = validated.pop("password", None)
+        stores = validated.pop("stores", [])
+        if user is None:
+            # create a new auth user
+            user = User.objects.create(username=username, email=email)
+            if password:
+                user.set_password(password)
+                user.save(update_fields=["password"])
+        tu = TenantUser.objects.create(tenant=tenant, user=user, **validated)
+        if stores:
+            tu.stores.set(stores)
+        return tu
+
+    @transaction.atomic
+    def update(self, instance, validated):
+        # Optional password change (if provided)
+        password = validated.pop("password", None)
+        username = validated.pop("username", None)
+        email = validated.pop("email", None)
+        stores = validated.pop("stores", None)
+
+        # Update basic fields on membership
+        for k in ("role", "is_active"):
+            if k in validated:
+                setattr(instance, k, validated[k])
+        instance.save(update_fields=["role", "is_active"])
+
+        # Update stores if provided
+        if stores is not None:
+            instance.stores.set(stores)
+
+        # Update user core fields if provided
+        user = instance.user
+        changed = False
+        if username:
+            user.username = username; changed = True
+        if email is not None:
+            user.email = email; changed = True
+        if password:
+            user.set_password(password); changed = True
+        if changed:
+            user.save()
+        return instance
+
 
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:
