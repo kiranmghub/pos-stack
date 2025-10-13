@@ -1,10 +1,18 @@
 // pos-frontend/src/features/admin/components/Toast.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  CheckCircle2,
+  XCircle,
+  Info,
+  Trash2,
+} from "lucide-react";
 
-type Toast = { id: number; kind: "success" | "error" | "info"; msg: string };
-type Ctx = {
-  push: (t: Omit<Toast, "id">) => void;
+type Toast = {
+  id: number;
+  kind: "success" | "error" | "info" | "warn";
+  msg: string;
 };
+type Ctx = { push: (t: Omit<Toast, "id">) => void };
 
 const ToastCtx = createContext<Ctx | null>(null);
 
@@ -30,6 +38,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return () => timers.forEach(clearTimeout);
   }, [list]);
 
+  const colorMap = {
+    success: "bg-emerald-900/80 border-emerald-600 text-emerald-50",
+    error: "bg-red-900/80 border-red-600 text-red-50",
+    info: "bg-slate-800/90 border-slate-600 text-slate-100",
+    warn: "bg-amber-900/80 border-amber-600 text-amber-50",
+  } as const;
+
+  const iconMap = {
+    success: <CheckCircle2 className="h-4 w-4 shrink-0" />,
+    error: <XCircle className="h-4 w-4 shrink-0" />,
+    info: <Info className="h-4 w-4 shrink-0" />,
+    warn: <Trash2 className="h-4 w-4 shrink-0" />,
+  } as const;
+
   return (
     <ToastCtx.Provider value={{ push }}>
       {children}
@@ -37,16 +59,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {list.map((t) => (
           <div
             key={t.id}
-            className={`min-w-[16rem] rounded-lg border px-3 py-2 shadow-lg text-sm
-              ${
-                t.kind === "success"
-                  ? "bg-emerald-900/80 border-emerald-600 text-emerald-50"
-                  : t.kind === "error"
-                  ? "bg-red-900/80 border-red-600 text-red-50"
-                  : "bg-slate-800/90 border-slate-600 text-slate-100"
-              }`}
+            className={`min-w-[16rem] rounded-lg border px-3 py-2 shadow-lg text-sm flex items-center gap-2 ${colorMap[t.kind]}`}
           >
-            {t.msg}
+            {iconMap[t.kind]}
+            <span>{t.msg}</span>
           </div>
         ))}
       </div>

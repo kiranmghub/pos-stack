@@ -233,14 +233,14 @@ export default function AdminPage() {
       <DeleteConfirmModal
         open={!!deleteUser}
         title="Delete User"
-        message={
-          deleteUser
-            ? `Are you sure you want to delete "${deleteUser.user?.username}"? This cannot be undone.`
-            : ""
-        }
+        subject={deleteUser?.user?.username}
         onConfirm={async () => {
           if (deleteUser) {
             await AdminAPI.deleteUser(deleteUser.id);
+            push({
+              kind: "warn",
+              msg: `User "${deleteUser.user?.username}" deleted`,
+            });
             setQuery({ ...query }); // refresh table
           }
         }}
