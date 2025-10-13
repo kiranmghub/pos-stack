@@ -77,6 +77,15 @@ class StoreViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     search_fields = ["code", "name"]
     ordering_fields = ["id", "code", "name", "is_active"]
 
+    def perform_create(self, serializer):
+    # Let the serializer read tenant from self.context["request"].tenant
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+
+
 class RegisterViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = Register.objects.select_related("store")
     serializer_class = RegisterSerializer
