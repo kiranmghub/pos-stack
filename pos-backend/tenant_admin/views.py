@@ -1,6 +1,6 @@
-from django.shortcuts import render
-
 # pos-backend/tenant_admin/views.py
+
+from django.shortcuts import render
 from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
@@ -68,6 +68,14 @@ class TenantUserViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     ordering = ["id"]
     ordering_fields = ["id", "role", "is_active"]
 
+    def perform_create(self, serializer):
+        """
+        Override TenantScopedMixin to avoid passing tenant twice.
+        TenantUserSerializer.create() already sets tenant internally.
+        """
+        serializer.save()
+    
+
 class StoreViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
@@ -95,6 +103,10 @@ class RegisterViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     search_fields = ["code", "store__code", "store__name"]
     ordering_fields = ["id", "code", "is_active"]
 
+    def perform_update(self, serializer):
+        serializer.save()
+
+
 class TaxCategoryViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = TaxCategory.objects.all()
     serializer_class = TaxCategorySerializer
@@ -103,6 +115,10 @@ class TaxCategoryViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ["code", "name"]
     search_fields = ["code", "name"]
     ordering_fields = ["id", "code", "name", "rate"]
+
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 class TaxRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = TaxRule.objects.select_related("tenant", "store").prefetch_related("categories")
@@ -124,6 +140,10 @@ class DiscountRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     search_fields = ["code", "name", "categories__code", "products__name", "variants__sku"]
     ordering_fields = ["priority", "code", "name", "start_at", "end_at"]
 
+    def perform_update(self, serializer):
+        serializer.save()
+
+
 class CouponViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     queryset = Coupon.objects.select_related("tenant", "rule")
     serializer_class = CouponSerializer
@@ -132,6 +152,10 @@ class CouponViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     filterset_fields = ["is_active", "rule", "start_at", "end_at"]
     search_fields = ["code", "name", "rule__name", "rule__code"]
     ordering_fields = ["code", "name", "max_uses", "used_count", "start_at", "end_at"]
+
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 
 
