@@ -1,4 +1,4 @@
-// src/features/catalog/api.ts
+// pos-frontend/src/features/catalog/api.ts
 import { apiFetchJSON, apiFetch } from "@/lib/auth";
 
 /* ---------- Types (match your existing ones) ---------- */

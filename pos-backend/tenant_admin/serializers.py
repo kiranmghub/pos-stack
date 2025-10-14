@@ -17,6 +17,8 @@ from discounts.models import DiscountRule, Coupon
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from common.roles import TenantRole
+
 
 User = get_user_model()
 
@@ -97,6 +99,36 @@ class TenantUserSerializer(serializers.ModelSerializer):
         username = validated.pop("username", None)
         email = validated.pop("email", None)
         stores = validated.pop("stores", None)
+
+
+        # --- SAFETY RAILS ---
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None)
+
+        # 1) prevent self-deactivation
+        if "is_active" in validated and validated["is_active"] is False:
+            if request and instance.user_id == getattr(request.user, "id", None):
+                raise serializers.ValidationError("You cannot deactivate your own account.")
+
+        # 2) prevent removing the last active owner
+        # a) Demotion away from OWNER
+        if "role" in validated:
+            new_role = validated["role"]
+            if str(instance.role).lower() == str(TenantRole.OWNER).lower() and str(new_role).lower() != str(TenantRole.OWNER).lower():
+                # if demoting the only active owner
+                if tenant and not TenantUser.objects.filter(
+                    tenant=tenant, role=TenantRole.OWNER, is_active=True
+                ).exclude(pk=instance.pk).exists():
+                    raise serializers.ValidationError("Cannot change role: this is the last active Owner for this tenant.")
+
+        # b) Deactivation of an OWNER
+        if "is_active" in validated and validated["is_active"] is False:
+            if str(instance.role).lower() == str(TenantRole.OWNER).lower():
+                if tenant and not TenantUser.objects.filter(
+                    tenant=tenant, role=TenantRole.OWNER, is_active=True
+                ).exclude(pk=instance.pk).exists():
+                    raise serializers.ValidationError("Cannot deactivate the last active Owner for this tenant.")
+        # --- END SAFETY RAILS ---
 
         # Update basic fields on membership
         for k in ("role", "is_active"):

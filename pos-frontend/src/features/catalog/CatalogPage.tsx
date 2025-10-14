@@ -1,4 +1,4 @@
-// src/features/catalog/CatalogPage.tsx
+// pos-frontend/src/features/catalog/CatalogPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Search, Filter, Package, X, CheckCircle2, AlertTriangle } from "lucide-react";
 import {

@@ -1,4 +1,4 @@
-// src/lib/auth.ts
+// pos-frontend/src/lib/auth.ts
 // Auth helpers: token storage, auto-refresh, and a single apiFetch wrapper.
 
 const API_BASE = import.meta.env.VITE_API_BASE || ""; // use Vite proxy if ""

@@ -10,6 +10,75 @@ import { useToast } from "./components/Toast";
 import Checkbox from "./components/ui/Checkbox";
 
 
+const CustomCheckbox = ({ 
+  checked, 
+  onChange, 
+  indeterminate = false,
+  disabled = false,
+  ...props 
+}: { 
+  checked: boolean; 
+  onChange: () => void;
+  indeterminate?: boolean;
+  disabled?: boolean;
+  [key: string]: any;
+}) => {
+  const ref = React.useRef<HTMLInputElement>(null);
+  
+  React.useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <div className="relative inline-block">
+      <input
+        ref={ref}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="peer sr-only"
+        {...props}
+      />
+      <div 
+        onClick={disabled ? undefined : onChange}
+        className={`
+          w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer
+          transition-colors duration-150
+          ${checked || indeterminate
+            ? 'bg-emerald-500 border-emerald-500' 
+            : 'bg-transparent border-slate-500 hover:border-slate-400'
+          }
+          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+        `}
+      >
+        {checked && !indeterminate && (
+          <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+            <path 
+              d="M10 3L4.5 8.5L2 6" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+        {indeterminate && (
+          <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+            <path 
+              d="M2 6H10" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+};
 
 
 type TabKey = "users"|"stores"|"registers"|"taxcats"|"taxrules"|"discrules"|"coupons";
@@ -99,38 +168,57 @@ export default function AdminPage() {
     );
 
   const selectAll = (rows: AdminUser[]) =>
-    setSelectedIds(
-      selectedIds.length === rows.length ? [] : rows.map((r) => r.id)
-    );
+   setSelectedIds((prev) => (prev.length === rows.length ? [] : rows.map((r) => r.id)));
 
   const clearSelection = () => setSelectedIds([]);
 
-  const bulkSetActive = async (value: boolean) => {
+const bulkSetActive = async (value: boolean) => {
     if (selectedIds.length === 0) return;
     setBulkLoading(true);
     try {
+      let ok = 0;
+      let fails: { id: number; msg: string }[] = [];
+
       for (const id of selectedIds) {
-        await AdminAPI.updateUser(id, { is_active: value });
+        try {
+          await AdminAPI.updateUser(id, { is_active: value });
+          ok += 1;
+        } catch (e: any) {
+          fails.push({ id, msg: e?.message || "Failed" });
+        }
       }
-      setData((prev) =>
-        prev.map((r) =>
-          selectedIds.includes(r.id) ? { ...r, is_active: value } : r
-        )
-      );
-      push({
-        kind: value ? "success" : "warn",
-        msg: value
-          ? `Activated ${selectedIds.length} user(s)`
-          : `Deactivated ${selectedIds.length} user(s)`,
-      });
+
+      if (ok > 0) {
+        setData((prev) =>
+          prev.map((r) => (selectedIds.includes(r.id) ? { ...r, is_active: value } : r))
+        );
+      }
+
+      if (fails.length === 0) {
+        // all good
+        push({
+          kind: value ? "success" : "warn",
+          msg: value ? `Activated ${ok} user(s)` : `Deactivated ${ok} user(s)`,
+        });
+      } else if (ok > 0) {
+        // partial success
+        push({
+          kind: "warn",
+          msg: `Updated ${ok} user(s). Skipped ${fails.length} — ${fails[0].msg}`,
+        });
+      } else {
+        // all failed
+        push({
+          kind: "error",
+          msg: `No users updated. ${fails[0].msg}`,
+        });
+      }
       clearSelection();
-    } catch (e: any) {
-      console.error(e);
-      push({ kind: "error", msg: e?.message || "Bulk update failed" });
     } finally {
       setBulkLoading(false);
     }
   };
+
 
   
   const allCount = data.length;
@@ -154,35 +242,35 @@ export default function AdminPage() {
         };
 
         return [
-          { key: "select",
-            header: (
-              <Checkbox
-                checked={allChecked}
-                indeterminate={partiallyChecked}
-                onChange={() => selectAll(data)}
-                aria-label="Select all rows"
-                title="Select all"
-              />
-            ),
-            render: (r: AdminUser) => (
-              <Checkbox
-                checked={selectedIds.includes(r.id)}
-                onChange={() => toggleSelect(r.id)}
-                aria-label="Select row"
-              />
-            ),
-            width: "2rem",
-          },
+            { 
+              key: "select",
+              header: (
+                <Checkbox
+                  checked={allChecked}
+                  indeterminate={partiallyChecked}
+                  onChange={() => selectAll(data)}
+                  aria-label="Select all rows"
+                  title="Select all"
+                />
+              ),
+              render: (r: AdminUser) => (
+                <Checkbox
+                  checked={selectedIds.includes(r.id)}
+                  onChange={() => toggleSelect(r.id)}
+                  aria-label="Select row"
+                />
+              ),
+              width: "2rem",
+            },
+
           { key:"user", header:"User", render:renderName },
           { key:"role", header:"Role" },
           { key:"is_active", header:"Active", render:(r:AdminUser)=>(
             <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={!!r.is_active}
                 disabled={updatingIds.includes(r.id)}
                 onChange={() => onToggleActive(r)}
-                className="h-4 w-4 accent-emerald-500"
                 title={r.is_active ? "Deactivate user" : "Activate user"}
               />
               <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
@@ -293,7 +381,7 @@ export default function AdminPage() {
       }
       default: return [];
     }
-  }, [active]);
+  }, [active, selectedIds, updatingIds, allChecked, partiallyChecked, data]);
 
 
   return (
