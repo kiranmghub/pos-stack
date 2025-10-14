@@ -7,6 +7,8 @@ import UserModal from "./components/UserModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import { Trash2 } from "lucide-react";
 import { useToast } from "./components/Toast";
+import Checkbox from "./components/ui/Checkbox";
+
 
 
 
@@ -34,6 +36,9 @@ export default function AdminPage() {
   const [editUser, setEditUser] = useState<any|null>(null);
   const [deleteUser, setDeleteUser] = useState<any | null>(null);
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const { push } = useToast();
 
 
@@ -86,6 +91,50 @@ export default function AdminPage() {
     }
   };
 
+  const toggleSelect = (id: number) =>
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const selectAll = (rows: AdminUser[]) =>
+    setSelectedIds(
+      selectedIds.length === rows.length ? [] : rows.map((r) => r.id)
+    );
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const bulkSetActive = async (value: boolean) => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      for (const id of selectedIds) {
+        await AdminAPI.updateUser(id, { is_active: value });
+      }
+      setData((prev) =>
+        prev.map((r) =>
+          selectedIds.includes(r.id) ? { ...r, is_active: value } : r
+        )
+      );
+      push({
+        kind: value ? "success" : "warn",
+        msg: value
+          ? `Activated ${selectedIds.length} user(s)`
+          : `Deactivated ${selectedIds.length} user(s)`,
+      });
+      clearSelection();
+    } catch (e: any) {
+      console.error(e);
+      push({ kind: "error", msg: e?.message || "Bulk update failed" });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  
+  const allCount = data.length;
+  const selCount = selectedIds.length;
+  const allChecked = allCount > 0 && selCount === allCount;
+  const partiallyChecked = selCount > 0 && selCount < allCount;
 
   // Column definitions per tab
   const cols = useMemo(()=>{
@@ -103,6 +152,25 @@ export default function AdminPage() {
         };
 
         return [
+          { key: "select",
+            header: (
+              <Checkbox
+                checked={allChecked}
+                indeterminate={partiallyChecked}
+                onChange={() => selectAll(data)}
+                aria-label="Select all rows"
+                title="Select all"
+              />
+            ),
+            render: (r: AdminUser) => (
+              <Checkbox
+                checked={selectedIds.includes(r.id)}
+                onChange={() => toggleSelect(r.id)}
+                aria-label="Select row"
+              />
+            ),
+            width: "2rem",
+          },
           { key:"user", header:"User", render:renderName },
           { key:"role", header:"Role" },
           { key:"is_active", header:"Active", render:(r:AdminUser)=>(
@@ -311,12 +379,93 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Bulk toolbar */}
+        {active === "users" && selectedIds.length > 0 && (
+          <div className="flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-md px-3 py-2 text-sm">
+            <span className="text-slate-200">
+              {selectedIds.length} selected
+            </span>
+
+            {(() => {
+              const selectedRows = data.filter((u: AdminUser) => selectedIds.includes(u.id));
+              const allActive = selectedRows.every((u) => u.is_active);
+              const allInactive = selectedRows.every((u) => !u.is_active);
+
+              // Decide which action(s) to show
+              if (allActive) {
+                return (
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetActive(false)}
+                      className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white"
+                    >
+                      Deactivate Selected
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                );
+              }
+              if (allInactive) {
+                return (
+                  <div className="flex items-center gap-2">
+                    <button
+                      disabled={bulkLoading}
+                      onClick={() => bulkSetActive(true)}
+                      className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white"
+                    >
+                      Activate Selected
+                    </button>
+                    <button
+                      onClick={clearSelection}
+                      className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                );
+              }
+
+              // Mixed (some active, some inactive)
+              return (
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={bulkLoading}
+                    onClick={() => bulkSetActive(true)}
+                    className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white"
+                  >
+                    Activate Inactive
+                  </button>
+                  <button
+                    disabled={bulkLoading}
+                    onClick={() => bulkSetActive(false)}
+                    className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white"
+                  >
+                    Deactivate Active
+                  </button>
+                  <button
+                    onClick={clearSelection}
+                    className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                  >
+                    Clear
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
 
 
       {/* Table */}
       <DataTable
         title={tabs.find(t=>t.key===active)?.label || ""}
-        rows={data}
+        rows={data.map((r) => ({ ...r, selected: selectedIds.includes(r.id) }))}
         cols={cols as any}
         loading={loading}
         total={total}

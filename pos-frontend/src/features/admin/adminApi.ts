@@ -1,7 +1,6 @@
-// src/features/admin/adminApi.ts
+// pos-frontend/src/features/admin/adminApi.ts
 import { ensureAuthedFetch } from "@/components/AppShell";
 
-// pos-frontend/src/features/admin/adminApi.ts
 //import { fetchWithAuth } from "@/features/pos/api"; // you already use this in POS
 // jsonOrThrow may exist in your POS api file. If not, add a tiny helper here:
 async function jsonOrThrow<T>(res: Response): Promise<T> {

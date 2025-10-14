@@ -60,7 +60,14 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
           ) : rows.length === 0 ? (
             <tr><td className="px-3 py-4 text-slate-400" colSpan={cols.length}>No rows</td></tr>
           ) : rows.map((r, i) => (
-            <tr key={i} className="border-b border-slate-800/60 hover:bg-slate-800/40">
+            <tr
+                key={i}
+                className={`border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors ${
+                  // highlight selected rows if they contain a "selected" prop passed by AdminPage
+                  (r as any).selected ? "bg-slate-800/70" : ""
+                }`}
+              >
+
               {cols.map(c => (
                 <td key={String(c.key)} className={`px-3 py-2 ${c.align==="right"?"text-right":""}`}>
                   {c.render ? c.render(r) : String((r as any)[c.key])}
