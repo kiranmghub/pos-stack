@@ -1,0 +1,85 @@
+src
+├── App.css
+├── App.tsx
+├── assets
+│   └── react.svg
+├── components
+│   ├── AppShell_Backup.tsx.txt
+│   ├── AppShell.tsx
+│   └── ui
+│       ├── button.tsx
+│       ├── checkbox.tsx
+│       ├── dialog.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── toast.tsx
+│       └── toaster.tsx
+├── features
+│   ├── admin
+│   │   ├── adminApi.ts
+│   │   ├── AdminPage.tsx
+│   │   ├── AdminRoute.tsx
+│   │   └── components
+│   │       ├── DataTable.tsx
+│   │       ├── DeleteConfirmModal.tsx
+│   │       ├── Toast.tsx
+│   │       ├── ui
+│   │       │   └── Checkbox.tsx
+│   │       └── UserModal.tsx
+│   ├── auth
+│   │   └── LoginPage.tsx
+│   ├── catalog
+│   │   ├── api_Backup.ts.txt
+│   │   ├── api.ts
+│   │   ├── CatalogPage_Backup.tsx.txt
+│   │   ├── CatalogPage.tsx
+│   │   └── CatalogRoute.tsx
+│   ├── home
+│   │   └── HomePage.tsx
+│   ├── inventory
+│   │   ├── api.ts
+│   │   ├── countsApi.ts
+│   │   ├── CountsPage_Backup.tsx.txt
+│   │   ├── CountsPage.tsx
+│   │   ├── InventoryRoute_Backup.tsx.txt
+│   │   ├── InventoryRoute.tsx
+│   │   ├── transfersApi.ts
+│   │   ├── TransfersPage_Backup.tsx.txt
+│   │   └── TransfersPage.tsx
+│   ├── owner
+│   │   ├── OwnerDashboard.tsx
+│   │   └── OwnerRoute.tsx
+│   └── pos
+│       ├── api_Backup.ts.txt
+│       ├── api.ts
+│       ├── mock.ts
+│       ├── PosRoute.tsx
+│       ├── PosScreen_Backup.tsx.txt
+│       ├── PosScreen_Backup1.tsx.txt
+│       ├── PosScreen_Backup2.tsx.txt
+│       ├── PosScreen_Backup3.tsx.txt
+│       ├── PosScreen_Mock.tsx
+│       └── PosScreen.tsx
+├── hooks
+│   └── use-toast.ts
+├── index.css
+├── index.css_bkp
+├── lib
+│   ├── appContext.ts
+│   ├── auth_Backup.ts
+│   ├── auth.ts
+│   └── utils.ts
+├── main_Backup.tsx.txt
+├── main.tsx
+├── routes
+│   └── ProtectedRoute.tsx
+├── ui
+│   ├── button.tsx
+│   ├── checkbox.tsx
+│   ├── dialog.tsx
+│   ├── input.tsx
+│   ├── label.tsx
+│   └── toast.tsx
+└── vite-env.d.ts
+
+18 directories, 65 files
