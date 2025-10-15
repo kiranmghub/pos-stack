@@ -1,8 +1,9 @@
-// src/components/AppShell.tsx
+// pos-frontend/src/components/AppShell.tsx
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Home, LogOut, Store } from "lucide-react";
 import { getTenantCode, logout, getUser, refreshAccessIfNeeded, authHeaders } from "@/lib/auth";
+import { Toaster } from "@/ui/toast"; // global toast container
 
 type AppShellProps = {
   children: React.ReactNode;

@@ -1,11 +1,8 @@
 // pos-frontend/src/features/admin/components/ui/Checkbox.tsx
-
-// pos-frontend/src/features/admin/components/ui/Checkbox.tsx
 // Temporary proxy to shadcn checkbox to avoid touching all call sites.
-// In a later PR, we’ll import directly from "@/ui/checkbox".
 "use client";
 import * as React from "react";
-import { Checkbox as ShadcnCheckbox } from "@/ui/checkbox";
+import { Checkbox as Base } from "@/ui/checkbox";
 
 type Props = {
   checked?: boolean;
@@ -19,19 +16,21 @@ type Props = {
 
 const Checkbox = React.forwardRef<HTMLInputElement, Props>(
   ({ checked, indeterminate, disabled, onChange, className, title, ...rest }, ref) => {
-    // Radix checkbox supports indeterminate via prop
     return (
-      <label title={title} className={["inline-flex items-center gap-2", disabled ? "opacity-60" : ""].join(" ")}>
-        <ShadcnCheckbox
+      <label title={title} className={disabled ? "opacity-60" : ""}>
+        <Base
           ref={ref as any}
           checked={indeterminate ? "indeterminate" : !!checked}
+          className={[
+            "h-4 w-4 border",
+            "border-slate-600 data-[state=checked]:bg-emerald-600 data-[state=indeterminate]:bg-emerald-600",
+            className || "",
+          ].join(" ")}
           onCheckedChange={(v) => {
-            // normalize to change event signature used across Admin
             const fake = { target: { checked: v === true } } as unknown as React.ChangeEvent<HTMLInputElement>;
             onChange?.(fake);
           }}
           disabled={disabled}
-          className={className}
           aria-label={rest["aria-label"]}
         />
       </label>
@@ -40,6 +39,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, Props>(
 );
 Checkbox.displayName = "Checkbox";
 export default Checkbox;
+
 
 
 

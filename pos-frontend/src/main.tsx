@@ -1,4 +1,4 @@
-// src/main.tsx
+// pos-frontend/src/main.tsx
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
@@ -20,6 +20,9 @@ import InventoryRoute from "@/features/inventory/InventoryRoute";
 
 // ⬇️ NEW: HomePage import
 import HomePage from "@/features/home/HomePage";
+
+document.documentElement.classList.add("dark");
+
 
 /** LandingRouter sends users to the right home based on role
  *  (kept for reference; no longer used as "/" now shows HomePage) */
