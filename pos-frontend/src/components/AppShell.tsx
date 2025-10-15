@@ -64,6 +64,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
 
       {/* Page body */}
       <main>{children}</main>
+      <Toaster/>
 
     </div>
   );

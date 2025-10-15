@@ -6,7 +6,8 @@ import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPerc
 import UserModal from "./components/UserModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import { Trash2 } from "lucide-react";
-import { useToast } from "./components/Toast";
+//import { useToast } from "./components/Toast";
+import { useToast } from "./components/ToastCompat";
 import Checkbox from "./components/ui/Checkbox";
 import { getUser } from "@/lib/auth";
 

@@ -1,7 +1,8 @@
 // pos-frontend/src/features/admin/components/UserModal.tsx
 import React, { useEffect, useState } from "react";
 import { AdminAPI, AdminUser, Store } from "../adminApi";
-import { useToast } from "./Toast";
+//import { useToast } from "./Toast";
+import { useToast } from "./ToastCompat";
 
 
 
