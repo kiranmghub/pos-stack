@@ -8,6 +8,8 @@ import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import { Trash2 } from "lucide-react";
 import { useToast } from "./components/Toast";
 import Checkbox from "./components/ui/Checkbox";
+import { getUser } from "@/lib/auth";
+
 
 
 const CustomCheckbox = ({ 
@@ -108,10 +110,13 @@ export default function AdminPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
 
-
-
   const { push } = useToast();
 
+  // derive my user id from lib/auth getUser()
+  const meId = React.useMemo(() => {
+        const user = getUser();
+        return user?.id ?? user?.user?.id ?? null;
+    }, []);
 
 
   // Fetch per tab
@@ -162,62 +167,83 @@ export default function AdminPage() {
     }
   };
 
-  const toggleSelect = (id: number) =>
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  // const toggleSelect = (id: number) =>
+  //   setSelectedIds((prev) =>
+  //     prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+  //   );
+  const toggleSelect = (id: number) => {
+        if (meId && id === meId) {
+          push({ kind: "info", msg: "You cannot select yourself for bulk changes." });
+          return;
+        }
+        setSelectedIds(prev =>
+          prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
 
-  const selectAll = (rows: AdminUser[]) =>
-   setSelectedIds((prev) => (prev.length === rows.length ? [] : rows.map((r) => r.id)));
+  // const selectAll = (rows: AdminUser[]) =>
+  //  setSelectedIds((prev) => (prev.length === rows.length ? [] : rows.map((r) => r.id)));
+  const selectAll = (rows: AdminUser[]) => {
+      const allowed = meId ? rows.filter(r => r.id !== meId) : rows;
+      setSelectedIds(prev =>
+        prev.length === allowed.length ? [] : allowed.map(r => r.id)
+      );
+    };
 
   const clearSelection = () => setSelectedIds([]);
 
 const bulkSetActive = async (value: boolean) => {
-    if (selectedIds.length === 0) return;
-    setBulkLoading(true);
-    try {
-      let ok = 0;
-      let fails: { id: number; msg: string }[] = [];
+  if (selectedIds.length === 0) return;
+  setBulkLoading(true);
+  try {
+    let okIds: number[] = [];
+    let fails: { id: number; msg: string }[] = [];
 
-      for (const id of selectedIds) {
-        try {
-          await AdminAPI.updateUser(id, { is_active: value });
-          ok += 1;
-        } catch (e: any) {
-          fails.push({ id, msg: e?.message || "Failed" });
-        }
-      }
+    // Optional soft-guard for self — we’ll add the meId helper below
+    const idsToProcess = meId ? selectedIds.filter(id => id !== meId) : selectedIds;
 
-      if (ok > 0) {
-        setData((prev) =>
-          prev.map((r) => (selectedIds.includes(r.id) ? { ...r, is_active: value } : r))
-        );
+    for (const id of idsToProcess) {
+      try {
+        await AdminAPI.updateUser(id, { is_active: value });
+        okIds.push(id);
+      } catch (e: any) {
+        fails.push({ id, msg: e?.message || "Failed" });
       }
-
-      if (fails.length === 0) {
-        // all good
-        push({
-          kind: value ? "success" : "warn",
-          msg: value ? `Activated ${ok} user(s)` : `Deactivated ${ok} user(s)`,
-        });
-      } else if (ok > 0) {
-        // partial success
-        push({
-          kind: "warn",
-          msg: `Updated ${ok} user(s). Skipped ${fails.length} — ${fails[0].msg}`,
-        });
-      } else {
-        // all failed
-        push({
-          kind: "error",
-          msg: `No users updated. ${fails[0].msg}`,
-        });
-      }
-      clearSelection();
-    } finally {
-      setBulkLoading(false);
     }
-  };
+
+    // Optimistic UI: only flip rows that actually succeeded
+    if (okIds.length > 0) {
+      setData(prev =>
+        prev.map(r => (okIds.includes(r.id) ? { ...r, is_active: value } : r))
+      );
+    }
+
+    // Toasts
+    if (fails.length === 0) {
+      push({
+        kind: value ? "success" : "warn",
+        msg: value ? `Activated ${okIds.length} user(s)` : `Deactivated ${okIds.length} user(s)`,
+      });
+    } else if (okIds.length > 0) {
+      push({
+        kind: "warn",
+        msg: `Updated ${okIds.length} user(s). Skipped ${fails.length} — ${fails[0].msg}`,
+      });
+    } else {
+      push({
+        kind: "error",
+        msg: `No users updated. ${fails[0].msg}`,
+      });
+    }
+
+    // Keep failed ones selected so you can retry; clear others
+    setSelectedIds(fails.map(f => f.id));
+
+  } finally {
+    setBulkLoading(false);
+  }
+};
+
 
 
   
@@ -269,9 +295,13 @@ const bulkSetActive = async (value: boolean) => {
             <label className="inline-flex items-center gap-2">
               <Checkbox
                 checked={!!r.is_active}
-                disabled={updatingIds.includes(r.id)}
+                disabled={updatingIds.includes(r.id) || (meId && r.id === meId)}
                 onChange={() => onToggleActive(r)}
-                title={r.is_active ? "Deactivate user" : "Activate user"}
+                  title={
+                    meId && r.id === meId
+                      ? "You cannot deactivate your own account."
+                      : r.is_active ? "Deactivate user" : "Activate user"
+                  }
               />
               <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
                 {r.is_active ? "Active" : "Inactive"}
