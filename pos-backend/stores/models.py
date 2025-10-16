@@ -1,22 +1,7 @@
-# stores/models.py
+# pos-backend/stores/models.py
 from django.db import models
-
-# Create your models here.
 from common.models import TimeStampedModel
 
-
-# class Store(TimeStampedModel):
-#     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
-#     name = models.CharField(max_length=120)
-#     code = models.SlugField()
-#     timezone = models.CharField(max_length=64, default="America/Chicago")
-#     address = models.JSONField(default=dict)
-#
-#     class Meta:
-#         unique_together = ("tenant", "code")
-#
-#     def __str__(self):
-#         return f"{self.tenant.code}:{self.code}"
 
 class Store(TimeStampedModel):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
@@ -35,8 +20,16 @@ class Store(TimeStampedModel):
     address_meta = models.JSONField(default=dict, blank=True)
 
     class Meta:
-        unique_together = ("tenant", "code")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "code"],
+                name="unique_store_code_per_tenant")
+        ]
         ordering = ["code", "id"]
+        indexes = [
+            models.Index(fields=["tenant", "code"]),
+        ]
+
 
     def __str__(self):
         return f"{self.tenant.code}:{self.code}"
