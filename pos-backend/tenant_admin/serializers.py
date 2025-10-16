@@ -18,6 +18,8 @@ from discounts.models import DiscountRule, Coupon
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from common.roles import TenantRole
+from django.db import IntegrityError, transaction
+
 
 
 User = get_user_model()
@@ -163,6 +165,48 @@ class StoreSerializer(serializers.ModelSerializer):
             "is_active", "address_meta", "created_at", "updated_at"
         )
         read_only_fields = ("tenant", "created_at", "updated_at")
+
+    # ---- Validation that runs before hitting the DB ----
+    def validate_code(self, value: str):
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None) if request else None
+        if tenant is None:
+            return value
+
+        qs = Store.objects.filter(tenant=tenant, code=value)
+        # On update, exclude the current instance
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise serializers.ValidationError(f'Store Code "{value}" is already in use for this tenant.')
+        return value
+
+    # ---- Create with tenant injection + IntegrityError -> ValidationError ----
+    def create(self, validated_data):
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None) if request else None
+        if tenant is not None:
+            validated_data["tenant"] = tenant
+
+        try:
+            with transaction.atomic():
+                return super().create(validated_data)
+        except IntegrityError:
+            # Fallback if a race condition slipped through validate_code
+            # 👇 include the attempted code in the fallback message too
+            code = validated_data.get("code", "")
+            raise serializers.ValidationError({"code": [f'Store Code "{code}" is already in use for this tenant.']})
+
+    # ---- Update with race-safe fallback as well ----
+    def update(self, instance, validated_data):
+        try:
+            with transaction.atomic():
+                return super().update(instance, validated_data)
+        except IntegrityError:
+            code = validated_data.get("code", getattr(instance, "code", ""))
+            raise serializers.ValidationError({"code": [f'Store Code "{code}" is already in use for this tenant.']})
+        
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
