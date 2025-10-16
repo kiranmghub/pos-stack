@@ -1,5 +1,7 @@
 // pos-frontend/src/features/admin/components/ui/Checkbox.tsx
 // Temporary proxy to shadcn checkbox to avoid touching all call sites.
+// In components/ui/Checkbox.tsx, add a 2-line header comment noting it proxies shadcn and is a temporary adapter.
+// This prevents future confusion and reminds us to replace call sites with @/ui/checkbox directly later.
 "use client";
 import * as React from "react";
 import { Checkbox as Base } from "@/ui/checkbox";

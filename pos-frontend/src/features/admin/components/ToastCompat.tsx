@@ -1,7 +1,7 @@
 // pos-frontend/src/features/admin/components/ToastCompat.tsx
 // This file provides a compatibility layer to adapt the old toast API to the new one.
 // It allows existing code that uses `useToast().push({ kind, msg })` to work with the new shadcn/ui toast system.
-import React from "react";
+import React, { useCallback } from "react";
 import { useToast as useShadcnToast } from "@/ui/toast";
 import { CheckCircle2, XCircle, Info, Trash2 } from "lucide-react";
 
@@ -24,21 +24,23 @@ const iconByKind: Record<Kind, React.ReactNode> = {
 
 export function useToast() {
   const { toast } = useShadcnToast();
-  return {
-    push: ({ kind, msg }: PushArgs) => {
-      const variant = kind === "error" ? "destructive" : undefined;
-      toast({
-        title: (
-          <span className="inline-flex items-center gap-2">
-            {iconByKind[kind]}
-            <span>{msg}</span>
-          </span>
-        ),
-        variant,
-        className: `min-w-[16rem] ${styleByKind[kind]}`,
-        duration: 3500,
-      });
-    },
-  };
+
+  const push = useCallback(({ kind, msg }: PushArgs) => {
+    const variant = kind === "error" ? "destructive" : undefined;
+    toast({
+      title: (
+        <span className="inline-flex items-center gap-2">
+          {iconByKind[kind]}
+          <span>{msg}</span>
+        </span>
+      ),
+      variant,
+      className: `min-w-[16rem] ${styleByKind[kind]}`,
+      duration: 3500,
+    });
+  }, [toast]);
+
+  return { push };
 }
+
 

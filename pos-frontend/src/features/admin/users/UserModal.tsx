@@ -1,8 +1,13 @@
 // pos-frontend/src/features/admin/components/UserModal.tsx
 import React, { useEffect, useState } from "react";
-import { AdminAPI, AdminUser, Store } from "../adminApi";
+//import { AdminAPI, AdminUser, Store } from "../adminApi";
+import type { AdminUser, Store } from "../adminApi";
+//import { AdminAPI } from "../adminApi"; // ← add this (value import)
+import { UsersAPI } from "../api";
 //import { useToast } from "./Toast";
-import { useToast } from "./ToastCompat";
+import { useToast } from "../components/ToastCompat";
+import Checkbox from "../components/ui/Checkbox";
+import { StoresAPI } from "../api";
 
 
 
@@ -30,37 +35,45 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
 
 
   useEffect(() => {
+    if (!open) return;
     (async () => {
       setLoading(true);
       try {
-        const list = await AdminAPI.stores();
+        const list = await StoresAPI.list({ is_active: true });
         setStoreList(Array.isArray(list) ? list : list.results ?? []);
-      } catch (err) {
-        console.error(err);
+      } catch (e: any) {
+        push({ kind: "error", msg: e?.message || "Failed to load stores" });
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [open]);
+
 
   useEffect(() => {
-  (async () => {
-    try {
-      const r = await AdminAPI.getTenantRoles();
-      setRoleOptions(r);
-    } catch (e) {
-      console.error(e);
-      setRoleOptions([
-        { value:"owner", label:"Owner" },
-        { value:"admin", label:"Admin" },
-        { value:"manager", label:"Manager" },
-        { value:"cashier", label:"Cashier" },
-        { value:"accountant", label:"Accountant" },
-        { value:"auditor", label:"Auditor" },
-      ]);
-    }
-  })();
-}, []);
+    (async () => {
+      try {
+        const opts = await UsersAPI.getTenantRoles(); // RoleOption[]
+        setRoleOptions(opts);
+
+        // if current role is not in the list, pick the first available
+        if (!opts.some((o) => o.value === role) && opts.length) {
+          setRole(opts[0].value);
+        }
+      } catch (e) {
+        console.error(e);
+        setRoleOptions([
+          { value: "owner", label: "Owner" },
+          { value: "admin", label: "Admin" },
+          { value: "manager", label: "Manager" },
+          { value: "cashier", label: "Cashier" },
+          { value: "accountant", label: "Accountant" },
+          { value: "auditor", label: "Auditor" },
+        ]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isEdit && editUser) {
@@ -90,10 +103,10 @@ const handleSubmit = async () => {
       if (username && username !== editUser.user?.username) payload.username = username;
       if (email !== editUser.user?.email) payload.email = email;
       if (password) payload.password = password;
-      await AdminAPI.updateUser(editUser.id, payload);
+      await UsersAPI.update(editUser.id, payload);
     } else {
       // Create — inline user
-      await AdminAPI.createUser({
+      await UsersAPI.create({
         username, email, password, role, is_active: isActive, stores,
       });
     }

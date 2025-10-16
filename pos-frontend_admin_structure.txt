@@ -1,0 +1,19 @@
+pos-frontend/src/features/admin
+├── adminApi.ts
+├── AdminPage.tsx
+├── AdminRoute.tsx
+├── api
+│   ├── index.ts
+│   └── users.ts
+├── components
+│   ├── DataTable.tsx
+│   ├── DeleteConfirmModal.tsx
+│   ├── Toast.tsx
+│   ├── ToastCompat.tsx
+│   └── ui
+│       └── Checkbox.tsx
+└── users
+    ├── UserModal.tsx
+    └── UsersTab.tsx
+
+5 directories, 12 files
