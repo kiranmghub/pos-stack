@@ -1,12 +1,11 @@
 // pos-frontend/src/features/admin/AdminPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { AdminAPI, Query, Store, Register, TaxCategory, TaxRule, DiscountRule, Coupon } from "./adminApi";
+import { AdminAPI, Query, Register, TaxCategory, TaxRule, DiscountRule, Coupon } from "./adminApi";
 import { DataTable } from "./components/DataTable";
 import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
 import { useToast } from "./components/ToastCompat";
 import UsersTab from "./users/UsersTab";
 import StoresTab from "./stores/StoresTab";
-
 
 type TabKey = "users" | "stores" | "registers" | "taxcats" | "taxrules" | "discrules" | "coupons";
 
@@ -23,17 +22,17 @@ const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
 export default function AdminPage() {
   const [active, setActive] = useState<TabKey>("users");
 
-  // Shared query state for non-Users tabs (UsersTab manages its own query)
+  // Shared query state for non-Users/Stores tabs
   const [query, setQuery] = useState<Query>({ search: "", ordering: "" });
 
-  // Table state for non-Users tabs
+  // Table state for non-Users/Stores tabs
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState<number | undefined>(undefined);
 
   const { push } = useToast();
 
-  // Fetch ONLY for non-Users tabs (UsersTab fetches its own data)
+  // Fetch ONLY for tabs that are NOT handled by their own components
   useEffect(() => {
     if (active === "users" || active === "stores") return;
 
@@ -44,12 +43,11 @@ export default function AdminPage() {
       try {
         const q = { search: query.search || undefined, ordering: query.ordering || undefined };
         let page: any;
-        if (active === "stores")       page = await AdminAPI.stores(q);
-        else if (active === "registers") page = await AdminAPI.registers(q);
+        if (active === "registers")      page = await AdminAPI.registers(q);
         else if (active === "taxcats")   page = await AdminAPI.taxCats(q);
         else if (active === "taxrules")  page = await AdminAPI.taxRules(q);
         else if (active === "discrules") page = await AdminAPI.discRules(q);
-        else                              page = await AdminAPI.coupons(q);
+        else                             page = await AdminAPI.coupons(q);
 
         const rows = Array.isArray(page) ? page : (page.results ?? []);
         const cnt  = Array.isArray(page) ? undefined : page.count;
@@ -66,23 +64,9 @@ export default function AdminPage() {
     return () => { mounted = false; };
   }, [active, query, push]);
 
-  // Columns for non-Users tabs
+  // Columns for non-Users/Stores tabs
   const cols = useMemo(() => {
     switch (active) {
-      case "stores":
-        return [
-          { key: "code", header: "Code" },
-          { key: "name", header: "Name" },
-          {
-            key: "is_active",
-            header: "Active",
-            render: (r: Store) => (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-                {r.is_active ? "Yes" : "No"}
-              </span>
-            ),
-          },
-        ];
       case "registers":
         return [
           { key: "code", header: "Code" },
@@ -182,6 +166,7 @@ export default function AdminPage() {
       {/* Content */}
       {active === "users" && <UsersTab />}
       {active === "stores" && <StoresTab />}
+
       {active !== "users" && active !== "stores" && (
         <DataTable
           title={tabs.find(t => t.key === active)?.label || ""}

@@ -6,6 +6,8 @@ import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import Checkbox from "../components/ui/Checkbox";
 import { useToast } from "../components/ToastCompat";
+import StoreModal from "./StoreModal";
+
 
 export default function StoresTab() {
   const { push } = useToast();
@@ -217,8 +219,4 @@ export default function StoresTab() {
   );
 }
 
-function StoreModal(props: any) {
-  // Lazy import to avoid circular compile order issues in some setups.
-  const Comp = React.useMemo(() => require("./StoreModal").default, []);
-  return <Comp {...props} />;
-}
+
