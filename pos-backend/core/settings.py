@@ -134,6 +134,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "common.middleware.TenantContextMiddleware",
+    "pos.middleware.RegisterSessionMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"

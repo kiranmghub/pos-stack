@@ -1,0 +1,31 @@
+8 Detailed UX notes for wiring later (frontend)
+
+On POS route entry (/pos), check for localStorage.registerToken.
+
+If missing, show Register Gate (Code + PIN).
+
+Submit → POST /api/v1/pos/register-session/start (must be logged-in to your app).
+
+Store {token, register}; show register code/name in POS header.
+
+For every POS API call, set:
+
+Authorization: Register <token> (in your fetch/axios instance for POS).
+
+“Change Register” action:
+
+Call POST /api/v1/pos/register-session/end
+
+Clear localStorage token
+
+Return to Register Gate
+
+Handle errors:
+
+{"code": "Unknown or inactive register code."} → show under “Code”
+
+{"pin": "Invalid PIN."} → show under “PIN”
+
+{"detail": "Register is temporarily locked..."} → toast + disable submit until time elapses
+
+401/403 on POS endpoints → prompt re-gate

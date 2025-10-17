@@ -1,6 +1,10 @@
 # pos-backend/stores/models.py
 from django.db import models
 from common.models import TimeStampedModel
+from django.utils import timezone
+from django.contrib.auth.hashers import make_password, check_password
+import uuid
+from typing import Optional
 
 
 class Store(TimeStampedModel):
@@ -36,13 +40,121 @@ class Store(TimeStampedModel):
 
 
 
+# class Register(TimeStampedModel):
+#     store = models.ForeignKey(Store, on_delete=models.CASCADE)
+#     name = models.CharField(max_length=120, blank=True, default="")
+#     code = models.SlugField()
+#     hardware_profile = models.JSONField(default=dict)
+#     access_pin_hash = models.CharField(max_length=256, null=True, blank=True)
+#     last_seen_at = models.DateTimeField(null=True, blank=True)
+#     locked_until = models.DateTimeField(null=True, blank=True)
+#     settings = models.JSONField(default=dict, blank=True)
+#     is_active = models.BooleanField(default=True)
+
+
+#     class Meta:
+#         unique_together = ("store", "code")
+#         ordering = ["code", "id"]
+
+
+
 class Register(TimeStampedModel):
-    store = models.ForeignKey(Store, on_delete=models.CASCADE)
+    store = models.ForeignKey("stores.Store", on_delete=models.CASCADE)
     name = models.CharField(max_length=120, blank=True, default="")
     code = models.SlugField()
     hardware_profile = models.JSONField(default=dict)
+    access_pin_hash = models.CharField(max_length=256, null=True, blank=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    settings = models.JSONField(default=dict, blank=True)
     is_active = models.BooleanField(default=True)
+
+    # (new) simple rate-limit helper; optional but handy
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         unique_together = ("store", "code")
         ordering = ["code", "id"]
+        indexes = [
+            models.Index(fields=["store", "code"]),         # lookups by code within a store
+            models.Index(fields=["is_active", "store"]),    # active registers per store
+            models.Index(fields=["locked_until"]),          # cleanup jobs / monitoring
+        ]
+
+    def __str__(self):
+        return f"{self.store.code}:{self.code}"
+
+    # ---- PIN helpers (use Django's password hasher) ----
+    def set_pin(self, raw_pin: Optional[str]):
+        """
+        Set or clear the register PIN. Use a numeric string (e.g. '123456').
+        Passing None or '' clears the PIN.
+        """
+        if not raw_pin:
+            self.access_pin_hash = None
+            return
+        self.access_pin_hash = make_password(raw_pin)
+
+    def check_pin(self, raw_pin: str) -> bool:
+        if not self.access_pin_hash:
+            return False
+        return check_password(raw_pin, self.access_pin_hash)
+
+    # (optional) quick lock helpers
+    def lock_for(self, seconds: int = 300):
+        self.locked_until = timezone.now() + timezone.timedelta(seconds=seconds)
+        self.failed_attempts = 0
+
+    def clear_lock(self):
+        self.locked_until = None
+        self.failed_attempts = 0
+
+
+
+class RegisterSession(TimeStampedModel):
+    """
+    Represents an active (or historical) session for a register.
+    Useful for audits, revocation, and monitoring concurrently signed-in devices.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, related_name="register_sessions")
+    register = models.ForeignKey("stores.Register", on_delete=models.CASCADE, related_name="sessions")
+
+    # lifecycle
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    # provenance / device
+    created_by_user = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_register_sessions")
+    device_fingerprint = models.CharField(max_length=255, blank=True, default="")
+    user_agent = models.TextField(blank=True, default="")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    # misc
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "register"]),
+            models.Index(fields=["expires_at"]),
+            models.Index(fields=["revoked_at"]),
+        ]
+
+    def __str__(self):
+        state = "revoked" if self.revoked_at else "active"
+        return f"RegisterSession({self.register.code}, {state})"
+
+    @property
+    def is_active(self) -> bool:
+        if self.revoked_at:
+            return False
+        if self.expires_at and self.expires_at <= timezone.now():
+            return False
+        return True
+
+    def revoke(self, reason: Optional[str] = None):
+        self.revoked_at = timezone.now()
+        if reason:
+            self.notes = (self.notes + "\n" if self.notes else "") + f"[revoked] {reason}"

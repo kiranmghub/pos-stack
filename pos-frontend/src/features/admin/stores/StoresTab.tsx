@@ -2,6 +2,7 @@
 import React from "react";
 import type { Store, Query } from "../adminApi";
 import { StoresAPI } from "../api";
+import { RegistersAPI, type Register } from "../api/registers";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import Checkbox from "../components/ui/Checkbox";
@@ -21,6 +22,10 @@ export default function StoresTab() {
   const [editing, setEditing] = React.useState<Store | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<Store | null>(null);
+  // expanded rows + lazy registers cache
+  const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
+  const [regCache, setRegCache] = React.useState<Record<number, Register[]>>({});
+  const [regLoading, setRegLoading] = React.useState<Record<number, boolean>>({});
 
   // fetch list
   React.useEffect(() => {
@@ -54,6 +59,25 @@ export default function StoresTab() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const toggleExpand = async (row: Store) => {
+    setExpandedIds(prev =>
+    prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]
+    );
+    // lazy load registers on first expand
+    if (!regCache[row.id] && !regLoading[row.id]) {
+    setRegLoading(prev => ({ ...prev, [row.id]: true }));
+    try {
+        const page = await RegistersAPI.listByStore(row.id);
+        const regs = Array.isArray(page) ? page : (page.results ?? []);
+        setRegCache(prev => ({ ...prev, [row.id]: regs }));
+    } catch (e:any) {
+        push({ kind: "error", msg: e?.message || "Failed to load registers" });
+    } finally {
+        setRegLoading(prev => ({ ...prev, [row.id]: false }));
+    }
+    }
+  };
+
   const bulkSetActive = async (is_active: boolean) => {
     if (selectedIds.length === 0) return;
     setBulkLoading(true);
@@ -79,6 +103,25 @@ export default function StoresTab() {
   };
 
   const cols = React.useMemo(() => ([
+    {
+      key: "__expander__",
+      header: "",
+      width: "2rem",
+      render: (r: Store) => {
+        const open = expandedIds.includes(r.id);
+        return (
+          <button
+            className="text-slate-300 hover:text-white"
+            title={open ? "Collapse" : "Expand"}
+            onClick={() => toggleExpand(r)}
+          >
+            <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        );
+      }
+    },
     {
       key: "select",
       header: (
@@ -129,7 +172,60 @@ export default function StoresTab() {
         </div>
       ),
     },
-  ]), [allChecked, partiallyChecked, selectedIds]);
+    ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+    // expanded panel renderer (full address + registers)
+    const renderRowAfter = React.useCallback((r: Store) => {
+        if (!expandedIds.includes(r.id)) return null;
+        const regs = regCache[r.id];
+        const isRegsLoading = !!regLoading[r.id];
+        const address = [r.street, r.city, r.state, r.postal_code, r.country].filter(Boolean).join(", ");
+        return (
+        <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+            <div className="grid grid-cols-2 gap-3">
+            <div>
+                <div className="text-xs text-slate-400">Address</div>
+                     <button
+                    className="text-xs text-blue-400 hover:underline"
+                    onClick={() => { setEditing(r); /* setCreating(false) not required here */ }}
+                    >
+                    Edit
+                    </button>
+                <div className="text-slate-200">{address || "—"}</div>
+                <div className="text-xs text-slate-400 mt-1">Timezone</div>
+                <div className="text-slate-200">{(r as any).timezone || "—"}</div>
+            </div>
+            <div>
+                <div className="text-xs text-slate-400 flex items-center justify-between">
+                <span>Registers</span>
+                {Array.isArray(regs) ? <span className="text-slate-500">{regs.length}</span> : null}
+                </div>
+                {isRegsLoading ? (
+                    <div className="mt-1 inline-flex items-center gap-2 text-slate-400 text-sm">
+                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+                        </svg>
+                        Loading Registers…
+                    </div>
+                ) : Array.isArray(regs) && regs.length > 0 ? (
+                <div className="flex flex-wrap gap-1 mt-1">
+                    {regs.slice(0, 8).map((g) => (
+                    <span key={g.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                        {g.code}{g.name ? ` • ${g.name}` : ""}
+                    </span>
+                    ))}
+                    {regs.length > 8 && (
+                    <span className="text-xs text-slate-400">+{regs.length - 8} more</span>
+                    )}
+                </div>
+                ) : (
+                <div className="text-slate-400 text-sm">No registers linked.</div>
+                )}
+            </div>
+            </div>
+        </div>
+        );
+    }, [expandedIds, regCache, regLoading]);
 
   return (
     <div className="space-y-4">
@@ -184,6 +280,8 @@ export default function StoresTab() {
         total={total}
         query={query}
         onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
+        renderRowAfter={renderRowAfter}
+        getRowKey={(row:any) => row.id ?? row.code}
       />
 
       {/* Modals */}

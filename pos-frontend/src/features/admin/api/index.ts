@@ -2,3 +2,4 @@
 // This file re-exports all API modules for easier imports elsewhere
 export { UsersAPI } from "./users";
 export { StoresAPI } from "./stores";
+export { RegistersAPI } from "./registers";

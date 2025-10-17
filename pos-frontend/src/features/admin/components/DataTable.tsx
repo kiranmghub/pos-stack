@@ -10,9 +10,11 @@ type TableProps<T> = {
   total?: number;
   query: { search?: string; ordering?: string };
   onQueryChange: (q: Partial<{search:string; ordering:string}>) => void;
+  renderRowAfter?: (row: T) => React.ReactNode;
+  getRowKey?: (row: T, index: number) => React.Key;
 };
 
-export function DataTable<T extends object>({ title, rows, cols, loading, total, query, onQueryChange }: TableProps<T>) {
+export function DataTable<T extends object>({ title, rows, cols, loading, total, query, onQueryChange, renderRowAfter, getRowKey }: TableProps<T>) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900">
       <div className="flex items-center justify-between p-3 border-b border-slate-800">
@@ -59,7 +61,10 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
             <tr><td className="px-3 py-4 text-slate-400" colSpan={cols.length}>Loading…</td></tr>
           ) : rows.length === 0 ? (
             <tr><td className="px-3 py-4 text-slate-400" colSpan={cols.length}>No rows</td></tr>
-          ) : rows.map((r, i) => (
+          ) : rows.map((r, i) => {
+            const rowKey = getRowKey ? getRowKey(r, i) : i;
+            return (
+              <React.Fragment key={rowKey}>
             <tr
                 key={i}
                 className={`border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors ${
@@ -69,12 +74,20 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
               >
 
               {cols.map(c => (
-                <td key={String(c.key)} className={`px-3 py-2 ${c.align==="right"?"text-right":""}`}>
-                  {c.render ? c.render(r) : String((r as any)[c.key])}
-                </td>
-              ))}
-            </tr>
-          ))}
+                  <td key={String(c.key)} className={`px-3 py-2 ${c.align==="right"?"text-right":""}`}>
+                    {c.render ? c.render(r) : String((r as any)[c.key])}
+                  </td>
+                ))}
+              </tr>
+              {renderRowAfter ? (
+                <tr className="border-b border-slate-800/60">
+                  <td colSpan={cols.length} className="px-3 py-2">
+                    {renderRowAfter(r)}
+                  </td>
+                </tr>
+              ) : null}
+            </React.Fragment>
+          )})}
           </tbody>
         </table>
       </div>
