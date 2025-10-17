@@ -73,7 +73,7 @@ class Register(TimeStampedModel):
     failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = ("store", "code")
+        unique_together = (["code", "store"],)
         ordering = ["code", "id"]
         indexes = [
             models.Index(fields=["store", "code"]),         # lookups by code within a store

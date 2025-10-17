@@ -15,6 +15,8 @@ from discounts.models import DiscountRule, Coupon
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from common.roles import TenantRole
+from rest_framework.decorators import action
+from rest_framework import status
 
 
 from .serializers import (
@@ -107,6 +109,21 @@ class RegisterViewSet(TenantScopedMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+    @action(detail=True, methods=["POST"], url_path="set-pin")
+    def set_pin(self, request, pk=None):
+        """
+        POST /api/v1/tenant-admin/registers/{id}/set-pin
+        Body: {"pin": "123456"} to set; {"pin": ""} or no 'pin' to clear.
+        """
+        reg: Register = self.get_object()
+        pin = (request.data.get("pin") or "").strip()
+        if pin:
+            reg.set_pin(pin)   # uses your model helper
+        else:
+            reg.set_pin(None)  # clear
+        reg.save(update_fields=["access_pin_hash", "updated_at"])
+        return Response({"ok": True}, status=status.HTTP_200_OK)    
 
 
 class TaxCategoryViewSet(TenantScopedMixin, viewsets.ModelViewSet):

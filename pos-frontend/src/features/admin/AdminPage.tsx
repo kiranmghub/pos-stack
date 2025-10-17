@@ -6,6 +6,7 @@ import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPerc
 import { useToast } from "./components/ToastCompat";
 import UsersTab from "./users/UsersTab";
 import StoresTab from "./stores/StoresTab";
+import RegistersTab from "./registers/RegistersTab";
 
 type TabKey = "users" | "stores" | "registers" | "taxcats" | "taxrules" | "discrules" | "coupons";
 
@@ -34,7 +35,7 @@ export default function AdminPage() {
 
   // Fetch ONLY for tabs that are NOT handled by their own components
   useEffect(() => {
-    if (active === "users" || active === "stores") return;
+    if (active === "users" || active === "stores" || active === "registers") return;
 
     let mounted = true;
     (async () => {
@@ -43,8 +44,7 @@ export default function AdminPage() {
       try {
         const q = { search: query.search || undefined, ordering: query.ordering || undefined };
         let page: any;
-        if (active === "registers")      page = await AdminAPI.registers(q);
-        else if (active === "taxcats")   page = await AdminAPI.taxCats(q);
+        if (active === "taxcats")   page = await AdminAPI.taxCats(q);
         else if (active === "taxrules")  page = await AdminAPI.taxRules(q);
         else if (active === "discrules") page = await AdminAPI.discRules(q);
         else                             page = await AdminAPI.coupons(q);
@@ -67,20 +67,6 @@ export default function AdminPage() {
   // Columns for non-Users/Stores tabs
   const cols = useMemo(() => {
     switch (active) {
-      case "registers":
-        return [
-          { key: "code", header: "Code" },
-          { key: "store", header: "Store ID", align: "right" as const },
-          {
-            key: "is_active",
-            header: "Active",
-            render: (r: Register) => (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-                {r.is_active ? "Yes" : "No"}
-              </span>
-            ),
-          },
-        ];
       case "taxcats":
         return [
           { key: "code", header: "Code" },
@@ -166,8 +152,9 @@ export default function AdminPage() {
       {/* Content */}
       {active === "users" && <UsersTab />}
       {active === "stores" && <StoresTab />}
+      {active === "registers" && <RegistersTab />}
 
-      {active !== "users" && active !== "stores" && (
+      {active !== "users" && active !== "stores" && active !== "registers" && (
         <DataTable
           title={tabs.find(t => t.key === active)?.label || ""}
           rows={data}
