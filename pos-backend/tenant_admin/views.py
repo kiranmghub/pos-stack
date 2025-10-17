@@ -46,7 +46,7 @@ class TenantScopedMixin:
             return qs.filter(tenant=tenant)
         # Register: join via store.tenant
         if qs.model is Register:
-            return qs.filter(store__tenant=tenant)
+            return qs.filter(tenant=tenant)
         # Ensure stable default ordering for paginated lists
         if qs.model.__name__ == "TenantUser":
             qs = qs.order_by("id")
@@ -132,8 +132,8 @@ class TaxCategoryViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTenantAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["code", "name"]
-    search_fields = ["code", "name"]
-    ordering_fields = ["id", "code", "name", "rate"]
+    search_fields = ["code", "name", "description"]
+    ordering_fields = ["id", "code", "name", "rate", "description"]
 
     def perform_update(self, serializer):
         serializer.save()

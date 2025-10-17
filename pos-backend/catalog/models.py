@@ -1,4 +1,4 @@
-# catalog/models.py
+# pos-backend/catalog/models.py
 
 from django.db import models
 from django.db.models import Q
@@ -13,6 +13,7 @@ class TaxCategory(TimeStampedModel):
     name = models.CharField(max_length=64)
     code = models.SlugField()
     rate = models.DecimalField(max_digits=6, decimal_places=4, default=0)  # simple %
+    description = models.TextField(blank=True, default="")
 
     class Meta:
         unique_together = ("tenant", "code")
@@ -22,6 +23,7 @@ class TaxCategory(TimeStampedModel):
         verbose_name = "Tax category"
         verbose_name_plural = "Tax categories"
         ordering = ["code", "id"]
+        
 
     def __str__(self):
         return f"{self.name} ({self.code}) – {self.tenant}"

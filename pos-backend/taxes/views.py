@@ -1,4 +1,4 @@
-# taxes/views.py
+# pos-backend/taxes/views.py
 from django.utils import timezone
 from django.db.models import Q
 from rest_framework.views import APIView

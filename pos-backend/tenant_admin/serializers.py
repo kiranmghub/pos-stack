@@ -211,13 +211,53 @@ class StoreSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Register
-        fields = ("id", "store", "name", "code", "hardware_profile", "is_active", "created_at", "updated_at")
-        read_only_fields = ("created_at", "updated_at")
+        fields = ("id", "tenant", "store", "name", "code", "hardware_profile", "is_active", "created_at", "updated_at")
+        read_only_fields = ("tenant", "created_at", "updated_at")
+
+    def validate_code(self, value: str):
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None)
+        if not tenant:
+            return value
+        qs = Register.objects.filter(tenant=tenant, code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(f'Code "{value}" is already in use for this tenant.')
+        return value
+
+    def create(self, validated):
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None)
+        if tenant:
+            validated["tenant"] = tenant
+        # safety: ensure tenant matches store.tenant
+        if validated.get("store") and tenant and validated["store"].tenant_id != tenant.id:
+            raise serializers.ValidationError({"store": "Store does not belong to your tenant."})
+        try:
+            with transaction.atomic():
+                return super().create(validated)
+        except IntegrityError:
+            code = validated.get("code", "")
+            raise serializers.ValidationError({"code": [f'Code "{code}" is already in use for this tenant.']})
+
+    def update(self, instance, validated):
+        # safety: block cross-tenant store swaps
+        request = self.context.get("request")
+        tenant = getattr(request, "tenant", None)
+        if validated.get("store") and tenant and validated["store"].tenant_id != tenant.id:
+            raise serializers.ValidationError({"store": "Store does not belong to your tenant."})
+        try:
+            with transaction.atomic():
+                return super().update(instance, validated)
+        except IntegrityError:
+            code = validated.get("code", instance.code)
+            raise serializers.ValidationError({"code": [f'Code "{code}" is already in use for this tenant.']})
 
 class TaxCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = TaxCategory
-        fields = ("id", "tenant", "code", "name", "rate", "created_at", "updated_at")
+        fields = ("id", "tenant", "code", "name", "rate", "description", "created_at", "updated_at")
         read_only_fields = ("tenant", "created_at", "updated_at")
 
 # ---------- RULES (TAX / DISCOUNTS) ----------

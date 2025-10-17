@@ -1,4 +1,4 @@
-# taxes/serializers.py
+# pos-backend/taxes/serializers.py
 from rest_framework import serializers
 from .models import TaxRule, TaxBasis, TaxScope, ApplyScope
 from catalog.models import TaxCategory

@@ -1,4 +1,4 @@
-# taxes/urls.py
+# pos-backend/taxes/urls.py
 from django.urls import path
 from .views import ActiveTaxRulesView
 

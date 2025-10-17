@@ -60,6 +60,7 @@ class Store(TimeStampedModel):
 
 class Register(TimeStampedModel):
     store = models.ForeignKey("stores.Store", on_delete=models.CASCADE)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, null=False, blank=False)
     name = models.CharField(max_length=120, blank=True, default="")
     code = models.SlugField()
     hardware_profile = models.JSONField(default=dict)
@@ -73,12 +74,18 @@ class Register(TimeStampedModel):
     failed_attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = (["code", "store"],)
+        # unique_together = ("code", "store")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "code"],
+                name="uniq_register_code_per_tenant")
+        ]
         ordering = ["code", "id"]
         indexes = [
             models.Index(fields=["store", "code"]),         # lookups by code within a store
             models.Index(fields=["is_active", "store"]),    # active registers per store
             models.Index(fields=["locked_until"]),          # cleanup jobs / monitoring
+            models.Index(fields=["tenant", "code"]),        # lookups by code within a tenant
         ]
 
     def __str__(self):

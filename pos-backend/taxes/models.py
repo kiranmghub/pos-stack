@@ -1,4 +1,4 @@
-# taxes/models.py
+# pos-backend/taxes/models.py
 from django.db import models
 from common.models import TimeStampedModel
 from catalog.models import TaxCategory  # existing

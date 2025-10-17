@@ -7,6 +7,8 @@ import { useToast } from "./components/ToastCompat";
 import UsersTab from "./users/UsersTab";
 import StoresTab from "./stores/StoresTab";
 import RegistersTab from "./registers/RegistersTab";
+import TaxCategoriesTab from "./taxcats/TaxCategoriesTab";
+
 
 type TabKey = "users" | "stores" | "registers" | "taxcats" | "taxrules" | "discrules" | "coupons";
 
@@ -44,8 +46,7 @@ export default function AdminPage() {
       try {
         const q = { search: query.search || undefined, ordering: query.ordering || undefined };
         let page: any;
-        if (active === "taxcats")   page = await AdminAPI.taxCats(q);
-        else if (active === "taxrules")  page = await AdminAPI.taxRules(q);
+        if (active === "taxrules")  page = await AdminAPI.taxRules(q);
         else if (active === "discrules") page = await AdminAPI.discRules(q);
         else                             page = await AdminAPI.coupons(q);
 
@@ -67,12 +68,6 @@ export default function AdminPage() {
   // Columns for non-Users/Stores tabs
   const cols = useMemo(() => {
     switch (active) {
-      case "taxcats":
-        return [
-          { key: "code", header: "Code" },
-          { key: "name", header: "Name" },
-          { key: "rate", header: "Rate", align: "right" as const, render: (r: TaxCategory) => `${Number(r.rate).toFixed(4)}` },
-        ];
       case "taxrules":
         return [
           { key: "code", header: "Code" },
@@ -153,8 +148,9 @@ export default function AdminPage() {
       {active === "users" && <UsersTab />}
       {active === "stores" && <StoresTab />}
       {active === "registers" && <RegistersTab />}
+      {active === "taxcats" && <TaxCategoriesTab />}
 
-      {active !== "users" && active !== "stores" && active !== "registers" && (
+      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && (
         <DataTable
           title={tabs.find(t => t.key === active)?.label || ""}
           rows={data}
