@@ -1,0 +1,297 @@
+// pos-frontend/src/features/admin/taxrules/TaxRulesTab.tsx
+import React from "react";
+import type { Query, Store } from "../adminApi";
+import { AdminAPI } from "../adminApi"; // to fetch stores for filter dropdown
+import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
+import { DataTable } from "../components/DataTable";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import Checkbox from "../components/ui/Checkbox";
+import { useToast } from "../components/ToastCompat";
+import TaxRuleModal from "./TaxRuleModal";
+
+export default function TaxRulesTab() {
+  const { push } = useToast();
+
+  const [query, setQuery] = React.useState<Query>({ search: "", ordering: "priority" });
+  const [loading, setLoading] = React.useState(false);
+  const [data, setData] = React.useState<TaxRule[]>([]);
+  const [total, setTotal] = React.useState<number | undefined>(undefined);
+
+  const [stores, setStores] = React.useState<Store[]>([]);
+
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
+  const [bulkLoading, setBulkLoading] = React.useState(false);
+
+  const [editing, setEditing] = React.useState<TaxRule | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<TaxRule | null>(null);
+
+  // load stores for filter
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const page = await AdminAPI.stores({ is_active: true });
+        const list = Array.isArray(page) ? page : (page.results ?? []);
+        if (mounted) setStores(list);
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // fetch rules
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const p = {
+          search: query.search || undefined,
+          ordering: query.ordering || undefined,
+          is_active: query.is_active,
+          scope: (query as any).scope,
+          basis: (query as any).basis,
+          apply_scope: (query as any).apply_scope,
+          store: (query as any).store,
+        };
+        const page = await TaxRulesAPI.list(p);
+        const rows = Array.isArray(page) ? page : page.results ?? [];
+        const cnt  = Array.isArray(page) ? undefined : page.count;
+        if (mounted) { setData(rows); setTotal(cnt); }
+      } catch (e:any) {
+        push({ kind: "error", msg: e?.message || "Failed to load tax rules" });
+        if (mounted) { setData([]); setTotal(undefined); }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [query]);
+
+  const allChecked = data.length > 0 && selectedIds.length === data.length;
+  const partiallyChecked = selectedIds.length > 0 && !allChecked;
+
+  const toggleAll = () => {
+    setSelectedIds(prev => (prev.length === data.length ? [] : data.map(r => r.id)));
+  };
+  const toggleRow = (id: number) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  const bulkSetActive = async (is_active: boolean) => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      const ids = [...selectedIds];
+      const ok: number[] = [];
+      const fail: number[] = [];
+      for (const id of ids) {
+        try { await TaxRulesAPI.update(id, { is_active }); ok.push(id); }
+        catch { fail.push(id); }
+      }
+      if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} rule(s)` });
+      if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} rule(s)` });
+      setSelectedIds(fail);
+      setQuery({ ...query });
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const cols = React.useMemo(() => ([
+    {
+      key: "select",
+      header: (
+        <Checkbox
+          checked={allChecked}
+          indeterminate={partiallyChecked}
+          onChange={toggleAll}
+          aria-label="Select all"
+          title="Select all"
+        />
+      ),
+      render: (r: TaxRule) => (
+        <Checkbox
+          checked={selectedIds.includes(r.id)}
+          onChange={() => toggleRow(r.id)}
+          aria-label="Select row"
+        />
+      ),
+      width: "2rem",
+    },
+    { key: "code", header: "Code" },
+    { key: "name", header: "Name" },
+    {
+      key: "basis",
+      header: "Basis",
+      render: (r: TaxRule) => (
+        r.basis === "PCT"
+          ? <span title={String(r.rate ?? "")} className="px-2 py-0.5 rounded-full text-xs bg-emerald-600/30 text-emerald-200">Percent {r.rate ?? ""}</span>
+          : <span title={String(r.amount ?? "")} className="px-2 py-0.5 rounded-full text-xs bg-sky-600/30 text-sky-200">Flat {r.amount ?? ""}</span>
+      ),
+    },
+    {
+      key: "scope",
+      header: "Scope",
+      render: (r: TaxRule) => (
+        <span className="text-sm">{r.scope}{r.scope === "STORE" && r.store ? ` #${r.store}` : ""}</span>
+      ),
+    },
+    { key: "apply_scope", header: "Apply" },
+    { key: "priority", header: "Prio", align: "right" as const },
+    { key: "start_at", header: "Start", render: (r: TaxRule) => r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—" },
+    { key: "end_at", header: "End", render: (r: TaxRule) => r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—" },
+    {
+      key: "is_active",
+      header: "Active",
+      render: (r: TaxRule) => (
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+          {r.is_active ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      render: (r: TaxRule) => (
+        <div className="flex items-center gap-2 justify-end">
+          <button className="text-xs text-blue-400 hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
+            Edit
+          </button>
+          <button className="text-xs text-red-400 hover:text-red-300" onClick={() => setDeleting(r)}>
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ]), [allChecked, partiallyChecked, selectedIds]);
+
+  return (
+    <div className="space-y-4">
+      {/* Filters + New */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <input
+            value={query.search || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
+            placeholder="Search code, name or category code…"
+            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+          />
+          <select
+            value={(query as any).scope || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, scope: e.target.value || undefined }))}
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Scope"
+          >
+            <option value="">All scopes</option>
+            <option value="GLOBAL">Global</option>
+            <option value="STORE">Store</option>
+          </select>
+          <select
+            value={(query as any).basis || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, basis: e.target.value || undefined }))}
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Basis"
+          >
+            <option value="">All basis</option>
+            <option value="PCT">Percent</option>
+            <option value="FLAT">Flat</option>
+          </select>
+          <select
+            value={(query as any).apply_scope || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, apply_scope: e.target.value || undefined }))}
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Apply scope"
+          >
+            <option value="">Apply to</option>
+            <option value="LINE">Line</option>
+            <option value="RECEIPT">Receipt</option>
+          </select>
+          <select
+            value={(query as any).store || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, store: e.target.value === "" ? undefined : Number(e.target.value) }))}
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Filter by store"
+          >
+            <option value="">All stores</option>
+            {stores.map(s => (
+              <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
+            ))}
+          </select>
+          <select
+            value={query.is_active === true ? "true" : query.is_active === false ? "false" : ""}
+            onChange={(e) =>
+              setQuery((p) => ({
+                ...p,
+                is_active: e.target.value === "" ? undefined : e.target.value === "true",
+              }))
+            }
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Active"
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {selectedIds.length > 0 ? (
+            <>
+              <button disabled={bulkLoading} onClick={() => bulkSetActive(true)}
+                className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">Activate Selected</button>
+              <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
+                className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
+              <button onClick={() => setSelectedIds([])}
+                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+            </>
+          ) : (
+            <button onClick={() => { setEditing(null); setCreating(true); }}
+              className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm">+ New Tax Rule</button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <DataTable
+        title="Tax Rules"
+        rows={data.map((r) => ({ ...r, selected: selectedIds.includes(r.id) }))}
+        cols={cols as any}
+        loading={loading}
+        total={total}
+        query={query}
+        onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
+        getRowKey={(row:any) => row.id ?? row.code}
+      />
+
+      {/* Modals */}
+      {(creating || editing) && (
+        <TaxRuleModal
+          open={creating || !!editing}
+          editing={editing}
+          onClose={() => { setCreating(false); setEditing(null); }}
+          onSaved={() => setQuery({ ...query })}
+        />
+      )}
+
+      <DeleteConfirmModal
+        open={!!deleting}
+        subject={deleting?.code}
+        onConfirm={async () => {
+          if (!deleting) return;
+          try {
+            await TaxRulesAPI.remove(deleting.id);
+            push({ kind: "warn", msg: `Tax rule "${deleting.code}" deleted` });
+            setQuery({ ...query });
+            setDeleting(null);
+          } catch (e: any) {
+            push({ kind: "error", msg: e?.message || "Delete failed" });
+            setSelectedIds(prev => Array.from(new Set([...prev, deleting.id])));
+            setDeleting(null);
+          }
+        }}
+        onClose={() => setDeleting(null)}
+      />
+    </div>
+  );
+}

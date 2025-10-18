@@ -4,3 +4,4 @@ export { UsersAPI } from "./users";
 export { StoresAPI } from "./stores";
 export { RegistersAPI } from "./registers";
 export { TaxCatsAPI } from "./taxcats";
+export { TaxRulesAPI } from "./taxrules";
