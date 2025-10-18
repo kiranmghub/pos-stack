@@ -31,4 +31,13 @@ class TaxCategoryAdmin(admin.ModelAdmin):
     list_display = ("tenant", "name", "code", "rate")
     list_filter = ("tenant",)
     search_fields = ("name", "code")  # REQUIRED for autocomplete to work
+    fieldsets = (
+        (None, {"fields": ("tenant", "code", "name", "rate", "description")}),
+    )
+    help_texts = {
+        "rate": (
+            "Percent as a fraction (e.g., 8.25% = 0.0825). "
+            "If you enter 8.25 or 20, it will be saved as 0.0825 or 0.20 automatically."
+        )
+    }
 

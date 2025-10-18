@@ -6,11 +6,13 @@ from django.db.models.functions import Lower
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from common.models import TimeStampedModel
+from decimal import Decimal, ROUND_HALF_UP
+
 
 
 class TaxCategory(TimeStampedModel):
-    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
-    name = models.CharField(max_length=64)
+    tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
+    name = models.CharField(max_length=120)
     code = models.SlugField()
     rate = models.DecimalField(max_digits=6, decimal_places=4, default=0)  # simple %
     description = models.TextField(blank=True, default="")
@@ -23,6 +25,32 @@ class TaxCategory(TimeStampedModel):
         verbose_name = "Tax category"
         verbose_name_plural = "Tax categories"
         ordering = ["code", "id"]
+
+
+    @staticmethod
+    def _norm_pct(value: Decimal) -> Decimal:
+        """
+        Accepts 0.0825 or 8.25 to mean 8.25%.
+        Returns a normalized Decimal in [0, 1], quantized to 6 dp (like taxes app).
+        """
+        if value is None:
+            return None
+        v = Decimal(value)
+        if v > 1:
+            v = v / Decimal("100")
+        if v < 0:
+            v = Decimal("0")
+        return v.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)  # :contentReference[oaicite:3]{index=3}
+
+    def clean(self):
+        super().clean()
+        if self.rate is not None:
+            self.rate = type(self)._norm_pct(self.rate)
+
+    def save(self, *args, **kwargs):
+        # Ensure normalization for all save paths (admin, API, fixtures)
+        self.full_clean()
+        return super().save(*args, **kwargs)
         
 
     def __str__(self):

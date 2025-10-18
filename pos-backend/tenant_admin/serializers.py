@@ -260,6 +260,22 @@ class TaxCategorySerializer(serializers.ModelSerializer):
         fields = ("id", "tenant", "code", "name", "rate", "description", "created_at", "updated_at")
         read_only_fields = ("tenant", "created_at", "updated_at")
 
+        def validate(self, attrs):
+            """
+            Normalize percent so 8.25 -> 0.0825, 20 -> 0.20, clamp negatives to 0.
+            Supports partial updates by falling back to instance values.
+            Mirrors taxes app normalization.  :contentReference[oaicite:5]{index=5}
+            """
+            rate = attrs.get("rate", getattr(self.instance, "rate", None))
+            if rate is not None:
+                r = Decimal(rate)
+                if r > 1:
+                    r = r / Decimal("100")
+                if r < 0:
+                    r = Decimal("0")
+                attrs["rate"] = r.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+            return attrs
+
 # ---------- RULES (TAX / DISCOUNTS) ----------
 class TaxRuleSerializer(serializers.ModelSerializer):
     categories = TaxCategoryLiteSerializer(many=True, read_only=True)
