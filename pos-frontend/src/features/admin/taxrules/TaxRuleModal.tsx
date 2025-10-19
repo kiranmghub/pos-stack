@@ -43,6 +43,11 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   const [categoryIds, setCategoryIds] = React.useState<number[]>(
     editing?.categories ? editing.categories.map((c: any) => c.id) : []
   );
+  // When editing a rule with no categories set, treat it as "All Categories"
+  const [allCats, setAllCats] = React.useState<boolean>(
+    editing ? !(editing.categories && editing.categories.length) : false
+  );
+
   const [catQuery, setCatQuery] = React.useState(""); // NEW: search box
   const filteredCats = React.useMemo(() => {
     if (!catQuery.trim()) return cats;
@@ -96,6 +101,8 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
       setAmountErr("");
       setCatQuery(""); // reset search on open
       setDescription(editing?.description ?? "");
+      setAllCats(!(editing?.categories && editing.categories.length));
+      setCategoryIds(editing?.categories ? editing.categories.map((c: any) => c.id) : []);
     }
   }, [editing, open]);
 
@@ -107,13 +114,25 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
       return categoryIds.length > 0 && categoryIds.length === cats.length;
     }, [cats, categoryIds]);
 
-    const toggleAllCats = () => {
-      if (allSelected) {
-        setCategoryIds([]);
-      } else {
-        setCategoryIds(cats.map(c => c.id));
-      }
-    };
+    const allSelectedVisual = React.useMemo(() => {
+        // visual checkmark for the header "All Categories" checkbox
+        if (!cats.length) return false;
+        return allCats || (categoryIds.length > 0 && categoryIds.length === cats.length);
+      }, [cats, categoryIds, allCats]);
+
+      const toggleAllCats = () => {
+        // UX: checking means "apply to all" (send none), but show all selected visually
+        // unchecking returns to explicit selection mode (start from empty)
+        if (allCats) {
+          setAllCats(false);
+          setCategoryIds([]);        // explicit none selected
+        } else {
+          setAllCats(true);
+          // keep categoryIds empty so payload uses "apply to all"
+          // visually we will show every box as checked when allCats === true
+        }
+      };
+
 
   const normalizeRate = () => {
     if (basis !== "PCT") return;
@@ -181,7 +200,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         basis,
         apply_scope: applyScope,
         priority: Number(priority) || 100,
-        category_ids: categoryIds,
+        category_ids: allCats ? [] : categoryIds,
         rate: basis === "PCT" ? String(Number(rateText)) : null,
         amount: basis === "FLAT" ? String(Number(amountText)) : null,
         start_at: startAt || null,
@@ -228,7 +247,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   }, [startAt, endAt]);
 
    const catsLabel = React.useMemo(() => {
-    if (!categoryIds.length) return "All Categories";
+    if (allCats || !categoryIds.length) return "All Categories";
     const names = cats
         .filter(c => categoryIds.includes(c.id))
         .map(c => `${c.name} (${c.code})`);
@@ -243,15 +262,15 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
        <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <label className="text-sm">Categories</label>
-          <label className="inline-flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={toggleAllCats}
-              disabled={!cats.length}
-            />
-            <span>All Categories</span>
-          </label>
+             <label className="inline-flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={allSelectedVisual}
+                  onChange={toggleAllCats}
+                  disabled={!cats.length}
+                />
+                <span>All Categories</span>
+              </label>
         </div>
         <input
           value={catQuery}
@@ -271,10 +290,22 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
             <label key={c.id} className="flex items-center gap-2 text-sm text-slate-300">
               <input
                 type="checkbox"
-                checked={categoryIds.includes(c.id)}
-                onChange={(e) =>
-                  setCategoryIds(prev => e.target.checked ? [...prev, c.id] : prev.filter(x => x !== c.id))
-                }
+                 checked={allCats || categoryIds.includes(c.id)}   // visually all checked when allCats
+                  onChange={(e) => {
+                    if (allCats) {
+                      // If user interacts with a specific box while in "All" mode,
+                      // switch to explicit subset that starts as "all minus this one" (for uncheck),
+                      // or "all plus this one" (redundant check).
+                      if (!e.target.checked) {
+                        setAllCats(false);
+                        setCategoryIds(cats.map(x => x.id).filter(id => id !== c.id));
+                      } else {
+                        // allCats true + checking again: stay in allCats; no change needed
+                      }
+                    } else {
+                      setCategoryIds(prev => e.target.checked ? [...prev, c.id] : prev.filter(x => x !== c.id));
+                    }
+                  }}
               />
               {c.name} ({c.code})
             </label>
