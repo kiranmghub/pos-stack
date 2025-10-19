@@ -156,8 +156,8 @@ class DiscountRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTenantAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["is_active", "scope", "apply_scope", "basis", "target", "store", "stackable", "priority"]
-    search_fields = ["code", "name", "categories__code", "products__name", "variants__sku"]
-    ordering_fields = ["priority", "code", "name", "start_at", "end_at"]
+    search_fields = ["code", "name", "description", "categories__code", "products__name", "variants__sku"]
+    ordering_fields = ["priority", "code", "name", "description", "start_at", "end_at"]
 
     def perform_update(self, serializer):
         serializer.save()

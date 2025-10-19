@@ -368,6 +368,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
             "apply_scope", "target",
             "stackable", "priority",
             "start_at", "end_at",
+            "description",
             "categories", "category_ids",
             "product_ids", "variant_ids",
             "created_at", "updated_at",
