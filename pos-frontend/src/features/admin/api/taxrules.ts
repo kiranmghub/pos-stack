@@ -12,6 +12,7 @@ export type TaxRule = {
   is_active: boolean;
   scope: "GLOBAL" | "STORE";
   store?: number | null;
+  store_name?: string;
   basis: "PCT" | "FLAT";
   apply_scope: "LINE" | "RECEIPT";
   priority: number;
@@ -20,6 +21,7 @@ export type TaxRule = {
   start_at?: string | null;
   end_at?: string | null;
   categories?: number[];   // tax category IDs
+  category_names?: string[]; // tax category Names
   created_at?: string;
   updated_at?: string;
 };

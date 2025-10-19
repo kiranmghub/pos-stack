@@ -122,20 +122,65 @@ export default function TaxRulesTab() {
     { key: "code", header: "Code" },
     { key: "name", header: "Name" },
     {
-      key: "basis",
-      header: "Basis",
-      render: (r: TaxRule) => (
-        r.basis === "PCT"
-          ? <span title={String(r.rate ?? "")} className="px-2 py-0.5 rounded-full text-xs bg-emerald-600/30 text-emerald-200">Percent {r.rate ?? ""}</span>
-          : <span title={String(r.amount ?? "")} className="px-2 py-0.5 rounded-full text-xs bg-sky-600/30 text-sky-200">Flat {r.amount ?? ""}</span>
-      ),
+    key: "basis",
+    header: "Basis",
+    render: (r: TaxRule) => {
+        if (r.basis === "PCT") {
+        const n = Number(r.rate);
+        const pct = !isNaN(n) ? (n > 1 ? n : n * 100) : 0; // convert 0.20 → 20%
+        return (
+            <span
+            title={`${pct.toFixed(2)}%`}
+            className="px-2 py-0.5 rounded-full text-xs bg-emerald-600/30 text-emerald-200"
+            >
+            {pct.toFixed(2)}%
+            </span>
+        );
+        } else {
+        const amt = Number(r.amount);
+        return (
+            <span
+            title={`$${amt.toFixed(2)}`}
+            className="px-2 py-0.5 rounded-full text-xs bg-sky-600/30 text-sky-200"
+            >
+            ${amt.toFixed(2)}
+            </span>
+        );
+        }
+    },
     },
     {
       key: "scope",
       header: "Scope",
       render: (r: TaxRule) => (
-        <span className="text-sm">{r.scope}{r.scope === "STORE" && r.store ? ` #${r.store}` : ""}</span>
+        <span className="text-sm">
+          {r.scope === "STORE" ? "STORE" : "GLOBAL"}
+        </span>
       ),
+    },
+    {
+      key: "store_name",
+      header: "Store",
+      render: (r: any) => (
+        r.scope === "STORE"
+          ? (r.store_name || (r.store ? `#${r.store}` : "—"))
+          : "All Stores"
+      ),
+    },
+    {
+      key: "category_names",
+      header: "Cats",
+      render: (r: any) => {
+        const names: string[] = r.category_names || [];
+        if (!names.length) return "—";
+        const shown = names.slice(0, 3);
+        const more = names.length - shown.length;
+        return (
+          <span title={names.join(", ")}>
+            {shown.join(", ")}{more > 0 ? ` +${more} more` : ""}
+          </span>
+        );
+      },
     },
     { key: "apply_scope", header: "Apply" },
     { key: "priority", header: "Prio", align: "right" as const },

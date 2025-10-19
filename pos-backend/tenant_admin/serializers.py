@@ -19,6 +19,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from common.roles import TenantRole
 from django.db import IntegrityError, transaction
+from decimal import Decimal, ROUND_HALF_UP
+
 
 
 
@@ -280,24 +282,45 @@ class TaxCategorySerializer(serializers.ModelSerializer):
 class TaxRuleSerializer(serializers.ModelSerializer):
     categories = TaxCategoryLiteSerializer(many=True, read_only=True)
     category_ids = serializers.PrimaryKeyRelatedField(
-        queryset=TaxCategory.objects.all(), many=True, write_only=True, source="categories"
+        queryset=TaxCategory.objects.all(), many=True, required=False, write_only=True, source="categories"
     )
-    store_id = serializers.PrimaryKeyRelatedField(
-        queryset=Store.objects.all(), required=False, allow_null=True, source="store"
+    store = serializers.PrimaryKeyRelatedField(
+        queryset=Store.objects.all(), required=False, allow_null=True
     )
+    # READ-ONLY conveniences for the frontend list/table
+    store_name = serializers.SerializerMethodField(read_only=True)
+    category_names = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = TaxRule
         fields = (
             "id", "tenant", "code", "name", "is_active",
-            "scope", "store_id",
+            "scope", "store", "store_name",
             "basis", "rate", "amount",
             "apply_scope", "priority",
             "start_at", "end_at",
-            "categories", "category_ids",
+            "categories", "category_ids", "category_names",
             "created_at", "updated_at",
         )
         read_only_fields = ("tenant", "created_at", "updated_at")
+
+    def get_store_name(self, obj):
+        s = getattr(obj, "store", None)
+        if not s:
+            return None
+        # prefer "Name (CODE)" which matches your Admin UX
+        code = getattr(s, "code", None)
+        name = getattr(s, "name", None)
+        if name and code:
+            return f"{name} ({code})"
+        return name or code
+
+    def get_category_names(self, obj):
+        # Return a simple list of display names; keep it compact for tables
+        try:
+            return [f"{c.name} ({c.code})" if c.code else c.name for c in obj.categories.all()]
+        except Exception:
+            return []
 
     # normalize percent: allow "8.25" to become 0.0825
     def validate(self, attrs):

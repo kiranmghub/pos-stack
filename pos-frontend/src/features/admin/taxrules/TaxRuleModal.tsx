@@ -1,7 +1,7 @@
 // pos-frontend/src/features/admin/taxrules/TaxRuleModal.tsx
 import React from "react";
 import { useToast } from "../components/ToastCompat";
-import { TaxRulesAPI, type TaxRule, type TaxRuleCreatePayload } from "../api/taxrules";
+import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
 import { AdminAPI, type Store } from "../adminApi";
 import { TaxCatsAPI, type TaxCategory as TaxCat } from "../api/taxcats";
 
@@ -24,13 +24,32 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   const [stores, setStores] = React.useState<Store[]>([]);
   const [cats, setCats] = React.useState<TaxCat[]>([]);
 
+  const formatLocalDate = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
   // Targeting
   const [code, setCode] = React.useState(editing?.code ?? "");
   const [name, setName] = React.useState(editing?.name ?? "");
   const [isActive, setIsActive] = React.useState(editing?.is_active ?? true);
   const [scope, setScope] = React.useState<TaxRule["scope"]>(editing?.scope ?? "GLOBAL");
   const [storeId, setStoreId] = React.useState<number | 0>((editing?.store as number) ?? 0);
-  const [categoryIds, setCategoryIds] = React.useState<number[]>(editing?.categories ?? []);
+
+  // Categories (with search)
+  const [categoryIds, setCategoryIds] = React.useState<number[]>(
+    editing?.categories ? editing.categories.map((c: any) => c.id) : []
+  );
+  const [catQuery, setCatQuery] = React.useState(""); // NEW: search box
+  const filteredCats = React.useMemo(() => {
+    if (!catQuery.trim()) return cats;
+    const q = catQuery.toLowerCase();
+    return cats.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+    );
+  }, [cats, catQuery]);
 
   // Calculation
   const [basis, setBasis] = React.useState<TaxRule["basis"]>(editing?.basis ?? "PCT");
@@ -38,8 +57,8 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   const [amountText, setAmountText] = React.useState<string>(editing?.amount ?? "0.00");
   const [applyScope, setApplyScope] = React.useState<TaxRule["apply_scope"]>(editing?.apply_scope ?? "LINE");
   const [priority, setPriority] = React.useState<number>(editing?.priority ?? 100);
-  const [startAt, setStartAt] = React.useState<string>(editing?.start_at ?? "");
-  const [endAt, setEndAt] = React.useState<string>(editing?.end_at ?? "");
+  const [startAt, setStartAt] = React.useState<string>(formatLocalDate(editing?.start_at));
+  const [endAt, setEndAt] = React.useState<string>(formatLocalDate(editing?.end_at));
 
   const [rateErr, setRateErr] = React.useState("");
   const [amountErr, setAmountErr] = React.useState("");
@@ -68,6 +87,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
       setTopErr("");
       setRateErr("");
       setAmountErr("");
+      setCatQuery(""); // reset search on open
     }
   }, [editing, open]);
 
@@ -101,7 +121,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
     if (scope === "STORE" && !storeId) errs.push("Store is required when scope is Store.");
     setTopErr(errs.join(" "));
     return errs.length === 0;
-    };
+  };
 
   const validateStep2 = () => {
     const errs: string[] = [];
@@ -131,7 +151,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
     if (!validateStep2()) return;
     setSaving(true);
     try {
-      const payload: TaxRuleCreatePayload = {
+      const payload: any = {
         code: code.trim(),
         name: name.trim(),
         is_active: isActive,
@@ -140,7 +160,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         basis,
         apply_scope: applyScope,
         priority: Number(priority) || 100,
-        categories: categoryIds,
+        category_ids: categoryIds,
         rate: basis === "PCT" ? String(Number(rateText)) : null,
         amount: basis === "FLAT" ? String(Number(amountText)) : null,
         start_at: startAt || null,
@@ -163,20 +183,55 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
     }
   };
 
+  // --- Derived display helpers for the preview strip ---
+  const storeLabel = React.useMemo(() => {
+    if (scope !== "STORE") return "All Stores";
+    const s = stores.find((x) => x.id === storeId);
+    return s ? `${s.name} (${s.code})` : "Select a store";
+  }, [scope, stores, storeId]);
+
+  const prettyPercent = React.useMemo(() => {
+    const n = Number(rateText);
+    const pct = !isNaN(n) ? (n > 1 ? n : n * 100) : 0;
+    return `${pct.toFixed(2)}%`;
+  }, [rateText]);
+
+  const windowLabel = React.useMemo(() => {
+    const s = startAt ? startAt.replace("T", " ").slice(0, 16) : "";
+    const e = endAt ? endAt.replace("T", " ").slice(0, 16) : "";
+    if (!s && !e) return "No window";
+    if (s && !e) return `From ${s}`;
+    if (!s && e) return `Until ${e}`;
+    return `${s} → ${e}`;
+  }, [startAt, endAt]);
+
   // --- UI ---
   const CategoriesField = (
     <div>
-      <label className="text-sm">Categories</label>
+      <div className="flex items-center justify-between">
+        <label className="text-sm">Categories</label>
+        {/* NEW: categories search */}
+        <input
+          value={catQuery}
+          onChange={(e) => setCatQuery(e.target.value)}
+          placeholder="Search categories…"
+          className="rounded-md bg-slate-800 px-2 py-1 text-xs outline-none placeholder:text-slate-400"
+          title="Filter categories by name or code"
+        />
+      </div>
+
       <div className="mt-1 space-y-1 max-h-32 overflow-auto border border-slate-700 rounded-md p-2">
-        {cats.length === 0 ? (
-          <p className="text-xs text-slate-400">No categories. You can create tax categories first.</p>
+        {filteredCats.length === 0 ? (
+          <p className="text-xs text-slate-400">No matching categories.</p>
         ) : (
-          cats.map(c => (
+          filteredCats.map(c => (
             <label key={c.id} className="flex items-center gap-2 text-sm text-slate-300">
               <input
                 type="checkbox"
                 checked={categoryIds.includes(c.id)}
-                onChange={(e) => setCategoryIds(prev => e.target.checked ? [...prev, c.id] : prev.filter(x => x !== c.id))}
+                onChange={(e) =>
+                  setCategoryIds(prev => e.target.checked ? [...prev, c.id] : prev.filter(x => x !== c.id))
+                }
               />
               {c.name} ({c.code})
             </label>
@@ -354,6 +409,28 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
               </div>
             </div>
           )}
+
+          {/* === Preview strip (always visible) === */}
+          <div className="mt-2 rounded-md border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+            <span className="font-medium">Preview:</span>{" "}
+            <span>
+              Applies to <span className="text-slate-200">{storeLabel}</span>
+              {" • "}
+              {basis === "PCT" ? (
+                <>Rate <span className="text-slate-200">{prettyPercent}</span></>
+              ) : (
+                <>Amount <span className="text-slate-200">{Number(amountText || 0).toFixed(2)}</span></>
+              )}
+              {" on "}
+              <span className="text-slate-200">{applyScope === "LINE" ? "Line" : "Receipt"}</span>
+              {" • "}
+              Prio <span className="text-slate-200">{priority || 0}</span>
+              {" • "}
+              {isActive ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
+              {" • "}
+              <span className="text-slate-200">{windowLabel}</span>
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-800 p-3">
