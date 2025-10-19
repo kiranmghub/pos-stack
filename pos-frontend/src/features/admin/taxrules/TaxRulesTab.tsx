@@ -26,6 +26,9 @@ export default function TaxRulesTab() {
   const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<TaxRule | null>(null);
 
+  // NEW: expanded row state
+  const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
+
   // load stores for filter
   React.useEffect(() => {
     let mounted = true;
@@ -78,6 +81,10 @@ export default function TaxRulesTab() {
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
+  const toggleExpand = (row: TaxRule) => {
+    setExpandedIds(prev => prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]);
+  };
+
   const bulkSetActive = async (is_active: boolean) => {
     if (selectedIds.length === 0) return;
     setBulkLoading(true);
@@ -98,7 +105,47 @@ export default function TaxRulesTab() {
     }
   };
 
+  const fmtPct = (val?: string | null) => {
+    const n = Number(val);
+    if (isNaN(n)) return "—";
+    const pct = n > 1 ? n : n * 100;
+    return `${pct.toFixed(2)}%`;
+  };
+  const fmtAmt = (val?: string | null) => {
+    const n = Number(val);
+    if (isNaN(n)) return "—";
+    return `$${n.toFixed(2)}`;
+  };
+  const windowLabel = (s?: string | null, e?: string | null) => {
+    const ss = s ? s.replace("T"," ").slice(0,16) : "";
+    const ee = e ? e.replace("T"," ").slice(0,16) : "";
+    if (!ss && !ee) return "No window";
+    if (ss && !ee) return `From ${ss}`;
+    if (!ss && ee) return `Until ${ee}`;
+    return `${ss} → ${ee}`;
+  };
+
   const cols = React.useMemo(() => ([
+    // NEW: expander caret
+    {
+      key: "__expander__",
+      header: "",
+      width: "2rem",
+      render: (r: TaxRule) => {
+        const open = expandedIds.includes(r.id);
+        return (
+          <button
+            className="text-slate-300 hover:text-white"
+            title={open ? "Collapse" : "Expand"}
+            onClick={() => toggleExpand(r)}
+          >
+            <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        );
+      }
+    },
     {
       key: "select",
       header: (
@@ -122,32 +169,13 @@ export default function TaxRulesTab() {
     { key: "code", header: "Code" },
     { key: "name", header: "Name" },
     {
-    key: "basis",
-    header: "Basis",
-    render: (r: TaxRule) => {
-        if (r.basis === "PCT") {
-        const n = Number(r.rate);
-        const pct = !isNaN(n) ? (n > 1 ? n : n * 100) : 0; // convert 0.20 → 20%
-        return (
-            <span
-            title={`${pct.toFixed(2)}%`}
-            className="px-2 py-0.5 rounded-full text-xs bg-emerald-600/30 text-emerald-200"
-            >
-            {pct.toFixed(2)}%
-            </span>
-        );
-        } else {
-        const amt = Number(r.amount);
-        return (
-            <span
-            title={`$${amt.toFixed(2)}`}
-            className="px-2 py-0.5 rounded-full text-xs bg-sky-600/30 text-sky-200"
-            >
-            ${amt.toFixed(2)}
-            </span>
-        );
-        }
-    },
+      key: "basis",
+      header: "Basis",
+      render: (r: TaxRule) => (
+        r.basis === "PCT"
+          ? <span title={fmtPct(r.rate)} className="px-2 py-0.5 rounded-full text-xs bg-emerald-600/30 text-emerald-200">{fmtPct(r.rate)}</span>
+          : <span title={fmtAmt(r.amount)} className="px-2 py-0.5 rounded-full text-xs bg-sky-600/30 text-sky-200">{fmtAmt(r.amount)}</span>
+      ),
     },
     {
       key: "scope",
@@ -209,7 +237,62 @@ export default function TaxRulesTab() {
         </div>
       ),
     },
-  ]), [allChecked, partiallyChecked, selectedIds]);
+  ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+
+  // NEW: expanded detail panel
+  const renderRowAfter = React.useCallback((r: any) => {
+    if (!expandedIds.includes(r.id)) return null;
+    const basisLabel = r.basis === "PCT" ? fmtPct(r.rate) : fmtAmt(r.amount);
+    const scopeLabel = r.scope === "STORE" ? (r.store_name || (r.store ? `#${r.store}` : "—")) : "All Stores";
+    const cats: string[] = r.category_names || [];
+    return (
+      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-slate-400">Description</div>
+            <div className="text-slate-200 break-words">{r.description || "—"}</div>
+            <div className="text-xs text-slate-400 mt-2">Scope</div>
+            <div className="text-slate-200">{r.scope} • {scopeLabel}</div>
+            <div className="text-xs text-slate-400 mt-2">Apply</div>
+            <div className="text-slate-200">{r.apply_scope}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Basis</div>
+            <div className="text-slate-200">{basisLabel}</div>
+            <div className="text-xs text-slate-400 mt-2">Priority</div>
+            <div className="text-slate-200">{r.priority}</div>
+            <div className="text-xs text-slate-400 mt-2">Window</div>
+            <div className="text-slate-200">{windowLabel(r.start_at, r.end_at)}</div>
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="text-xs text-slate-400 mb-1">Categories</div>
+          {cats.length ? (
+            <div className="flex flex-wrap gap-1">
+              {cats.slice(0, 12).map((c, i) => (
+                <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                  {c}
+                </span>
+              ))}
+              {cats.length > 12 && <span className="text-xs text-slate-400">+{cats.length - 12} more</span>}
+            </div>
+          ) : (
+            <div className="text-slate-400 text-sm">All taxable items.</div>
+          )}
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-xs text-slate-400">
+            {r.is_active ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
+          </div>
+          <div>
+            <button className="text-xs text-blue-400 hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
+              Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [expandedIds]);
 
   return (
     <div className="space-y-4">
@@ -307,6 +390,7 @@ export default function TaxRulesTab() {
         query={query}
         onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
         getRowKey={(row:any) => row.id ?? row.code}
+        renderRowAfter={renderRowAfter}   // ← show expanded details
       />
 
       {/* Modals */}

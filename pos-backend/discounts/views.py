@@ -1,4 +1,4 @@
-# discounts/views.py
+# pos-backend/discounts/views.py
 from django.utils import timezone
 from django.db.models import Q, F
 from rest_framework.views import APIView

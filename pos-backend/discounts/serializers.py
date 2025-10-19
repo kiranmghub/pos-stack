@@ -1,4 +1,4 @@
-# discounts/serializers.py
+# pos-backend/discounts/serializers.py
 from rest_framework import serializers
 from .models import DiscountRule, Coupon
 from catalog.models import TaxCategory, Product, Variant

@@ -214,6 +214,16 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
     return `${s} → ${e}`;
   }, [startAt, endAt]);
 
+   const catsLabel = React.useMemo(() => {
+    if (!categoryIds.length) return "All taxable items";
+    const names = cats
+        .filter(c => categoryIds.includes(c.id))
+        .map(c => `${c.name} (${c.code})`);
+    const shown = names.slice(0, 3).join(", ");
+    const more = names.length - 3;
+    return more > 0 ? `${shown} +${more} more` : shown;
+    }, [cats, categoryIds]);
+
   // --- UI ---
   const CategoriesField = (
     <div>
@@ -450,6 +460,8 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
               {isActive ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
               {" • "}
               <span className="text-slate-200">{windowLabel}</span>
+              {" • "}
+              Cats <span className="text-slate-200">{catsLabel}</span>
             </span>
           </div>
         </div>

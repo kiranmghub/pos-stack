@@ -1,4 +1,4 @@
-# discounts/urls.py
+# pos-backend/discounts/urls.py
 from django.urls import path
 from .views import ActiveDiscountRulesView, CouponLookupView
 

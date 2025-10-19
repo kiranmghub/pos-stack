@@ -1,4 +1,4 @@
-# discounts/models.py
+# pos-backend/discounts/models.py
 from django.db import models
 from common.models import TimeStampedModel
 from stores.models import Store
