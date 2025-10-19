@@ -200,7 +200,7 @@ export default function TaxRulesTab() {
       header: "Cats",
       render: (r: any) => {
         const names: string[] = r.category_names || [];
-        if (!names.length) return "—";
+        if (!names.length) return "All Categories";
         const shown = names.slice(0, 3);
         const more = names.length - shown.length;
         return (

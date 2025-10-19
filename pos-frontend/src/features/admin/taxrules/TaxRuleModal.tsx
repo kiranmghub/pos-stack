@@ -102,6 +102,19 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   if (!open) return null;
 
   // --- Helpers ---
+   const allSelected = React.useMemo(() => {
+      if (!cats.length) return false;
+      return categoryIds.length > 0 && categoryIds.length === cats.length;
+    }, [cats, categoryIds]);
+
+    const toggleAllCats = () => {
+      if (allSelected) {
+        setCategoryIds([]);
+      } else {
+        setCategoryIds(cats.map(c => c.id));
+      }
+    };
+
   const normalizeRate = () => {
     if (basis !== "PCT") return;
     if (rateText === "" || rateText === ".") { setRateErr("Rate is required."); return; }
@@ -215,7 +228,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   }, [startAt, endAt]);
 
    const catsLabel = React.useMemo(() => {
-    if (!categoryIds.length) return "All taxable items";
+    if (!categoryIds.length) return "All Categories";
     const names = cats
         .filter(c => categoryIds.includes(c.id))
         .map(c => `${c.name} (${c.code})`);
@@ -227,9 +240,19 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   // --- UI ---
   const CategoriesField = (
     <div>
-      <div className="flex items-center justify-between">
-        <label className="text-sm">Categories</label>
-        {/* NEW: categories search */}
+       <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="text-sm">Categories</label>
+          <label className="inline-flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAllCats}
+              disabled={!cats.length}
+            />
+            <span>All Categories</span>
+          </label>
+        </div>
         <input
           value={catQuery}
           onChange={(e) => setCatQuery(e.target.value)}
@@ -238,6 +261,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
           title="Filter categories by name or code"
         />
       </div>
+
 
       <div className="mt-1 space-y-1 max-h-32 overflow-auto border border-slate-700 rounded-md p-2">
         {filteredCats.length === 0 ? (
@@ -257,7 +281,6 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
           ))
         )}
       </div>
-      <p className="text-xs text-slate-400 mt-1">Leave empty to apply to all taxable items.</p>
     </div>
   );
 
