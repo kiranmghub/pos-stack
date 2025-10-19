@@ -37,6 +37,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   const [isActive, setIsActive] = React.useState(editing?.is_active ?? true);
   const [scope, setScope] = React.useState<TaxRule["scope"]>(editing?.scope ?? "GLOBAL");
   const [storeId, setStoreId] = React.useState<number | 0>((editing?.store as number) ?? 0);
+  const [description, setDescription] = React.useState<string>(editing?.description ?? "");
 
   // Categories (with search)
   const [categoryIds, setCategoryIds] = React.useState<number[]>(
@@ -82,12 +83,19 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   }, [open, push]);
 
   React.useEffect(() => {
+    if (open && !editing) {
+        setDescription("");
+    }
+    }, [open, editing]);
+
+  React.useEffect(() => {
     if (editing && open) {
       setStep(1);
       setTopErr("");
       setRateErr("");
       setAmountErr("");
       setCatQuery(""); // reset search on open
+      setDescription(editing?.description ?? "");
     }
   }, [editing, open]);
 
@@ -165,6 +173,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         amount: basis === "FLAT" ? String(Number(amountText)) : null,
         start_at: startAt || null,
         end_at: endAt || null,
+        description: description.trim(),
       };
 
       if (isEdit && editing) {
@@ -270,6 +279,18 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                   <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
                   <span className="text-sm">Active</span>
                 </label>
+                {/* Description */}
+                <div>
+                    <label className="text-sm">Description</label>
+                    <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={4}
+                    className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                    placeholder="What does this tax rule do?"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Optional; shown for admin context.</p>
+                </div>  
               </div>
 
               {/* Targeting */}

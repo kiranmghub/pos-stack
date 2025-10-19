@@ -22,6 +22,7 @@ class TaxRule(TimeStampedModel):
     name        = models.CharField(max_length=80)
     code        = models.SlugField()
     is_active   = models.BooleanField(default=True, db_index=True)
+    description = models.TextField(blank=True, default="")
 
     scope       = models.CharField(max_length=10, choices=TaxScope.choices, default=TaxScope.GLOBAL, db_index=True)
     store       = models.ForeignKey(Store, null=True, blank=True, on_delete=models.CASCADE)  # required when scope=STORE

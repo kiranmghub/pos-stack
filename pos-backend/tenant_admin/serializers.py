@@ -299,6 +299,7 @@ class TaxRuleSerializer(serializers.ModelSerializer):
             "basis", "rate", "amount",
             "apply_scope", "priority",
             "start_at", "end_at",
+            "description",
             "categories", "category_ids", "category_names",
             "created_at", "updated_at",
         )
