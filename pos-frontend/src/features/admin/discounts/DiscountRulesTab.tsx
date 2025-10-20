@@ -144,7 +144,18 @@ export default function DiscountRulesTab() {
         <Checkbox checked={selectedIds.includes(r.id)} onChange={() => toggleRow(r.id)} aria-label="Select row" />
       ),
     },
-    { key: "code", header: "Code" },
+     {
+        key: "code",
+        header: "Code",
+        render: (r: any) => (
+          <div className="flex items-center gap-1">
+            <span>{r.code}</span>
+            {r.has_coupon ? (
+              <Tag className="h-3.5 w-3.5 text-amber-400" title="Linked to coupon" />
+            ) : null}
+          </div>
+        ),
+    },
     { key: "name", header: "Name" },
     {
       key: "basis",
@@ -163,7 +174,10 @@ export default function DiscountRulesTab() {
     {
       key: "store_name",
       header: "Store",
-      render: (r: any) => (r.scope === "STORE" ? (r.store_name || (r.store ? `#${r.store}` : "—")) : "All Stores"),
+      render: (r: any) => (
+        r.scope === "STORE"
+          ? (r.store_name || (typeof r.store_id === "number" ? `#${r.store_id}` : "—"))
+          : "All Stores"),
     },
     {
       key: "target",
@@ -197,7 +211,10 @@ export default function DiscountRulesTab() {
   const renderRowAfter = React.useCallback((r: any) => {
     if (!expandedIds.includes(r.id)) return null;
     const basisLabel = r.basis === "PCT" ? fmtPct(r.rate) : fmtAmt(r.amount);
-    const scopeLabel = r.scope === "STORE" ? (r.store_name || (r.store ? `#${r.store}` : "—")) : "All Stores";
+    const scopeLabel = r.scope === "STORE"
+        ? (r.store_name || (typeof r.store_id === "number" ? `#${r.store_id}` : "—"))
+        : "All Stores";
+
     return (
       <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
         <div className="grid grid-cols-2 gap-3">

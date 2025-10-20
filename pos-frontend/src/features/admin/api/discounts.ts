@@ -13,7 +13,8 @@ export type DiscountRule = {
   description?: string | null;
 
   scope: "GLOBAL" | "STORE";
-  store?: number | null;               // PK id
+  store_id?: number | null;
+  store_name?: string | null;
   basis: "PCT" | "FLAT";
   rate?: string | null;                // decimal string like "0.0825"
   amount?: string | null;              // decimal string like "2.00"
@@ -29,9 +30,6 @@ export type DiscountRule = {
   categories?: { id: number; code: string; name: string }[];
   products?: { id: number; name: string }[];
   variants?: { id: number; sku: string }[];
-
-  // convenience read-only (if you add later similar to tax rules)
-  store_name?: string | null;
 
   created_at?: string;
   updated_at?: string;
