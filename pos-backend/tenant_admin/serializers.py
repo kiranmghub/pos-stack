@@ -334,6 +334,7 @@ class TaxRuleSerializer(serializers.ModelSerializer):
         return attrs
 
 class DiscountRuleSerializer(serializers.ModelSerializer):
+    has_coupon = serializers.BooleanField(read_only=True)
     categories = TaxCategoryLiteSerializer(many=True, read_only=True)
     category_ids = serializers.PrimaryKeyRelatedField(
         queryset=TaxCategory.objects.all(), many=True, write_only=True, source="categories"
@@ -352,6 +353,18 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
         queryset=Store.objects.all(), required=False, allow_null=True, source="store"
     )
 
+    store_name = serializers.SerializerMethodField(read_only=True)
+
+    def get_store_name(self, obj):
+        s = getattr(obj, "store", None)
+        if not s:
+            return None
+        code = getattr(s, "code", None)
+        name = getattr(s, "name", None)
+        if name and code:
+            return f"{name} ({code})"
+        return name or code
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # lazy import to avoid circulars
@@ -363,7 +376,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
         model = DiscountRule
         fields = (
             "id", "tenant", "code", "name", "is_active",
-            "scope", "store_id",
+            "scope", "store_id", "store_name",
             "basis", "rate", "amount",
             "apply_scope", "target",
             "stackable", "priority",
@@ -371,6 +384,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
             "description",
             "categories", "category_ids",
             "product_ids", "variant_ids",
+            "has_coupon",
             "created_at", "updated_at",
         )
         read_only_fields = ("tenant", "created_at", "updated_at")

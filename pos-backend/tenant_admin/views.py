@@ -159,6 +159,14 @@ class DiscountRuleViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     search_fields = ["code", "name", "description", "categories__code", "products__name", "variants__sku"]
     ordering_fields = ["priority", "code", "name", "description", "start_at", "end_at"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        from django.db.models import Exists, OuterRef
+        qs = qs.annotate(has_coupon=Exists(
+            Coupon.objects.filter(rule_id=OuterRef("id"))
+        ))
+        return qs
+
     def perform_update(self, serializer):
         serializer.save()
 

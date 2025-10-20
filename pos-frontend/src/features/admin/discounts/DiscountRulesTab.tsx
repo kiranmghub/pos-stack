@@ -8,6 +8,7 @@ import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import Checkbox from "../components/ui/Checkbox";
 import { useToast } from "../components/ToastCompat";
 import DiscountRuleModal from "./DiscountRuleModal";
+import { Tag } from "lucide-react";
 
 export default function DiscountRulesTab() {
   const { push } = useToast();
