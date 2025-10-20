@@ -349,10 +349,9 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
         queryset=Variant.objects.all(),
         source="variants", write_only=True
     )
-    store_id = serializers.PrimaryKeyRelatedField(
-        queryset=Store.objects.all(), required=False, allow_null=True, source="store"
+    store = serializers.PrimaryKeyRelatedField(
+        queryset=Store.objects.all(), required=False, allow_null=True
     )
-
     store_name = serializers.SerializerMethodField(read_only=True)
 
     def get_store_name(self, obj):
@@ -376,7 +375,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
         model = DiscountRule
         fields = (
             "id", "tenant", "code", "name", "is_active",
-            "scope", "store_id", "store_name",
+            "scope", "store", "store_name",
             "basis", "rate", "amount",
             "apply_scope", "target",
             "stackable", "priority",

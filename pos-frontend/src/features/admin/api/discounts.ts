@@ -13,7 +13,7 @@ export type DiscountRule = {
   description?: string | null;
 
   scope: "GLOBAL" | "STORE";
-  store_id?: number | null;
+  store?: number | null;
   store_name?: string | null;
   basis: "PCT" | "FLAT";
   rate?: string | null;                // decimal string like "0.0825"

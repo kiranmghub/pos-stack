@@ -176,7 +176,7 @@ export default function DiscountRulesTab() {
       header: "Store",
       render: (r: any) => (
         r.scope === "STORE"
-          ? (r.store_name || (typeof r.store_id === "number" ? `#${r.store_id}` : "—"))
+          ? (r.store_name || (typeof r.store === "number" ? `#${r.store}` : "—"))
           : "All Stores"),
     },
     {
@@ -212,7 +212,7 @@ export default function DiscountRulesTab() {
     if (!expandedIds.includes(r.id)) return null;
     const basisLabel = r.basis === "PCT" ? fmtPct(r.rate) : fmtAmt(r.amount);
     const scopeLabel = r.scope === "STORE"
-        ? (r.store_name || (typeof r.store_id === "number" ? `#${r.store_id}` : "—"))
+        ? (r.store_name || (typeof r.store === "number" ? `#${r.store}` : "—"))
         : "All Stores";
 
     return (
