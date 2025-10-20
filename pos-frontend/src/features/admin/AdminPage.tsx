@@ -9,6 +9,7 @@ import StoresTab from "./stores/StoresTab";
 import RegistersTab from "./registers/RegistersTab";
 import TaxCategoriesTab from "./taxcats/TaxCategoriesTab";
 import TaxRulesTab from "./taxrules/TaxRulesTab";
+import DiscountRulesTab from "./discounts/DiscountRulesTab";
 
 
 
@@ -39,7 +40,7 @@ export default function AdminPage() {
 
   // Fetch ONLY for tabs that are NOT handled by their own components
   useEffect(() => {
-    if (active === "users" || active === "stores" || active === "registers" || active === "taxcats" || active === "taxrules") return;
+    if (active === "users" || active === "stores" || active === "registers" || active === "taxcats" || active === "taxrules" || active === "discrules") return;
 
     let mounted = true;
     (async () => {
@@ -48,8 +49,8 @@ export default function AdminPage() {
       try {
         const q = { search: query.search || undefined, ordering: query.ordering || undefined };
         let page: any;
-        if (active === "discrules") page = await AdminAPI.discRules(q);
-        else                             page = await AdminAPI.coupons(q);
+        if (active === "coupons") page = await AdminAPI.coupons(q);
+        // else                             page = await AdminAPI.coupons(q);
 
         const rows = Array.isArray(page) ? page : (page.results ?? []);
         const cnt  = Array.isArray(page) ? undefined : page.count;
@@ -88,26 +89,26 @@ export default function AdminPage() {
       //       ),
       //     },
       //   ];
-      case "discrules":
-        return [
-          { key: "code", header: "Code" },
-          { key: "name", header: "Name" },
-          { key: "target", header: "Target" },
-          { key: "basis", header: "Basis" },
-          { key: "apply_scope", header: "Scope" },
-          { key: "rate", header: "Rate", align: "right" as const, render: (r: DiscountRule) => r.rate ?? "-" },
-          { key: "amount", header: "Amount", align: "right" as const, render: (r: DiscountRule) => r.amount ?? "-" },
-          { key: "priority", header: "Prio", align: "right" as const },
-          {
-            key: "is_active",
-            header: "Active",
-            render: (r: DiscountRule) => (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-                {r.is_active ? "Yes" : "No"}
-              </span>
-            ),
-          },
-        ];
+      // case "discrules":
+      //   return [
+      //     { key: "code", header: "Code" },
+      //     { key: "name", header: "Name" },
+      //     { key: "target", header: "Target" },
+      //     { key: "basis", header: "Basis" },
+      //     { key: "apply_scope", header: "Scope" },
+      //     { key: "rate", header: "Rate", align: "right" as const, render: (r: DiscountRule) => r.rate ?? "-" },
+      //     { key: "amount", header: "Amount", align: "right" as const, render: (r: DiscountRule) => r.amount ?? "-" },
+      //     { key: "priority", header: "Prio", align: "right" as const },
+      //     {
+      //       key: "is_active",
+      //       header: "Active",
+      //       render: (r: DiscountRule) => (
+      //         <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+      //           {r.is_active ? "Yes" : "No"}
+      //         </span>
+      //       ),
+      //     },
+      //   ];
       case "coupons":
         return [
           { key: "code", header: "Code" },
@@ -151,8 +152,9 @@ export default function AdminPage() {
       {active === "registers" && <RegistersTab />}
       {active === "taxcats" && <TaxCategoriesTab />}
       {active === "taxrules" && <TaxRulesTab />}
+      {active === "discrules" && <DiscountRulesTab />}
 
-      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && active !== "taxrules" && (
+      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && active !== "taxrules" && active !== "discrules" && (
         <DataTable
           title={tabs.find(t => t.key === active)?.label || ""}
           rows={data}
