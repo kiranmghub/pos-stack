@@ -58,6 +58,10 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
   const [varQuery, setVarQuery] = React.useState("");
   const [varOptions, setVarOptions] = React.useState<VariantLite[]>([]);
   const [variantIds, setVariantIds] = React.useState<number[]>(editing?.variants ? editing.variants.map(v => v.id) : []);
+  // -- simple debounce timers --
+  const prodTimer = React.useRef<number | null>(null);
+  const varTimer = React.useRef<number | null>(null);
+
 
   // Calculation
   const [basis, setBasis] = React.useState<DiscountRule["basis"]>(editing?.basis ?? "PCT");
@@ -135,22 +139,33 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
     }
   };
 
-  const searchProducts = async () => {
-    try {
-      const list = await CatalogAPI.searchProducts(prodQuery.trim());
-      setProdOptions(list);
-    } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to search products" });
-    }
+  const searchProducts = () => {
+    if (prodTimer.current) window.clearTimeout(prodTimer.current);
+    prodTimer.current = window.setTimeout(async () => {
+      try {
+        const list = await CatalogAPI.searchProducts(prodQuery.trim());
+        setProdOptions(list);
+      } catch (e: any) {
+        push({ kind: "error", msg: e?.message || "Failed to search products" });
+      }
+    }, 350);
   };
-  const searchVariants = async () => {
-    try {
-      const list = await CatalogAPI.searchVariants(varQuery.trim());
-      setVarOptions(list);
-    } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to search variants" });
-    }
+
+  const searchVariants = () => {
+    if (varTimer.current) window.clearTimeout(varTimer.current);
+    varTimer.current = window.setTimeout(async () => {
+      try {
+        const list = await CatalogAPI.searchVariants(
+          varQuery.trim(),
+          scope === "STORE" ? (storeId || undefined) : undefined
+        );
+        setVarOptions(list);
+      } catch (e: any) {
+        push({ kind: "error", msg: e?.message || "Failed to search variants" });
+      }
+    }, 350);
   };
+
 
   // ---- Validation & normalization ----
   const normalizeRate = () => {
@@ -304,6 +319,15 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
     return "";
   }, [target, allCats, categoryIds, cats, productIds, variantIds, prodOptions, varOptions]);
 
+  // Clean up timers on unmount
+  React.useEffect(() => {
+    return () => {
+      if (prodTimer.current) window.clearTimeout(prodTimer.current);
+      if (varTimer.current) window.clearTimeout(varTimer.current);
+    };
+  }, []);
+
+
   // ---- UI ----
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
@@ -434,7 +458,7 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
                     <div className="flex items-center gap-2">
                       <input
                         value={prodQuery}
-                        onChange={(e) => setProdQuery(e.target.value)}
+                        onChange={(e) => { setProdQuery(e.target.value); searchProducts(); }}
                         placeholder="Search products…"
                         className="rounded-md bg-slate-800 px-2 py-1 text-xs outline-none placeholder:text-slate-400"
                       />
@@ -467,7 +491,7 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
                     <div className="flex items-center gap-2">
                       <input
                         value={varQuery}
-                        onChange={(e) => setVarQuery(e.target.value)}
+                        onChange={(e) => { setVarQuery(e.target.value); searchVariants(); }}
                         placeholder="Search variants by SKU…"
                         className="rounded-md bg-slate-800 px-2 py-1 text-xs outline-none placeholder:text-slate-400"
                       />
@@ -487,7 +511,7 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
                               setVariantIds(prev => e.target.checked ? [...prev, v.id] : prev.filter(x => x !== v.id))
                             }
                           />
-                          {v.sku}{v.name ? ` (${v.name})` : ""}
+                          {v.sku}{v.name ? ` - (${v.name})` : ""}
                         </label>
                       ))}
                     </div>

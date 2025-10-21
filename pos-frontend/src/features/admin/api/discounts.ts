@@ -106,24 +106,29 @@ export const DiscountRulesAPI = {
   },
 };
 
-// ---- Light-search helpers for products/variants (lazy pickers) ----
-// Adjust endpoints to your catalog routes if different. These are read-only conveniences.
+// ---- Search helpers for products/variants (lazy pickers) ----
 export type ProductLite = { id: number; name: string; sku?: string };
 export type VariantLite = { id: number; sku: string; name?: string };
 
 export const CatalogAPI = {
   async searchProducts(q: string): Promise<ProductLite[]> {
     const p = new URLSearchParams();
-    if (q) p.set("search", q);
-    const res = await ensureAuthedFetch(`/api/v1/catalog/products/${p.toString() ? `?${p.toString()}` : ""}`);
-    const j = await jsonOrThrow<any>(res);
-    return Array.isArray(j) ? j : j.results ?? [];
+    if (q) p.set("query", q); // catalog expects ?query=
+    const res = await ensureAuthedFetch(`/api/v1/catalog/products${p.toString() ? `?${p.toString()}` : ""}`);
+    const j = await jsonOrThrow<any>(res);           // {count, results: [...]}
+    const list = Array.isArray(j) ? j : j.results ?? [];
+    return list.map((row: any) => ({ id: row.id, name: row.name }));
   },
-  async searchVariants(q: string): Promise<VariantLite[]> {
+
+  async searchVariants(q: string, storeId?: number): Promise<VariantLite[]> {
     const p = new URLSearchParams();
-    if (q) p.set("search", q);
-    const res = await ensureAuthedFetch(`/api/v1/catalog/variants/${p.toString() ? `?${p.toString()}` : ""}`);
-    const j = await jsonOrThrow<any>(res);
-    return Array.isArray(j) ? j : j.results ?? [];
+    if (q) p.set("q", q);           // catalog expects ?q=
+    p.set("limit", "20");
+    if (typeof storeId === "number" && storeId > 0) p.set("store_id", String(storeId));
+    const res = await ensureAuthedFetch(`/api/v1/catalog/variants${p.toString() ? `?${p.toString()}` : ""}`);
+    const j = await jsonOrThrow<any>(res);           // {results: [...]}
+    const list = Array.isArray(j) ? j : j.results ?? [];
+    return list.map((row: any) => ({ id: row.id, sku: row.sku, name: row.product_name }));
   },
 };
+
