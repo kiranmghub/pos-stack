@@ -1,4 +1,4 @@
-# catalog/api_variants.py
+# pos-backend/catalog/api_variants.py
 from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated

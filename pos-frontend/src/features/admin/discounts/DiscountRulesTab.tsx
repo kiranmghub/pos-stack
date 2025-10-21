@@ -179,11 +179,62 @@ export default function DiscountRulesTab() {
           ? (r.store_name || (typeof r.store === "number" ? `#${r.store}` : "—"))
           : "All Stores"),
     },
+    // {
+    //   key: "target",
+    //   header: "Target",
+    //   render: (r: DiscountRule) => r.target,
+    // },
+    // --- Target column (smart labels) ---
     {
       key: "target",
       header: "Target",
-      render: (r: DiscountRule) => r.target,
+      render: (r: any) => {
+        if (r.target === "CATEGORY") {
+          const names: string[] = r.category_names || [];
+          if (!names || !names.length) return "All Categories";
+          const shown = names.slice(0, 3);
+          const more = names.length - shown.length;
+          return (
+            <span title={names.join(", ")}>
+              {shown.join(", ")}{more > 0 ? ` +${more} more` : ""}
+            </span>
+          );
+        }
+        if (r.target === "PRODUCT") {
+          const names: string[] = r.product_names || [];
+          if (!names || !names.length) return "—";
+          const shown = names.slice(0, 3);
+          const more = names.length - shown.length;
+          return (
+            <span title={names.join(", ")}>
+              {shown.join(", ")}{more > 0 ? ` +${more} more` : ""}
+            </span>
+          );
+        }
+        if (r.target === "VARIANT") {
+          const names: string[] = r.variant_names || [];
+          if (!names || !names.length) return "—";
+          const shown = names.slice(0, 3);
+          const more = names.length - shown.length;
+          return (
+            <span title={names.join(", ")}>
+              {shown.join(", ")}{more > 0 ? ` +${more} more` : ""}
+            </span>
+          );
+        }
+        return "All Items";
+      },
     },
+
+    // --- Apply column (like Tax Rules) ---
+    {
+      key: "apply_scope",
+      header: "Apply",
+      render: (r: any) => (
+        <span className="text-sm">{r.apply_scope === "LINE" ? "LINE" : "RECEIPT"}</span>
+      ),
+    },
+
     { key: "priority", header: "Prio", align: "right" as const },
     { key: "start_at", header: "Start", render: (r: DiscountRule) => r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—" },
     { key: "end_at", header: "End", render: (r: DiscountRule) => r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—" },
@@ -226,7 +277,21 @@ export default function DiscountRulesTab() {
             <div className="text-xs text-slate-400 mt-2">Apply</div>
             <div className="text-slate-200">{r.apply_scope}</div>
             <div className="text-xs text-slate-400 mt-2">Target</div>
-            <div className="text-slate-200">{r.target}</div>
+            <div className="text-slate-200">
+              {r.target === "CATEGORY" && r.category_names?.length
+                ? r.category_names.join(", ")
+                : r.target === "PRODUCT" && r.product_names?.length
+                ? r.product_names.join(", ")
+                : r.target === "VARIANT" && r.variant_names?.length
+                ? r.variant_names.join(", ")
+                : r.target === "CATEGORY"
+                ? "All Categories"
+                : r.target === "PRODUCT"
+                ? "All Products"
+                : r.target === "VARIANT"
+                ? "All Variants"
+                : "All Items"}
+            </div>
           </div>
           <div>
             <div className="text-xs text-slate-400">Basis</div>

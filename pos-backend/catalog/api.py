@@ -1,4 +1,4 @@
-# catalog/api.py
+# pos-backend/catalog/api.py
 from decimal import Decimal
 from django.db.models import Sum, Count, F, Value, IntegerField, DecimalField, CharField
 from django.db.models.functions import Coalesce

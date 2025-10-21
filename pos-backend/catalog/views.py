@@ -1,4 +1,4 @@
-# catalog/views.py
+# pos-backend/catalog/views.py
 from rest_framework import viewsets
 from common.api_mixins import TenantScopedViewSetMixin, IsInTenant, RoleRequired
 from common.roles import TenantRole

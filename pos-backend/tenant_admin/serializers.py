@@ -354,6 +354,11 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
     )
     store_name = serializers.SerializerMethodField(read_only=True)
 
+    # NEW: friendly names for table display
+    category_names = serializers.SerializerMethodField(read_only=True)
+    product_names = serializers.SerializerMethodField(read_only=True)
+    variant_names = serializers.SerializerMethodField(read_only=True)
+
     def get_store_name(self, obj):
         s = getattr(obj, "store", None)
         if not s:
@@ -363,6 +368,25 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
         if name and code:
             return f"{name} ({code})"
         return name or code
+    
+    def get_category_names(self, obj):
+       try:
+           return [f"{c.name} ({c.code})" if c.code else c.name for c in obj.categories.all()]
+       except Exception:
+           return []
+
+    def get_product_names(self, obj):
+        try:
+            return [p.name for p in obj.products.all()]
+        except Exception:
+            return []
+
+    def get_variant_names(self, obj):
+        try:
+            return [v.sku for v in obj.variants.all()]
+        except Exception:
+            return []
+
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -383,6 +407,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
             "description",
             "categories", "category_ids",
             "product_ids", "variant_ids",
+            "category_names", "product_names", "variant_names",
             "has_coupon",
             "created_at", "updated_at",
         )
