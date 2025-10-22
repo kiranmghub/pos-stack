@@ -1,9 +1,7 @@
 // pos-frontend/src/features/admin/AdminPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { AdminAPI, Query, Register, TaxCategory, TaxRule, DiscountRule, Coupon } from "./adminApi";
-import { DataTable } from "./components/DataTable";
+import React, { useState } from "react";
 import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
-import { useToast } from "./components/ToastCompat";
+
 import UsersTab from "./users/UsersTab";
 import StoresTab from "./stores/StoresTab";
 import RegistersTab from "./registers/RegistersTab";
@@ -11,8 +9,6 @@ import TaxCategoriesTab from "./taxcats/TaxCategoriesTab";
 import TaxRulesTab from "./taxrules/TaxRulesTab";
 import DiscountRulesTab from "./discounts/DiscountRulesTab";
 import CouponsTab from "./coupons/CouponsTab";
-
-
 
 type TabKey = "users" | "stores" | "registers" | "taxcats" | "taxrules" | "discrules" | "coupons";
 
@@ -29,108 +25,6 @@ const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
 export default function AdminPage() {
   const [active, setActive] = useState<TabKey>("users");
 
-  // Shared query state for non-Users/Stores tabs
-  const [query, setQuery] = useState<Query>({ search: "", ordering: "" });
-
-  // Table state for non-Users/Stores tabs
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any[]>([]);
-  const [total, setTotal] = useState<number | undefined>(undefined);
-
-  const { push } = useToast();
-
-  // Fetch ONLY for tabs that are NOT handled by their own components
-  useEffect(() => {
-    if (active === "users" || active === "stores" || active === "registers" || active === "taxcats" || active === "taxrules" || active === "discrules" || active === "coupons") return;
-
-    let mounted = true;
-    (async () => {
-      setData([]); setTotal(undefined);
-      setLoading(true);
-      try {
-        const q = { search: query.search || undefined, ordering: query.ordering || undefined };
-        let page: any;
-        if (active === "coupons") page = await AdminAPI.coupons(q);
-        // else                             page = await AdminAPI.coupons(q);
-
-        const rows = Array.isArray(page) ? page : (page.results ?? []);
-        const cnt  = Array.isArray(page) ? undefined : page.count;
-        if (mounted) { setData(rows); setTotal(cnt); }
-      } catch (e) {
-        console.error(e);
-        push({ kind: "error", msg: "Failed to load data" });
-        if (mounted) { setData([]); setTotal(undefined); }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => { mounted = false; };
-  }, [active, query, push]);
-
-  // Columns for non-Users/Stores tabs
-  const cols = useMemo(() => {
-    switch (active) {
-      // case "taxrules":
-      //   return [
-      //     { key: "code", header: "Code" },
-      //     { key: "name", header: "Name" },
-      //     { key: "basis", header: "Basis" },
-      //     { key: "apply_scope", header: "Scope" },
-      //     { key: "rate", header: "Rate", align: "right" as const, render: (r: TaxRule) => r.rate ?? "-" },
-      //     { key: "amount", header: "Amount", align: "right" as const, render: (r: TaxRule) => r.amount ?? "-" },
-      //     { key: "priority", header: "Prio", align: "right" as const },
-      //     {
-      //       key: "is_active",
-      //       header: "Active",
-      //       render: (r: TaxRule) => (
-      //         <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-      //           {r.is_active ? "Yes" : "No"}
-      //         </span>
-      //       ),
-      //     },
-      //   ];
-      // case "discrules":
-      //   return [
-      //     { key: "code", header: "Code" },
-      //     { key: "name", header: "Name" },
-      //     { key: "target", header: "Target" },
-      //     { key: "basis", header: "Basis" },
-      //     { key: "apply_scope", header: "Scope" },
-      //     { key: "rate", header: "Rate", align: "right" as const, render: (r: DiscountRule) => r.rate ?? "-" },
-      //     { key: "amount", header: "Amount", align: "right" as const, render: (r: DiscountRule) => r.amount ?? "-" },
-      //     { key: "priority", header: "Prio", align: "right" as const },
-      //     {
-      //       key: "is_active",
-      //       header: "Active",
-      //       render: (r: DiscountRule) => (
-      //         <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-      //           {r.is_active ? "Yes" : "No"}
-      //         </span>
-      //       ),
-      //     },
-      //   ];
-      // case "coupons":
-      //   return [
-      //     { key: "code", header: "Code" },
-      //     { key: "name", header: "Name" },
-      //     { key: "rule", header: "Rule", render: (c: Coupon) => `${c.rule?.name} (${c.rule?.code})` },
-      //     { key: "remaining_uses", header: "Left", align: "right" as const, render: (c: Coupon) => c.remaining_uses ?? "∞" },
-      //     {
-      //       key: "is_active",
-      //       header: "Active",
-      //       render: (c: Coupon) => (
-      //         <span className={`px-2 py-0.5 rounded-full text-xs ${c.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-      //           {c.is_active ? "Yes" : "No"}
-      //         </span>
-      //       ),
-      //     },
-      //   ];
-      default:
-        return [];
-    }
-  }, [active]);
-
   return (
     <div className="p-4 space-y-4">
       {/* Tabs */}
@@ -140,7 +34,9 @@ export default function AdminPage() {
             key={t.key}
             onClick={() => setActive(t.key)}
             className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm
-              ${active === t.key ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/50"}`}
+              ${active === t.key
+                ? "bg-slate-800 border-slate-700 text-white"
+                : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/50"}`}
           >
             {t.icon} {t.label}
           </button>
@@ -155,18 +51,6 @@ export default function AdminPage() {
       {active === "taxrules" && <TaxRulesTab />}
       {active === "discrules" && <DiscountRulesTab />}
       {active === "coupons" && <CouponsTab />}
-
-      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && active !== "taxrules" && active !== "discrules" && active !== "coupons" && (
-        <DataTable
-          title={tabs.find(t => t.key === active)?.label || ""}
-          rows={data}
-          cols={cols as any}
-          loading={loading}
-          total={total}
-          query={query}
-          onQueryChange={(q) => setQuery(prev => ({ ...prev, ...q }))}
-        />
-      )}
     </div>
   );
 }
