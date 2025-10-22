@@ -53,6 +53,31 @@ export default function CouponsTab() {
   const toggleRow = (id: number) => setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   const toggleExpand = (r: Coupon) => setExpandedIds(prev => prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]);
 
+  const bulkSetActive = async (is_active: boolean) => {
+    if (selectedIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+        const ids = [...selectedIds];
+        const ok: number[] = [];
+        const fail: number[] = [];
+        for (const id of ids) {
+        try {
+            await CouponsAPI.update(id, { is_active });
+            ok.push(id);
+        } catch {
+            fail.push(id);
+        }
+        }
+        if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} coupon(s)` });
+        if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} coupon(s)` });
+        setSelectedIds(fail);      // keep failures selected
+        setQuery({ ...query });    // refresh list
+    } finally {
+        setBulkLoading(false);
+    }
+  };
+
+
   const cols = React.useMemo(() => ([
     {
       key: "__expander__", header: "", width: "2rem",
@@ -99,6 +124,12 @@ export default function CouponsTab() {
       render: (r: any) => (r.rule ? `${r.rule.code}${r.rule.name ? ` — ${r.rule.name}` : ""}` : "—"),
     },
     {
+        key: "used",
+        header: "Used",
+        align: "right" as const,
+        render: (r: Coupon) => String(r.used_count || 0),
+    },
+    {
       key: "remaining",
       header: "Remaining",
       align: "right" as const,
@@ -119,6 +150,27 @@ export default function CouponsTab() {
     },
     { key: "start_at", header: "Start", render: (r: Coupon) => r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—" },
     { key: "end_at", header: "End", render: (r: Coupon) => r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—" },
+    {
+        key: "actions",
+        header: "",
+        render: (r: Coupon) => (
+            <div className="flex items-center gap-2 justify-end">
+            <button
+                className="text-xs text-blue-400 hover:underline"
+                onClick={() => { setEditing(r); setCreating(false); }}
+            >
+                Edit
+            </button>
+            <button
+                className="text-xs text-red-400 hover:text-red-300"
+                onClick={() => setDeleting(r)}
+            >
+                Delete
+            </button>
+            </div>
+        ),
+        },
+
   ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
 
   const renderRowAfter = React.useCallback((r: any) => {
@@ -176,18 +228,28 @@ export default function CouponsTab() {
             <option value="false">Inactive</option>
           </select>
         </div>
-
         <div className="flex items-center gap-2">
-          {selectedIds.length > 0 ? (
+            {selectedIds.length > 0 ? (
             <>
-              {/* No bulk action yet; can add bulk activate/deactivate later */}
-              <button onClick={() => setSelectedIds([])}
-                      className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+                <button disabled={bulkLoading} onClick={() => bulkSetActive(true)}
+                        className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+                Activate Selected
+                </button>
+                <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
+                        className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">
+                Deactivate Selected
+                </button>
+                <button onClick={() => setSelectedIds([])}
+                        className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">
+                Clear
+                </button>
             </>
-          ) : (
+            ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}
-                    className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm">+ New Coupon</button>
-          )}
+                    className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm">
+                + New Coupon
+            </button>
+            )}
         </div>
       </div>
 
