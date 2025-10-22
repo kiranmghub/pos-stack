@@ -92,6 +92,7 @@ class Coupon(TimeStampedModel):
     tenant    = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
     code      = models.CharField(max_length=64, db_index=True, unique=True)
     name      = models.CharField(max_length=120, blank=True, default="")
+    description = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True, db_index=True)
 
     # bind to a rule (line or receipt); you can extend to many-to-many later if needed

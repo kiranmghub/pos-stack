@@ -1,0 +1,236 @@
+// pos-frontend/src/features/admin/coupons/CouponsTab.tsx
+import React from "react";
+import type { Query } from "../adminApi";
+import { CouponsAPI, type Coupon } from "../api/coupons";
+import { DataTable } from "../components/DataTable";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
+import Checkbox from "../components/ui/Checkbox";
+import { useToast } from "../components/ToastCompat";
+import CouponModal from "./CouponModal";
+
+export default function CouponsTab() {
+  const { push } = useToast();
+  const [query, setQuery] = React.useState<Query>({ search: "", ordering: "code" });
+  const [loading, setLoading] = React.useState(false);
+  const [data, setData] = React.useState<Coupon[]>([]);
+  const [total, setTotal] = React.useState<number | undefined>(undefined);
+
+  const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
+  const [bulkLoading, setBulkLoading] = React.useState(false);
+  const [editing, setEditing] = React.useState<Coupon | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<Coupon | null>(null);
+  const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const p = {
+          search: query.search || undefined,
+          ordering: query.ordering || undefined,
+          is_active: query.is_active,
+          rule: (query as any).rule,
+        };
+        const page = await CouponsAPI.list(p);
+        const rows = Array.isArray(page) ? page : page.results ?? [];
+        const cnt  = Array.isArray(page) ? undefined : page.count;
+        if (mounted) { setData(rows); setTotal(cnt); }
+      } catch (e:any) {
+        push({ kind: "error", msg: e?.message || "Failed to load coupons" });
+        if (mounted) { setData([]); setTotal(undefined); }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [query]);
+
+  const allChecked = data.length > 0 && selectedIds.length === data.length;
+  const partiallyChecked = selectedIds.length > 0 && !allChecked;
+  const toggleAll = () => setSelectedIds(prev => (prev.length === data.length ? [] : data.map(r => r.id)));
+  const toggleRow = (id: number) => setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  const toggleExpand = (r: Coupon) => setExpandedIds(prev => prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]);
+
+  const cols = React.useMemo(() => ([
+    {
+      key: "__expander__", header: "", width: "2rem",
+      render: (r: Coupon) => {
+        const open = expandedIds.includes(r.id);
+        return (
+          <button className="text-slate-300 hover:text-white" title={open ? "Collapse" : "Expand"} onClick={() => toggleExpand(r)}>
+            <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        );
+      }
+    },
+    {
+      key: "select", width: "2rem",
+      header: (
+        <Checkbox
+          checked={allChecked}
+          indeterminate={partiallyChecked}
+          onChange={toggleAll}
+          aria-label="Select all"
+          title="Select all"
+        />
+      ),
+      render: (r: Coupon) => (
+        <Checkbox checked={selectedIds.includes(r.id)} onChange={() => toggleRow(r.id)} aria-label="Select row" />
+      ),
+    },
+    { key: "code", header: "Code" },
+    { key: "name", header: "Name" },
+    {
+      key: "description",
+      header: "Description",
+      render: (r: Coupon) => (
+        <span title={r.description || ""} className="line-clamp-2 max-w-[28rem] block">
+          {r.description || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "rule",
+      header: "Rule",
+      render: (r: any) => (r.rule ? `${r.rule.code}${r.rule.name ? ` — ${r.rule.name}` : ""}` : "—"),
+    },
+    {
+      key: "remaining",
+      header: "Remaining",
+      align: "right" as const,
+      render: (r: Coupon) => {
+        if (r.max_uses == null) return "∞";
+        const remaining = Math.max(0, (r.max_uses || 0) - (r.used_count || 0));
+        return String(remaining);
+      },
+    },
+    {
+      key: "is_active",
+      header: "Active",
+      render: (r: Coupon) => (
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+          {r.is_active ? "Yes" : "No"}
+        </span>
+      ),
+    },
+    { key: "start_at", header: "Start", render: (r: Coupon) => r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—" },
+    { key: "end_at", header: "End", render: (r: Coupon) => r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—" },
+  ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+
+  const renderRowAfter = React.useCallback((r: any) => {
+    if (!expandedIds.includes(r.id)) return null;
+    const remaining = r.max_uses == null ? "∞" : Math.max(0, (r.max_uses || 0) - (r.used_count || 0));
+    return (
+      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-slate-400">Description</div>
+            <div className="text-slate-200 break-words">{r.description || "—"}</div>
+            <div className="text-xs text-slate-400 mt-2">Rule</div>
+            <div className="text-slate-200">{r.rule ? `${r.rule.code}${r.rule.name ? ` — ${r.rule.name}` : ""}` : "—"}</div>
+            <div className="text-xs text-slate-400 mt-2">Active</div>
+            <div className="text-slate-200">{r.is_active ? "Yes" : "No"}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Usage</div>
+            <div className="text-slate-200">
+              Used {r.used_count || 0}
+              {r.max_uses != null ? ` of ${r.max_uses}` : " of ∞"}
+              {" · Remaining "}{remaining}
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Window</div>
+            <div className="text-slate-200">
+              {r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—"} → {r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }, [expandedIds]);
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <input
+            value={query.search || ""}
+            onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
+            placeholder="Search code, name, description…"
+            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+          />
+          <select
+            value={query.is_active === true ? "true" : query.is_active === false ? "false" : ""}
+            onChange={(e) =>
+              setQuery((p) => ({ ...p, is_active: e.target.value === "" ? undefined : e.target.value === "true" }))
+            }
+            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            title="Active"
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {selectedIds.length > 0 ? (
+            <>
+              {/* No bulk action yet; can add bulk activate/deactivate later */}
+              <button onClick={() => setSelectedIds([])}
+                      className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+            </>
+          ) : (
+            <button onClick={() => { setEditing(null); setCreating(true); }}
+                    className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm">+ New Coupon</button>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <DataTable
+        title="Coupons"
+        rows={data.map((r) => ({ ...r, selected: selectedIds.includes(r.id) }))}
+        cols={cols as any}
+        loading={loading}
+        total={total}
+        query={query}
+        onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
+        getRowKey={(row:any) => row.id ?? row.code}
+        renderRowAfter={renderRowAfter}
+      />
+
+      {/* Modals */}
+      {(creating || editing) && (
+        <CouponModal
+          open={creating || !!editing}
+          editing={editing}
+          onClose={() => { setCreating(false); setEditing(null); }}
+          onSaved={() => setQuery({ ...query })}
+        />
+      )}
+
+      <DeleteConfirmModal
+        open={!!deleting}
+        subject={deleting?.code}
+        onConfirm={async () => {
+          if (!deleting) return;
+          try {
+            await CouponsAPI.remove(deleting.id);
+            push({ kind: "warn", msg: `Coupon "${deleting.code}" deleted` });
+            setQuery({ ...query });
+            setDeleting(null);
+          } catch (e: any) {
+            push({ kind: "error", msg: e?.message || "Delete failed" });
+            setDeleting(null);
+          }
+        }}
+        onClose={() => setDeleting(null)}
+      />
+    </div>
+  );
+}

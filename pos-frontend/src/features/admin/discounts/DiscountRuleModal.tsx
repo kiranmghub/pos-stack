@@ -109,7 +109,9 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
       setAllCats(editing ? !(editing.categories && editing.categories.length) : false);
       setCategoryIds(editing?.categories ? editing.categories.map(c => c.id) : []);
       setProductIds(editing?.products ? editing.products.map(p => p.id) : []);
+      setProdOptions(editing?.products ? editing.products.map(p => ({ id: p.id, name: p.name })) : []);
       setVariantIds(editing?.variants ? editing.variants.map(v => v.id) : []);
+      setVarOptions(editing?.variants ? editing.variants.map(v => ({ id: v.id, sku: v.sku, name: (v.name || v.product_name || "") })) : []);
     }
   }, [editing, open]);
 

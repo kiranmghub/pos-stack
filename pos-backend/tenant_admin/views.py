@@ -177,8 +177,8 @@ class CouponViewSet(TenantScopedMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsTenantAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ["is_active", "rule", "start_at", "end_at"]
-    search_fields = ["code", "name", "rule__name", "rule__code"]
-    ordering_fields = ["code", "name", "max_uses", "used_count", "start_at", "end_at"]
+    search_fields = ["code", "name", "description", "rule__name", "rule__code"]
+    ordering_fields = ["code", "name", "description", "max_uses", "used_count", "start_at", "end_at"]
 
     def perform_update(self, serializer):
         serializer.save()

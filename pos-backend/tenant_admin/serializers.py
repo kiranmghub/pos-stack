@@ -20,6 +20,8 @@ from django.db import transaction
 from common.roles import TenantRole
 from django.db import IntegrityError, transaction
 from decimal import Decimal, ROUND_HALF_UP
+# from catalog.serializers import VariantSerializer
+# from catalog.serializers import ProductSerializer
 
 
 
@@ -41,6 +43,17 @@ class TaxCategoryLiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaxCategory
         fields = ("id", "code", "name", "rate")
+
+class ProductLiteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ("id", "name")
+
+class VariantLiteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Variant
+        fields = ("id", "sku", "name") 
+
 
 # ---------- CORE ENTITIES ----------
 
@@ -359,6 +372,10 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
     product_names = serializers.SerializerMethodField(read_only=True)
     variant_names = serializers.SerializerMethodField(read_only=True)
 
+    products = ProductLiteSerializer(many=True, read_only=True)
+    variants = VariantLiteSerializer(many=True, read_only=True)
+
+
     def get_store_name(self, obj):
         s = getattr(obj, "store", None)
         if not s:
@@ -408,6 +425,7 @@ class DiscountRuleSerializer(serializers.ModelSerializer):
             "categories", "category_ids",
             "product_ids", "variant_ids",
             "category_names", "product_names", "variant_names",
+            "products", "variants",
             "has_coupon",
             "created_at", "updated_at",
         )
@@ -433,6 +451,7 @@ class CouponSerializer(serializers.ModelSerializer):
         model = Coupon
         fields = (
             "id", "tenant", "code", "name", "is_active",
+            "description",
             "rule", "rule_id",
             "min_subtotal", "max_uses", "used_count",
             "start_at", "end_at",

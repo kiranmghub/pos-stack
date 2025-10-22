@@ -29,7 +29,7 @@ export type DiscountRule = {
   // read: nested lite resources (serializer supplies these)
   categories?: { id: number; code: string; name: string }[];
   products?: { id: number; name: string }[];
-  variants?: { id: number; sku: string }[];
+  variants?: { id: number; sku: string; name?: string }[];
 
   created_at?: string;
   updated_at?: string;

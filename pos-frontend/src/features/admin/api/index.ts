@@ -6,3 +6,4 @@ export { RegistersAPI } from "./registers";
 export { TaxCatsAPI } from "./taxcats";
 export { TaxRulesAPI } from "./taxrules";
 export { DiscountRulesAPI } from "./discounts";
+export { CouponsAPI } from "./coupons";

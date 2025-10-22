@@ -179,11 +179,6 @@ export default function DiscountRulesTab() {
           ? (r.store_name || (typeof r.store === "number" ? `#${r.store}` : "—"))
           : "All Stores"),
     },
-    // {
-    //   key: "target",
-    //   header: "Target",
-    //   render: (r: DiscountRule) => r.target,
-    // },
     // --- Target column (smart labels) ---
     {
       key: "target",
@@ -192,7 +187,7 @@ export default function DiscountRulesTab() {
         if (r.target === "CATEGORY") {
           const names: string[] = r.category_names || [];
           if (!names || !names.length) return "All Categories";
-          const shown = names.slice(0, 3);
+          const shown = names.slice(0, 2);
           const more = names.length - shown.length;
           return (
             <span title={names.join(", ")}>
@@ -203,7 +198,7 @@ export default function DiscountRulesTab() {
         if (r.target === "PRODUCT") {
           const names: string[] = r.product_names || [];
           if (!names || !names.length) return "—";
-          const shown = names.slice(0, 3);
+          const shown = names.slice(0, 2);
           const more = names.length - shown.length;
           return (
             <span title={names.join(", ")}>
@@ -214,7 +209,7 @@ export default function DiscountRulesTab() {
         if (r.target === "VARIANT") {
           const names: string[] = r.variant_names || [];
           if (!names || !names.length) return "—";
-          const shown = names.slice(0, 3);
+          const shown = names.slice(0, 2);
           const more = names.length - shown.length;
           return (
             <span title={names.join(", ")}>

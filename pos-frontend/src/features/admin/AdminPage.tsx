@@ -10,6 +10,7 @@ import RegistersTab from "./registers/RegistersTab";
 import TaxCategoriesTab from "./taxcats/TaxCategoriesTab";
 import TaxRulesTab from "./taxrules/TaxRulesTab";
 import DiscountRulesTab from "./discounts/DiscountRulesTab";
+import CouponsTab from "./coupons/CouponsTab";
 
 
 
@@ -40,7 +41,7 @@ export default function AdminPage() {
 
   // Fetch ONLY for tabs that are NOT handled by their own components
   useEffect(() => {
-    if (active === "users" || active === "stores" || active === "registers" || active === "taxcats" || active === "taxrules" || active === "discrules") return;
+    if (active === "users" || active === "stores" || active === "registers" || active === "taxcats" || active === "taxrules" || active === "discrules" || active === "coupons") return;
 
     let mounted = true;
     (async () => {
@@ -109,22 +110,22 @@ export default function AdminPage() {
       //       ),
       //     },
       //   ];
-      case "coupons":
-        return [
-          { key: "code", header: "Code" },
-          { key: "name", header: "Name" },
-          { key: "rule", header: "Rule", render: (c: Coupon) => `${c.rule?.name} (${c.rule?.code})` },
-          { key: "remaining_uses", header: "Left", align: "right" as const, render: (c: Coupon) => c.remaining_uses ?? "∞" },
-          {
-            key: "is_active",
-            header: "Active",
-            render: (c: Coupon) => (
-              <span className={`px-2 py-0.5 rounded-full text-xs ${c.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
-                {c.is_active ? "Yes" : "No"}
-              </span>
-            ),
-          },
-        ];
+      // case "coupons":
+      //   return [
+      //     { key: "code", header: "Code" },
+      //     { key: "name", header: "Name" },
+      //     { key: "rule", header: "Rule", render: (c: Coupon) => `${c.rule?.name} (${c.rule?.code})` },
+      //     { key: "remaining_uses", header: "Left", align: "right" as const, render: (c: Coupon) => c.remaining_uses ?? "∞" },
+      //     {
+      //       key: "is_active",
+      //       header: "Active",
+      //       render: (c: Coupon) => (
+      //         <span className={`px-2 py-0.5 rounded-full text-xs ${c.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+      //           {c.is_active ? "Yes" : "No"}
+      //         </span>
+      //       ),
+      //     },
+      //   ];
       default:
         return [];
     }
@@ -153,8 +154,9 @@ export default function AdminPage() {
       {active === "taxcats" && <TaxCategoriesTab />}
       {active === "taxrules" && <TaxRulesTab />}
       {active === "discrules" && <DiscountRulesTab />}
+      {active === "coupons" && <CouponsTab />}
 
-      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && active !== "taxrules" && active !== "discrules" && (
+      {active !== "users" && active !== "stores" && active !== "registers" && active !== "taxcats" && active !== "taxrules" && active !== "discrules" && active !== "coupons" && (
         <DataTable
           title={tabs.find(t => t.key === active)?.label || ""}
           rows={data}
