@@ -94,7 +94,11 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
 
   const save = async () => {
     const err = validate();
-    if (err) { push({ kind: "error", msg: err }); return; }
+    if (err) { 
+      // push({ kind: "error", msg: err });
+      error(err);
+      return; 
+    }
 
     const payload: TaxCategoryCreatePayload = {
       code: code.trim(),

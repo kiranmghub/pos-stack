@@ -46,7 +46,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
       }
     })();
     return () => { mounted = false; };
-  }, [open, error]);
+  }, [open]);
 
   React.useEffect(() => {
     if (editing && open) {

@@ -27,6 +27,7 @@ export default function DiscountRulesTab() {
   const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<DiscountRule | null>(null);
   const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
+  const [refresh, setRefresh] = React.useState(0);
 
   React.useEffect(() => {
     let mounted = true;
@@ -68,7 +69,7 @@ export default function DiscountRulesTab() {
       }
     })();
     return () => { mounted = false; };
-  }, [query]);
+  }, [query, refresh]);
 
   const allChecked = data.length > 0 && selectedIds.length === data.length;
   const partiallyChecked = selectedIds.length > 0 && !allChecked;
@@ -94,7 +95,8 @@ export default function DiscountRulesTab() {
         // push({ kind: "error", msg: `Failed to update ${fail.length} rule(s)` });
         error(`Failed to update ${fail.length} rule(s)`);
       setSelectedIds(fail);
-      setQuery({ ...query });
+      // setQuery({ ...query });
+      setRefresh(x => x + 1);
     } finally {
       setBulkLoading(false);
     }
@@ -398,7 +400,8 @@ export default function DiscountRulesTab() {
           open={creating || !!editing}
           editing={editing}
           onClose={() => { setCreating(false); setEditing(null); }}
-          onSaved={() => setQuery({ ...query })}
+          // onSaved={() => setQuery({ ...query })}
+          onSaved={() => setRefresh(x => x + 1)}
         />
       )}
 
@@ -411,7 +414,8 @@ export default function DiscountRulesTab() {
             await DiscountRulesAPI.remove(deleting.id);
             // push({ kind: "warn", msg: `Discount rule "${deleting.code}" deleted` });
             warn(`Discount rule "${deleting.code}" deleted`);
-            setQuery({ ...query });
+            // setQuery({ ...query });
+            setRefresh(x => x + 1);
             setDeleting(null);
           } catch (e: any) {
             // push({ kind: "error", msg: e?.message || "Delete failed" });

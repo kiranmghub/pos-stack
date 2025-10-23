@@ -86,7 +86,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
       }
     })();
     return () => { mounted = false; };
-  }, [open, error]);
+  }, [open]);
 
   React.useEffect(() => {
     if (open && !editing) {

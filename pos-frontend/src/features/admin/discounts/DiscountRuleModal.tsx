@@ -100,7 +100,7 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
       }
     })();
     return () => { mounted = false; };
-  }, [open, error]);
+  }, [open]);
 
   React.useEffect(() => {
     if (editing && open) {

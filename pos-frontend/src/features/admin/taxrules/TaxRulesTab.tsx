@@ -28,6 +28,7 @@ export default function TaxRulesTab() {
 
   // NEW: expanded row state
   const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
+  const [refresh, setRefresh] = React.useState(0);
 
   // load stores for filter
   React.useEffect(() => {
@@ -70,7 +71,7 @@ export default function TaxRulesTab() {
       }
     })();
     return () => { mounted = false; };
-  }, [query]);
+  }, [query, refresh]);
 
   const allChecked = data.length > 0 && selectedIds.length === data.length;
   const partiallyChecked = selectedIds.length > 0 && !allChecked;
@@ -104,7 +105,8 @@ export default function TaxRulesTab() {
         // push({ kind: "error", msg: `Failed to update ${fail.length} rule(s)` });
         error(`Failed to update ${fail.length} rule(s)`);
       setSelectedIds(fail);
-      setQuery({ ...query });
+      // setQuery({ ...query });
+      setRefresh(x => x + 1);
     } finally {
       setBulkLoading(false);
     }
@@ -403,7 +405,8 @@ export default function TaxRulesTab() {
           open={creating || !!editing}
           editing={editing}
           onClose={() => { setCreating(false); setEditing(null); }}
-          onSaved={() => setQuery({ ...query })}
+          // onSaved={() => setQuery({ ...query })}
+          onSaved={() => setRefresh(x => x + 1)}
 
         />
       )}
@@ -417,7 +420,8 @@ export default function TaxRulesTab() {
             await TaxRulesAPI.remove(deleting.id);
             // push({ kind: "warn", msg: `Tax rule "${deleting.code}" deleted` });
             warn(`Tax rule "${deleting.code}" deleted`);
-            setQuery({ ...query });
+            setRefresh(x => x + 1);
+            // setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
             // push({ kind: "error", msg: e?.message || "Delete failed" });
