@@ -5,7 +5,7 @@ import { AdminAPI } from "../adminApi"; // to fetch stores for filter dropdown
 import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import Checkbox from "../components/ui/Checkbox";
+import { Checkbox } from "@/ui/checkbox";
 import { useToast } from "../components/ToastCompat";
 import TaxRuleModal from "./TaxRuleModal";
 
@@ -150,9 +150,8 @@ export default function TaxRulesTab() {
       key: "select",
       header: (
         <Checkbox
-          checked={allChecked}
-          indeterminate={partiallyChecked}
-          onChange={toggleAll}
+          checked={allChecked ? true : partiallyChecked ? "indeterminate" : false}
+          onCheckedChange={toggleAll}
           aria-label="Select all"
           title="Select all"
         />
@@ -160,7 +159,7 @@ export default function TaxRulesTab() {
       render: (r: TaxRule) => (
         <Checkbox
           checked={selectedIds.includes(r.id)}
-          onChange={() => toggleRow(r.id)}
+          onCheckedChange={() => toggleRow(r.id)}
           aria-label="Select row"
         />
       ),

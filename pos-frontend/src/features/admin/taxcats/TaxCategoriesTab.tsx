@@ -6,7 +6,7 @@ import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { useToast } from "../components/ToastCompat";
 import TaxCategoryModal from "./TaxCategoryModal";
-import Checkbox from "../components/ui/Checkbox";
+import { Checkbox } from "@/ui/checkbox";
 
 export default function TaxCategoriesTab() {
   const { push } = useToast();
@@ -59,17 +59,17 @@ export default function TaxCategoriesTab() {
       key: "select",
       header: (
         <Checkbox
-          checked={allChecked}
-          indeterminate={partiallyChecked}
-          onChange={toggleAll}
+          checked={allChecked ? true : partiallyChecked ? "indeterminate" : false}
+          onCheckedChange={toggleAll}
           aria-label="Select all"
           title="Select all"
         />
+
       ),
       render: (r: TaxCategory) => (
         <Checkbox
           checked={selectedIds.includes(r.id)}
-          onChange={() => toggleRow(r.id)}
+          onCheckedChange={() => toggleRow(r.id)}
           aria-label="Select row"
         />
       ),

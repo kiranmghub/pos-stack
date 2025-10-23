@@ -5,9 +5,8 @@ import type { AdminUser, Query } from "../adminApi";
 import { UsersAPI } from "../api";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-//import Checkbox from "../components/ui/Checkbox";
 import { Checkbox } from "@/ui/checkbox";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { Trash2 } from "lucide-react";
 import UserModal from "./UserModal";
 import { getUser } from "@/lib/auth";
@@ -25,7 +24,7 @@ export default function UsersTab() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
 
   // derive my user id from lib/auth getUser()
   const meId = React.useMemo(() => {
@@ -47,7 +46,7 @@ export default function UsersTab() {
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e) {
         console.error(e);
-        push({ kind: "error", msg: "Failed to load data" });
+        error("Failed to load data");
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
@@ -62,10 +61,13 @@ export default function UsersTab() {
     try {
       await UsersAPI.update(u.id, { is_active: !u.is_active });
       setData(prev => prev.map(r => (r.id === u.id ? { ...r, is_active: !u.is_active } : r)));
-      push({ kind: u.is_active ? "warn" : "success", msg: u.is_active ? `User "${u.user?.username}" deactivated` : `User "${u.user?.username}" activated` });
+      u.is_active
+        ? warn(`User "${u.user?.username}" deactivated`)
+        : success(`User "${u.user?.username}" activated`);
+
     } catch (e: any) {
       console.error(e);
-      push({ kind: "error", msg: e?.message || "Failed to update user status" });
+      error(e?.message || "Failed to update user status");
     } finally {
       setUpdatingIds(prev => prev.filter(id => id !== u.id));
     }
@@ -73,7 +75,7 @@ export default function UsersTab() {
 
   const toggleSelect = (id: number) => {
     if (meId && id === meId) {
-      push({ kind: "info", msg: "You cannot select yourself for bulk changes." });
+      info("You cannot select yourself for bulk changes.");
       return;
     }
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -108,11 +110,13 @@ export default function UsersTab() {
       }
 
       if (fails.length === 0) {
-        push({ kind: value ? "success" : "warn", msg: value ? `Activated ${okIds.length} user(s)` : `Deactivated ${okIds.length} user(s)` });
+        value
+          ? success(`Activated ${okIds.length} user(s)`)
+          : warn(`Deactivated ${okIds.length} user(s)`);
       } else if (okIds.length > 0) {
-        push({ kind: "warn", msg: `Updated ${okIds.length} user(s). Skipped ${fails.length} — ${fails[0].msg}` });
+        info(`Updated ${okIds.length} user(s). Skipped ${fails.length} — ${fails[0].msg}`);
       } else {
-        push({ kind: "error", msg: `No users updated. ${fails[0].msg}` });
+        error(`No users updated. ${fails[0].msg}`);
       }
 
       setSelectedIds(fails.map(f => f.id));
@@ -144,9 +148,8 @@ export default function UsersTab() {
         key: "select",
         header: (
           <Checkbox
-            checked={allChecked}
-            indeterminate={partiallyChecked}
-            onChange={() => selectAll(data)}
+            checked={allChecked ? true : partiallyChecked ? "indeterminate" : false}
+            onCheckedChange={() => selectAll(data)}
             aria-label="Select all rows"
             title="Select all"
           />
@@ -154,7 +157,7 @@ export default function UsersTab() {
         render: (r: AdminUser) => (
           <Checkbox
             checked={selectedIds.includes(r.id)}
-            onChange={() => toggleSelect(r.id)}
+            onCheckedChange={() => toggleSelect(r.id)}
             aria-label="Select row"
           />
         ),
@@ -170,7 +173,7 @@ export default function UsersTab() {
             <Checkbox
               checked={!!r.is_active}
               disabled={updatingIds.includes(r.id) || (meId && r.id === meId)}
-              onChange={() => onToggleActive(r)}
+              onCheckedChange={() => onToggleActive(r)}
               title={
                 meId && r.id === meId
                   ? "You cannot deactivate your own account."
@@ -393,7 +396,7 @@ export default function UsersTab() {
         onConfirm={async () => {
           if (!deleteUser) return;
           await UsersAPI.remove(deleteUser.id);
-          push({ kind: "warn", msg: `User "${deleteUser.user?.username}" deleted` });
+          warn(`User "${deleteUser.user?.username}" deleted`);
           setQuery({ ...query }); // refresh table
         }}
         onClose={() => setDeleteUser(null)}

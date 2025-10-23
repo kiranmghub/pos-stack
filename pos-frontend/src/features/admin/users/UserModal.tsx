@@ -1,14 +1,9 @@
 // pos-frontend/src/features/admin/components/UserModal.tsx
 import React, { useEffect, useState } from "react";
-//import { AdminAPI, AdminUser, Store } from "../adminApi";
 import type { AdminUser, Store } from "../adminApi";
-//import { AdminAPI } from "../adminApi"; // ← add this (value import)
 import { UsersAPI } from "../api";
-//import { useToast } from "./Toast";
-import { useToast } from "../components/ToastCompat";
-import Checkbox from "../components/ui/Checkbox";
 import { StoresAPI } from "../api";
-
+import { useNotify } from "@/lib/notify";
 
 
 type Props = {
@@ -31,7 +26,8 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{value:string; label:string}[]>([]);
-  const { push } = useToast();
+  const { success, error } = useNotify();
+
 
 
   useEffect(() => {
@@ -42,7 +38,7 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
         const list = await StoresAPI.list({ is_active: true });
         setStoreList(Array.isArray(list) ? list : list.results ?? []);
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to load stores" });
+        error(e?.message || "Failed to load stores");
       } finally {
         setLoading(false);
       }
@@ -110,12 +106,12 @@ const handleSubmit = async () => {
         username, email, password, role, is_active: isActive, stores,
       });
     }
-    push({ kind: "success", msg: isEdit ? "User updated" : "User created" });
+    success(isEdit ? "User updated" : "User created");
     onSave();
     onClose();
   } catch (err: any) {
     console.error(err);
-    push({ kind: "error", msg: (err as any)?.message || "Failed to save user" });
+    error((err as any)?.message || "Failed to save user");
   } finally {
     setSaving(false);
   }

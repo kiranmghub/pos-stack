@@ -5,7 +5,7 @@ import { AdminAPI } from "../adminApi";
 import { DiscountRulesAPI, type DiscountRule } from "../api/discounts";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import Checkbox from "../components/ui/Checkbox";
+import { Checkbox } from "@/ui/checkbox";
 import { useToast } from "../components/ToastCompat";
 import DiscountRuleModal from "./DiscountRuleModal";
 import { Tag } from "lucide-react";
@@ -133,15 +133,16 @@ export default function DiscountRulesTab() {
       key: "select", width: "2rem",
       header: (
         <Checkbox
-          checked={allChecked}
-          indeterminate={partiallyChecked}
-          onChange={toggleAll}
+          checked={allChecked ? true : partiallyChecked ? "indeterminate" : false}
+          onCheckedChange={toggleAll}
           aria-label="Select all"
           title="Select all"
         />
       ),
       render: (r: DiscountRule) => (
-        <Checkbox checked={selectedIds.includes(r.id)} onChange={() => toggleRow(r.id)} aria-label="Select row" />
+        <Checkbox checked={selectedIds.includes(r.id)}
+          onCheckedChange={() => toggleRow(r.id)}
+          aria-label="Select row" />
       ),
     },
      {

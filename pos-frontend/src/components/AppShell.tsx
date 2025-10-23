@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { Home, LogOut, Store } from "lucide-react";
 import { getTenantCode, logout, getUser, refreshAccessIfNeeded, authHeaders } from "@/lib/auth";
 import { Toaster } from "@/ui/toast"; // global toast container
+import { ToastBridgeProvider } from "@/lib/notify";
+
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -63,9 +65,12 @@ export default function AppShell({ children, title, contained, actions, subtitle
       </header>
 
       {/* Page body */}
-      <main>{children}</main>
+      <main>
+        <ToastBridgeProvider>
+        {children}
+        </ToastBridgeProvider>
+      </main>
       <Toaster/>
-
     </div>
   );
 }
