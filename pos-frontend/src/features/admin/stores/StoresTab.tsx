@@ -6,12 +6,13 @@ import { RegistersAPI, type Register } from "../api/registers";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { Checkbox } from "@/ui/checkbox";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import StoreModal from "./StoreModal";
+import { Warning } from "postcss";
 
 
 export default function StoresTab() {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "" });
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<Store[]>([]);
@@ -36,12 +37,12 @@ export default function StoresTab() {
         const p = { search: query.search || undefined, ordering: query.ordering || undefined, is_active: query.is_active };
         const page = await StoresAPI.list(p);
         const rows = Array.isArray(page) ? page : page.results ?? [];
-        const cnt  = Array.isArray(page) ? undefined : page.count;
+        const cnt = Array.isArray(page) ? undefined : page.count;
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e) {
         console.error(e);
         if (mounted) { setData([]); setTotal(undefined); }
-        push({ kind: "error", msg: "Failed to load stores" });
+        error("Failed to load stores");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -61,20 +62,20 @@ export default function StoresTab() {
 
   const toggleExpand = async (row: Store) => {
     setExpandedIds(prev =>
-    prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]
+      prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]
     );
     // lazy load registers on first expand
     if (!regCache[row.id] && !regLoading[row.id]) {
-    setRegLoading(prev => ({ ...prev, [row.id]: true }));
-    try {
+      setRegLoading(prev => ({ ...prev, [row.id]: true }));
+      try {
         const page = await RegistersAPI.listByStore(row.id);
         const regs = Array.isArray(page) ? page : (page.results ?? []);
         setRegCache(prev => ({ ...prev, [row.id]: regs }));
-    } catch (e:any) {
-        push({ kind: "error", msg: e?.message || "Failed to load registers" });
-    } finally {
+      } catch (e: any) {
+        error(e?.message || "Failed to load registers");
+      } finally {
         setRegLoading(prev => ({ ...prev, [row.id]: false }));
-    }
+      }
     }
   };
 
@@ -93,8 +94,15 @@ export default function StoresTab() {
           fail.push(id);
         }
       }
-      if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} store(s)` });
-      if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} store(s)` });
+      if (ok.length)
+        //push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} store(s)` });
+        is_active ?
+          success(`Activated ${ok.length} store(s)`) :
+          is_active ? "Deactivated" :
+            warn(`Deactivated ${ok.length} store(s)`);
+      if (fail.length)
+        //push({ kind: "error", msg: `Failed to update ${fail.length} store(s)` });
+        error(`Failed to update ${fail.length} store(s)`);
       setSelectedIds(fail);
       setQuery({ ...query }); // refresh
     } finally {
@@ -172,60 +180,60 @@ export default function StoresTab() {
         </div>
       ),
     },
-    ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
-    // expanded panel renderer (full address + registers)
-    const renderRowAfter = React.useCallback((r: Store) => {
-        if (!expandedIds.includes(r.id)) return null;
-        const regs = regCache[r.id];
-        const isRegsLoading = !!regLoading[r.id];
-        const address = [r.street, r.city, r.state, r.postal_code, r.country].filter(Boolean).join(", ");
-        return (
-        <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
-            <div className="grid grid-cols-2 gap-3">
-            <div>
-                <div className="text-xs text-slate-400">Address</div>
-                     <button
-                    className="text-xs text-blue-400 hover:underline"
-                    onClick={() => { setEditing(r); /* setCreating(false) not required here */ }}
-                    >
-                    Edit
-                    </button>
-                <div className="text-slate-200">{address || "—"}</div>
-                <div className="text-xs text-slate-400 mt-1">Timezone</div>
-                <div className="text-slate-200">{(r as any).timezone || "—"}</div>
+  ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+  // expanded panel renderer (full address + registers)
+  const renderRowAfter = React.useCallback((r: Store) => {
+    if (!expandedIds.includes(r.id)) return null;
+    const regs = regCache[r.id];
+    const isRegsLoading = !!regLoading[r.id];
+    const address = [r.street, r.city, r.state, r.postal_code, r.country].filter(Boolean).join(", ");
+    return (
+      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-slate-400">Address</div>
+            <button
+              className="text-xs text-blue-400 hover:underline"
+              onClick={() => { setEditing(r); /* setCreating(false) not required here */ }}
+            >
+              Edit
+            </button>
+            <div className="text-slate-200">{address || "—"}</div>
+            <div className="text-xs text-slate-400 mt-1">Timezone</div>
+            <div className="text-slate-200">{(r as any).timezone || "—"}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-400 flex items-center justify-between">
+              <span>Registers</span>
+              {Array.isArray(regs) ? <span className="text-slate-500">{regs.length}</span> : null}
             </div>
-            <div>
-                <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>Registers</span>
-                {Array.isArray(regs) ? <span className="text-slate-500">{regs.length}</span> : null}
-                </div>
-                {isRegsLoading ? (
-                    <div className="mt-1 inline-flex items-center gap-2 text-slate-400 text-sm">
-                        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-                        </svg>
-                        Loading Registers…
-                    </div>
-                ) : Array.isArray(regs) && regs.length > 0 ? (
-                <div className="flex flex-wrap gap-1 mt-1">
-                    {regs.slice(0, 8).map((g) => (
-                    <span key={g.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
-                        {g.code}{g.name ? ` • ${g.name}` : ""}
-                    </span>
-                    ))}
-                    {regs.length > 8 && (
-                    <span className="text-xs text-slate-400">+{regs.length - 8} more</span>
-                    )}
-                </div>
-                ) : (
-                <div className="text-slate-400 text-sm">No registers linked.</div>
+            {isRegsLoading ? (
+              <div className="mt-1 inline-flex items-center gap-2 text-slate-400 text-sm">
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+                </svg>
+                Loading Registers…
+              </div>
+            ) : Array.isArray(regs) && regs.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {regs.slice(0, 8).map((g) => (
+                  <span key={g.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                    {g.code}{g.name ? ` • ${g.name}` : ""}
+                  </span>
+                ))}
+                {regs.length > 8 && (
+                  <span className="text-xs text-slate-400">+{regs.length - 8} more</span>
                 )}
-            </div>
-            </div>
+              </div>
+            ) : (
+              <div className="text-slate-400 text-sm">No registers linked.</div>
+            )}
+          </div>
         </div>
-        );
-    }, [expandedIds, regCache, regLoading]);
+      </div>
+    );
+  }, [expandedIds, regCache, regLoading]);
 
   return (
     <div className="space-y-4">
@@ -281,7 +289,7 @@ export default function StoresTab() {
         query={query}
         onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
         renderRowAfter={renderRowAfter}
-        getRowKey={(row:any) => row.id ?? row.code}
+        getRowKey={(row: any) => row.id ?? row.code}
       />
 
       {/* Modals */}
@@ -301,11 +309,13 @@ export default function StoresTab() {
           if (!deleting) return;
           try {
             await StoresAPI.remove(deleting.id);
-            push({ kind: "warn", msg: `Store "${deleting.code}" deleted` });
+            //push({ kind: "warn", msg: `Store "${deleting.code}" deleted` });
+            warn(`Store "${deleting.code}" deleted`);
             setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
-            push({ kind: "error", msg: e?.message || "Delete failed" });
+            //push({ kind: "error", msg: e?.message || "Delete failed" });
+            error(e?.message || "Delete failed");
             // keep failed row selected
             setSelectedIds((prev) => Array.from(new Set([...prev, deleting.id])));
             setDeleting(null);

@@ -4,12 +4,12 @@ import type { Query } from "../adminApi";
 import { TaxCatsAPI, type TaxCategory } from "../api/taxcats";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import TaxCategoryModal from "./TaxCategoryModal";
 import { Checkbox } from "@/ui/checkbox";
 
 export default function TaxCategoriesTab() {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "" });
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<TaxCategory[]>([]);
@@ -37,7 +37,8 @@ export default function TaxCategoriesTab() {
         const cnt  = Array.isArray(page) ? undefined : page.count;
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e:any) {
-        push({ kind: "error", msg: e?.message || "Failed to load tax categories" });
+        // push({ kind: "error", msg: e?.message || "Failed to load tax categories" });
+        error(e?.message || "Failed to load tax categories");
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
@@ -125,8 +126,12 @@ export default function TaxCategoriesTab() {
           fail.push(id);
         }
       }
-      if (ok.length) push({ kind: "warn", msg: `Deleted ${ok.length} tax categor${ok.length === 1 ? "y" : "ies"}` });
-      if (fail.length) push({ kind: "error", msg: `Failed to delete ${fail.length} item(s)` });
+      if (ok.length) 
+        // push({ kind: "warn", msg: `Deleted ${ok.length} tax categor${ok.length === 1 ? "y" : "ies"}` });
+        warn(`Deleted ${ok.length} tax categor${ok.length === 1 ? "y" : "ies"}`);
+      if (fail.length) 
+        // push({ kind: "error", msg: `Failed to delete ${fail.length} item(s)` });
+        error(`Failed to delete ${fail.length} item(s)`);
       setSelectedIds(fail);       // keep failures selected
       setQuery({ ...query });     // refresh list
     } finally {
@@ -199,11 +204,13 @@ export default function TaxCategoriesTab() {
           if (!deleting) return;
           try {
             await TaxCatsAPI.remove(deleting.id);
-            push({ kind: "warn", msg: `Tax category "${deleting.code}" deleted` });
+            // push({ kind: "warn", msg: `Tax category "${deleting.code}" deleted` });
+            warn(`Tax category "${deleting.code}" deleted`);
             setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
-            push({ kind: "error", msg: e?.message || "Delete failed" });
+            // push({ kind: "error", msg: e?.message || "Delete failed" });
+            error(e?.message || "Delete failed");
             setDeleting(null);
           }
         }}

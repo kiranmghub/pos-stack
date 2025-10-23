@@ -6,11 +6,11 @@ import { RegistersAPI, type Register } from "../api/registers";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { Checkbox } from "@/ui/checkbox";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import RegisterModal from "./RegisterModal";
 
 export default function RegistersTab() {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "" });
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<Register[]>([]);
@@ -64,8 +64,8 @@ export default function RegistersTab() {
          setData(enriched);
          setTotal(cnt);
         }
-      } catch (e:any) {
-        push({ kind: "error", msg: e?.message || "Failed to load registers" });
+      } catch (e:any) {      
+        error(e?.message || "Failed to load registers");
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
@@ -99,8 +99,14 @@ export default function RegistersTab() {
           fail.push(id);
         }
       }
-      if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} register(s)` });
-      if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} register(s)` });
+      if (ok.length)
+        //push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} register(s)` });
+        is_active ?
+        success(`Activated ${ok.length} register(s)`) :
+        warn(`Deactivated ${ok.length} register(s)`);
+      if (fail.length)
+        //push({ kind: "error", msg: `Failed to update ${fail.length} register(s)` });
+        error(`Failed to update ${fail.length} register(s)`);
       setSelectedIds(fail);
       setQuery({ ...query }); // refresh
     } finally {
@@ -259,11 +265,13 @@ export default function RegistersTab() {
           if (!deleting) return;
           try {
             await RegistersAPI.remove(deleting.id);
-            push({ kind: "warn", msg: `Register "${deleting.code}" deleted` });
+            // push({ kind: "warn", msg: `Register "${deleting.code}" deleted` });
+            warn(`Register "${deleting.code}" deleted`);
             setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
-            push({ kind: "error", msg: e?.message || "Delete failed" });
+            // push({ kind: "error", msg: e?.message || "Delete failed" });
+            error
             setSelectedIds((prev) => Array.from(new Set([...prev, deleting.id])));
             setDeleting(null);
           }

@@ -2,7 +2,7 @@
 import React from "react";
 import type { Store } from "../adminApi";
 import { RegistersAPI, type Register, type RegisterCreatePayload } from "../api/registers";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { AdminAPI } from "../adminApi";
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function RegisterModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
 
   const [stores, setStores] = React.useState<Store[]>([]);
@@ -40,7 +40,8 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
         const list = Array.isArray(page) ? page : (page.results ?? []);
         if (mounted) setStores(list);
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to load stores" });
+        // push({ kind: "error", msg: e?.message || "Failed to load stores" });
+        error(e?.message || "Failed to load stores");
       }
     })();
     return () => { mounted = false; };
@@ -74,15 +75,20 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
       setForm((f) => ({ ...f, hardware_profile: obj }));
       return true;
     } catch {
-      push({ kind: "error", msg: "Hardware Profile must be valid JSON." });
+      // push({ kind: "error", msg: "Hardware Profile must be valid JSON." });
+      error("Hardware Profile must be valid JSON.");
       return false;
     }
   };
 
   const handleSave = async () => {
     if (!parseHardwareProfile()) return;
-    if (!form.store) { push({ kind: "error", msg: "Store is required." }); return; }
-    if (!form.code.trim()) { push({ kind: "error", msg: "Code is required." }); return; }
+    if (!form.store) { 
+      // push({ kind: "error", msg: "Store is required." }); return; }
+      error("Store is required."); return; }
+    if (!form.code.trim()) { 
+      // push({ kind: "error", msg: "Code is required." }); return; }
+      error("Code is required."); return; }
 
     setSaving(true);
     try {
@@ -93,16 +99,19 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
         if (pin !== "") {
           await RegistersAPI.setPin(editing.id, pin); // empty string clears
         }
-        push({ kind: "success", msg: "Register updated" });
+        // push({ kind: "success", msg: "Register updated" });
+        success("Register updated");
       } else {
         await RegistersAPI.create(form);
-        push({ kind: "success", msg: "Register created" });
+        // push({ kind: "success", msg: "Register created" });
+        success("Register created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
       const msg = e?.message || "Failed to save register";
-      push({ kind: "error", msg });
+      // push({ kind: "error", msg });
+      error(msg);
     } finally {
       setSaving(false);
     }

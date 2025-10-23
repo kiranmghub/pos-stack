@@ -1,6 +1,6 @@
 // pos-frontend/src/features/admin/discounts/DiscountRuleModal.tsx
 import React from "react";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { DiscountRulesAPI, type DiscountRule, type DiscountRuleCreatePayload, CatalogAPI, type ProductLite, type VariantLite } from "../api/discounts";
 import { AdminAPI, type Store } from "../adminApi";
 import { TaxCatsAPI, type TaxCategory as TaxCat } from "../api/taxcats";
@@ -15,7 +15,7 @@ type Props = {
 type Step = 1 | 2;
 
 export default function DiscountRuleModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
 
   const [step, setStep] = React.useState<Step>(1);
@@ -95,11 +95,12 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
         const cl = Array.isArray(cp) ? cp : cp.results ?? [];
         if (mounted) { setStores(sl); setCats(cl); }
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to load stores/categories" });
+        // push({ kind: "error", msg: e?.message || "Failed to load stores/categories" });
+        error(e?.message || "Failed to load stores/categories");
       }
     })();
     return () => { mounted = false; };
-  }, [open, push]);
+  }, [open, error]);
 
   React.useEffect(() => {
     if (editing && open) {
@@ -148,7 +149,8 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
         const list = await CatalogAPI.searchProducts(prodQuery.trim());
         setProdOptions(list);
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to search products" });
+        // push({ kind: "error", msg: e?.message || "Failed to search products" });
+        error(e?.message || "Failed to search products");
       }
     }, 350);
   };
@@ -163,7 +165,8 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
         );
         setVarOptions(list);
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to search variants" });
+        // push({ kind: "error", msg: e?.message || "Failed to search variants" });
+        error(e?.message || "Failed to search variants");
       }
     }, 350);
   };
@@ -256,14 +259,17 @@ export default function DiscountRuleModal({ open, onClose, onSaved, editing }: P
 
       if (isEdit && editing) {
         await DiscountRulesAPI.update(editing.id, payload);
-        push({ kind: "success", msg: "Discount rule updated" });
+        // push({ kind: "success", msg: "Discount rule updated" });
+        success("Discount rule updated");
       } else {
         await DiscountRulesAPI.create(payload);
-        push({ kind: "success", msg: "Discount rule created" });
+        // push({ kind: "success", msg: "Discount rule created" });
+        success("Discount rule created");
       }
       onSaved(); onClose();
     } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to save discount rule" });
+      // push({ kind: "error", msg: e?.message || "Failed to save discount rule" });
+      error(e?.message || "Failed to save discount rule");
     } finally {
       setSaving(false);
     }

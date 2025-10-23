@@ -5,11 +5,11 @@ import { CouponsAPI, type Coupon } from "../api/coupons";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { Checkbox } from "@/ui/checkbox";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import CouponModal from "./CouponModal";
 
 export default function CouponsTab() {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "code" });
   const [loading, setLoading] = React.useState(false);
   const [data, setData] = React.useState<Coupon[]>([]);
@@ -38,7 +38,8 @@ export default function CouponsTab() {
         const cnt  = Array.isArray(page) ? undefined : page.count;
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e:any) {
-        push({ kind: "error", msg: e?.message || "Failed to load coupons" });
+        // push({ kind: "error", msg: e?.message || "Failed to load coupons" });
+        error(e?.message || "Failed to load coupons");
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
@@ -68,8 +69,12 @@ export default function CouponsTab() {
             fail.push(id);
         }
         }
-        if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} coupon(s)` });
-        if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} coupon(s)` });
+        if (ok.length) 
+          // push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} coupon(s)` });
+          is_active ? success(`Activated ${ok.length} coupon(s)`) : warn(`Deactivated ${ok.length} coupon(s)`);
+        if (fail.length) 
+          // push({ kind: "error", msg: `Failed to update ${fail.length} coupon(s)` });
+          error(`Failed to update ${fail.length} coupon(s)`);
         setSelectedIds(fail);      // keep failures selected
         setQuery({ ...query });    // refresh list
     } finally {
@@ -284,11 +289,13 @@ export default function CouponsTab() {
           if (!deleting) return;
           try {
             await CouponsAPI.remove(deleting.id);
-            push({ kind: "warn", msg: `Coupon "${deleting.code}" deleted` });
+            // push({ kind: "warn", msg: `Coupon "${deleting.code}" deleted` });
+            warn(`Coupon "${deleting.code}" deleted`);
             setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
-            push({ kind: "error", msg: e?.message || "Delete failed" });
+            // push({ kind: "error", msg: e?.message || "Delete failed" });
+            error(e?.message || "Delete failed");
             setDeleting(null);
           }
         }}

@@ -1,6 +1,6 @@
 // pos-frontend/src/features/admin/taxcats/TaxCategoryModal.tsx
 import React from "react";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { TaxCatsAPI, type TaxCategory, type TaxCategoryCreatePayload } from "../api/taxcats";
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
 };
 
 export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
   const [saving, setSaving] = React.useState(false);
 
@@ -107,15 +107,18 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
     try {
       if (isEdit && editing) {
         await TaxCatsAPI.update(editing.id, payload);
-        push({ kind: "success", msg: "Tax category updated" });
+        // push({ kind: "success", msg: "Tax category updated" });
+        success("Tax category updated");
       } else {
         await TaxCatsAPI.create(payload);
-        push({ kind: "success", msg: "Tax category created" });
+        // push({ kind: "success", msg: "Tax category created" });
+        success("Tax category created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to save tax category" });
+      // push({ kind: "error", msg: e?.message || "Failed to save tax category" });
+      error(e?.message || "Failed to save tax category");
     } finally {
       setSaving(false);
     }

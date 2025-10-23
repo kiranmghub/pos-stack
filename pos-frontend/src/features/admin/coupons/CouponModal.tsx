@@ -1,6 +1,6 @@
 // pos-frontend/src/features/admin/coupons/CouponModal.tsx
 import React from "react";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { CouponsAPI, type Coupon, type CouponCreatePayload } from "../api/coupons";
 import { DiscountRulesAPI, type DiscountRule } from "../api/discounts";
 
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default function CouponModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
   const [saving, setSaving] = React.useState(false);
 
@@ -41,11 +41,12 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
         const rows = Array.isArray(page) ? page : page.results ?? [];
         if (mounted) setRules(rows);
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to load discount rules" });
+        // push({ kind: "error", msg: e?.message || "Failed to load discount rules" });
+        error(e?.message || "Failed to load discount rules");
       }
     })();
     return () => { mounted = false; };
-  }, [open, push]);
+  }, [open, error]);
 
   React.useEffect(() => {
     if (editing && open) {
@@ -69,7 +70,8 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
     if (!ruleId) errs.push("Discount Rule is required.");
     if (startAt && endAt && new Date(endAt) < new Date(startAt)) errs.push("End must be after Start.");
     if (errs.length) {
-      push({ kind: "error", msg: errs.join(" ") });
+      // push({ kind: "error", msg: errs.join(" ") });
+      error(errs.join(" "));
       return false;
     }
     return true;
@@ -92,15 +94,18 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
       };
       if (isEdit && editing) {
         await CouponsAPI.update(editing.id, payload);
-        push({ kind: "success", msg: "Coupon updated" });
+        // push({ kind: "success", msg: "Coupon updated" });
+        success("Coupon updated");
       } else {
         await CouponsAPI.create(payload);
-        push({ kind: "success", msg: "Coupon created" });
+        // push({ kind: "success", msg: "Coupon created" });
+        success("Coupon created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to save coupon" });
+      // push({ kind: "error", msg: e?.message || "Failed to save coupon" });
+      error(e?.message || "Failed to save coupon");
     } finally {
       setSaving(false);
     }

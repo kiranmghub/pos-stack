@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import type { Store } from "../adminApi";
 import { StoresAPI, StoreCreatePayload, StoreUpdatePayload } from "../api/stores";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 
 type Props = {
   open: boolean;
@@ -14,7 +14,7 @@ type Props = {
 const required = (v?: string) => (v && v.trim().length ? undefined : "Required");
 
 export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
 
   const [form, setForm] = useState<StoreCreatePayload>({
@@ -65,7 +65,7 @@ export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
   const submit = async () => {
     const errors = validate();
     if (Object.keys(errors).length) {
-      push({ kind: "error", msg: "Please fill all required fields." });
+      error("Please fill all required fields.");
       return;
     }
     setSaving(true);
@@ -73,16 +73,16 @@ export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
       if (isEdit && editing) {
         const payload: StoreUpdatePayload = { ...form };
         const saved = await StoresAPI.update(editing.id, payload);
-        push({ kind: "success", msg: `Store "${saved.code}" updated` });
+        success(`Store "${saved.code}" updated`);
       } else {
         const saved = await StoresAPI.create(form);
-        push({ kind: "success", msg: `Store "${saved.code}" created` });
+        success(`Store "${saved.code}" created`);
       }
       onSaved();
       onClose();
     } catch (e: any) {
       const msg = e?.message || "Failed to save store";
-      push({ kind: "error", msg });
+      error(msg);
     } finally {
       setSaving(false);
     }

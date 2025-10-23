@@ -6,11 +6,11 @@ import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
 import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { Checkbox } from "@/ui/checkbox";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import TaxRuleModal from "./TaxRuleModal";
 
 export default function TaxRulesTab() {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
 
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "priority" });
   const [loading, setLoading] = React.useState(false);
@@ -62,7 +62,8 @@ export default function TaxRulesTab() {
         const cnt  = Array.isArray(page) ? undefined : page.count;
         if (mounted) { setData(rows); setTotal(cnt); }
       } catch (e:any) {
-        push({ kind: "error", msg: e?.message || "Failed to load tax rules" });
+        // push({ kind: "error", msg: e?.message || "Failed to load tax rules" });
+        error(e?.message || "Failed to load tax rules");
         if (mounted) { setData([]); setTotal(undefined); }
       } finally {
         if (mounted) setLoading(false);
@@ -96,8 +97,12 @@ export default function TaxRulesTab() {
         try { await TaxRulesAPI.update(id, { is_active }); ok.push(id); }
         catch { fail.push(id); }
       }
-      if (ok.length) push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} rule(s)` });
-      if (fail.length) push({ kind: "error", msg: `Failed to update ${fail.length} rule(s)` });
+      if (ok.length) 
+        // push({ kind: is_active ? "success" : "warn", msg: `${is_active ? "Activated" : "Deactivated"} ${ok.length} rule(s)` });
+        is_active ? success(`Activated ${ok.length} rule(s)`) : warn(`Deactivated ${ok.length} rule(s)`);
+      if (fail.length) 
+        // push({ kind: "error", msg: `Failed to update ${fail.length} rule(s)` });
+        error(`Failed to update ${fail.length} rule(s)`);
       setSelectedIds(fail);
       setQuery({ ...query });
     } finally {
@@ -409,11 +414,13 @@ export default function TaxRulesTab() {
           if (!deleting) return;
           try {
             await TaxRulesAPI.remove(deleting.id);
-            push({ kind: "warn", msg: `Tax rule "${deleting.code}" deleted` });
+            // push({ kind: "warn", msg: `Tax rule "${deleting.code}" deleted` });
+            warn(`Tax rule "${deleting.code}" deleted`);
             setQuery({ ...query });
             setDeleting(null);
           } catch (e: any) {
-            push({ kind: "error", msg: e?.message || "Delete failed" });
+            // push({ kind: "error", msg: e?.message || "Delete failed" });
+            error(e?.message || "Delete failed");
             setSelectedIds(prev => Array.from(new Set([...prev, deleting.id])));
             setDeleting(null);
           }

@@ -1,6 +1,6 @@
 // pos-frontend/src/features/admin/taxrules/TaxRuleModal.tsx
 import React from "react";
-import { useToast } from "../components/ToastCompat";
+import { useNotify } from "@/lib/notify";
 import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
 import { AdminAPI, type Store } from "../adminApi";
 import { TaxCatsAPI, type TaxCategory as TaxCat } from "../api/taxcats";
@@ -15,7 +15,7 @@ type Props = {
 type Step = 1 | 2;
 
 export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props) {
-  const { push } = useToast();
+  const { success, error, info, warn } = useNotify();
   const isEdit = !!editing;
 
   const [step, setStep] = React.useState<Step>(1);
@@ -81,11 +81,12 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         const cl = Array.isArray(cp) ? cp : cp.results ?? [];
         if (mounted) { setStores(sl); setCats(cl); }
       } catch (e: any) {
-        push({ kind: "error", msg: e?.message || "Failed to load stores/categories" });
+        // push({ kind: "error", msg: e?.message || "Failed to load stores/categories" });
+        error(e?.message || "Failed to load stores/categories");
       }
     })();
     return () => { mounted = false; };
-  }, [open, push]);
+  }, [open, error]);
 
   React.useEffect(() => {
     if (open && !editing) {
@@ -210,15 +211,18 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
 
       if (isEdit && editing) {
         await TaxRulesAPI.update(editing.id, payload);
-        push({ kind: "success", msg: "Tax rule updated" });
+        // push({ kind: "success", msg: "Tax rule updated" });
+        success("Tax rule updated");
       } else {
         await TaxRulesAPI.create(payload);
-        push({ kind: "success", msg: "Tax rule created" });
+        // push({ kind: "success", msg: "Tax rule created" });
+        success("Tax rule created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
-      push({ kind: "error", msg: e?.message || "Failed to save tax rule" });
+      // push({ kind: "error", msg: e?.message || "Failed to save tax rule" });
+      error(e?.message || "Failed to save tax rule");
     } finally {
       setSaving(false);
     }

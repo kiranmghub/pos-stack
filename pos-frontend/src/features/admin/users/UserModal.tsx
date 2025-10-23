@@ -6,6 +6,7 @@ import { StoresAPI } from "../api";
 import { useNotify } from "@/lib/notify";
 
 
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -26,7 +27,8 @@ export default function UserModal({ open, onClose, onSave, editUser }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [roleOptions, setRoleOptions] = useState<{value:string; label:string}[]>([]);
-  const { success, error } = useNotify();
+  const { success, error, info, warn } = useNotify();
+  
 
 
 
