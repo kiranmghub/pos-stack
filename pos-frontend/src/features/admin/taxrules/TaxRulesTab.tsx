@@ -404,6 +404,7 @@ export default function TaxRulesTab() {
           editing={editing}
           onClose={() => { setCreating(false); setEditing(null); }}
           onSaved={() => setQuery({ ...query })}
+
         />
       )}
 
