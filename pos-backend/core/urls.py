@@ -14,7 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-# core/urls.py
+# pos-backend/core/urls.py
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
@@ -36,10 +36,18 @@ from catalog.api import (
     CategoryListView, ProductImageUploadView, VariantImageUploadView,
 )
 # from inventory.api import AdjustStockView
+from rest_framework.routers import DefaultRouter
+from catalog.api import ProductViewSet, VariantViewSet
+
+
+router = DefaultRouter()
+router.register(r"catalog/products", ProductViewSet, basename="catalog-products")
+router.register(r"catalog/variants", VariantViewSet, basename="catalog-variants")
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
+    path("api/", include(router.urls)),
 
     # Auth
     path("api/v1/auth/token/", TenantAwareTokenObtainPairView.as_view(), name="token_obtain_pair"),

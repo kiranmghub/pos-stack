@@ -19,6 +19,19 @@ import os
 from django.conf import settings
 from django.core.files.storage import default_storage, FileSystemStorage
 
+from django.db.models import Sum, Min, Max, Count, OuterRef, Subquery
+from django.db.models.functions import Coalesce
+from rest_framework import viewsets, mixins, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from .models import Product, Variant  # adjust imports
+from .serializers import (
+    ProductListSerializer,
+    ProductDetailSerializer,
+    VariantSerializer,
+)
+
 
 # Build absolute URL when we only have a relative path (/media/...)
 def _abs(request, url: str) -> str:
@@ -399,3 +412,90 @@ class VariantImageUploadView(APIView):
             variant.save(update_fields=["image_url"])
 
         return Response({"image_url": url}, status=200)
+    
+
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    """
+    Endpoints:
+      - list: GET /catalog/products?search=&category=&active=
+      - retrieve: GET /catalog/products/:id
+      - create/update/partial_update
+      - /:id/variants (list/create via VariantViewSet or custom route if preferred)
+    """
+    queryset = Product.objects.all().select_related().prefetch_related("variants")
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "code", "category", "variants__name", "variants__sku"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        # Annotate aggregates from Variant
+        # Adjust field names if your Variant model differs.
+        qs = qs.annotate(
+            price_min=Coalesce(Min("variants__price"), 0),
+            price_max=Coalesce(Max("variants__price"), 0),
+            on_hand_sum=Coalesce(Sum("variants__on_hand"), 0),
+            variant_count=Coalesce(Count("variants", distinct=True), 0),
+        )
+
+        # For cover image fallback, pull first variant per product (optional)
+        first_variant_sq = Variant.objects.filter(product=OuterRef("pk")).order_by("id").values("pk")[:1]
+        qs = qs.annotate(first_variant=Subquery(first_variant_sq))
+
+        # Filters
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+
+        active = self.request.query_params.get("active")
+        if active in ("true", "false"):
+            qs = qs.filter(active=(active == "true"))
+
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ProductListSerializer
+        return ProductDetailSerializer
+
+    @action(detail=True, methods=["get"])
+    def summary(self, request, pk=None):
+        """Small summary payload if the table wants to lazy-load aggregates."""
+        obj = self.get_queryset().get(pk=pk)
+        data = {
+            "id": obj.pk,
+            "price_min": obj.price_min,
+            "price_max": obj.price_max,
+            "on_hand_sum": obj.on_hand_sum,
+            "variant_count": obj.variant_count,
+        }
+        return Response(data)
+
+
+class VariantViewSet(
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    Endpoints:
+      - list: GET /catalog/variants?product=<id>&search=
+      - retrieve: GET /catalog/variants/:id
+      - create: POST /catalog/variants
+      - update/partial_update
+    """
+    serializer_class = VariantSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["name", "sku", "barcode"]
+
+    def get_queryset(self):
+        qs = Variant.objects.select_related("product")
+        product_id = self.request.query_params.get("product")
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
