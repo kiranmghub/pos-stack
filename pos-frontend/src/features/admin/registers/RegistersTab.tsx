@@ -22,6 +22,7 @@ export default function RegistersTab() {
   const [editing, setEditing] = React.useState<Register | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<Register | null>(null);
+  const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
 
   // Load stores for the filter once
   React.useEffect(() => {
@@ -116,6 +117,29 @@ export default function RegistersTab() {
 
   const cols = React.useMemo(() => ([
     {
+          key: "__expander__",
+          header: "",
+          width: "2rem",
+          render: (r: Register) => {
+            const open = expandedIds.includes(r.id);
+            return (
+              <button
+                className="text-slate-300 hover:text-white"
+                title={open ? "Collapse" : "Expand"}
+                onClick={() =>
+                  setExpandedIds(prev =>
+                    prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                  )
+                }
+              >
+                <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            );
+          }
+        },
+    {
       key: "select",
       header: (
         <Checkbox
@@ -179,6 +203,40 @@ export default function RegistersTab() {
       ),
     },
   ]), [allChecked, partiallyChecked, selectedIds]);
+
+    const renderRowAfter = React.useCallback((r: any) => {
+      if (!expandedIds.includes(r.id)) return null;
+      return (
+        <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-slate-400">Code</div>
+              <div className="text-slate-200 break-words">{r.code || "—"}</div>
+              <div className="text-xs text-slate-400 mt-2">Name</div>
+              <div className="text-slate-200 break-words">{r.name || "—"}</div>
+              <div className="text-xs text-slate-400 mt-2">Active</div>
+              <div className="text-slate-200">{r.is_active ? "Yes" : "No"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-400">Store</div>
+              <div className="text-slate-200">
+                {r.store_name ? `${r.store_name}${r.store_code ? ` (${r.store_code})` : ""}` : "—"}
+              </div>
+              <div className="text-xs text-slate-400 mt-2">Hardware Profile</div>
+              <div className="text-slate-200 break-words text-xs max-w-[40rem]">
+                {r.hardware_profile ? JSON.stringify(r.hardware_profile) : "—"}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-end">
+            <button className="text-xs text-blue-400 hover:underline"
+                    onClick={() => { setEditing(r); setCreating(false); }}>
+              Edit
+            </button>
+          </div>
+        </div>
+      );
+    }, [expandedIds]);
 
   return (
     <div className="space-y-4">
@@ -245,6 +303,7 @@ export default function RegistersTab() {
         total={total}
         query={query}
         onQueryChange={(q) => setQuery((p) => ({ ...p, ...q }))}
+        renderRowAfter={renderRowAfter}
         getRowKey={(row:any) => row.id ?? row.code}
       />
 

@@ -23,6 +23,7 @@ export default function UsersTab() {
   const [updatingIds, setUpdatingIds] = useState<number[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
   const { success, error, info, warn } = useNotify();
 
@@ -73,8 +74,17 @@ export default function UsersTab() {
     }
   };
 
+  // const toggleSelect = (id: number) => {
+  //   if (meId && id === meId) {
+  //     info("You cannot select yourself for bulk changes.");
+  //     return;
+  //   }
+  //   setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  // };
+
   const toggleSelect = (id: number) => {
-    if (meId && id === meId) {
+    const user = data.find(u => u.id === id);
+    if (meId && user?.user?.id === meId) {
       info("You cannot select yourself for bulk changes.");
       return;
     }
@@ -82,7 +92,8 @@ export default function UsersTab() {
   };
 
   const selectAll = (rows: AdminUser[]) => {
-    const allowed = meId ? rows.filter(r => r.id !== meId) : rows;
+    // const allowed = meId ? rows.filter(r => r.id !== meId) : rows;
+    const allowed = meId ? rows.filter(r => r.user?.id !== meId) : rows;
     setSelectedIds(prev => prev.length === allowed.length ? [] : allowed.map(r => r.id));
   };
 
@@ -94,7 +105,13 @@ export default function UsersTab() {
     try {
       let okIds: number[] = [];
       let fails: { id: number; msg: string }[] = [];
-      const idsToProcess = meId ? selectedIds.filter(id => id !== meId) : selectedIds;
+      // const idsToProcess = meId ? selectedIds.filter(id => id !== meId) : selectedIds;
+      const idsToProcess = meId 
+        ? selectedIds.filter(id => {
+            const user = data.find(u => u.id === id);
+            return user?.user?.id !== meId;
+          }) 
+        : selectedIds;
 
       for (const id of idsToProcess) {
         try {
@@ -144,7 +161,30 @@ export default function UsersTab() {
     };
 
     return [
-      {
+      { 
+        key: "__expander__",
+        header: "",
+        width: "2rem",
+        render: (r: AdminUser) => {
+          const open = expandedIds.includes(r.id);
+          return (
+            <button
+              className="text-slate-300 hover:text-white"
+              title={open ? "Collapse" : "Expand"}
+              onClick={() =>
+                setExpandedIds(prev =>
+                  prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                )
+              }
+            >
+              <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          );
+        }
+      },
+      {    
         key: "select",
         header: (
           <Checkbox
@@ -172,7 +212,8 @@ export default function UsersTab() {
           <label className="inline-flex items-center gap-2">
             <Checkbox
               checked={!!r.is_active}
-              disabled={updatingIds.includes(r.id) || (meId && r.id === meId)}
+              // disabled={updatingIds.includes(r.id) || (meId && r.id === meId)}
+              disabled={updatingIds.includes(r.id) || (meId && r.user?.id === meId)}
               onCheckedChange={() => onToggleActive(r)}
               title={
                 meId && r.id === meId
@@ -189,24 +230,34 @@ export default function UsersTab() {
       {
         key: "stores",
         header: "Stores",
-        render: (r: AdminUser) => (
-          <div className="flex flex-wrap gap-1 max-w-[8rem]">
-            {(r.store_objects || []).slice(0, 3).map((s: any) => (
-              <span
-                key={s.id}
-                className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200 truncate"
-                title={s.name}
-              >
-                {s.name}
-              </span>
-            ))}
-            {(r.store_objects || []).length > 3 && (
-              <span className="text-xs text-slate-400">+{(r.store_objects || []).length - 3}</span>
-            )}
-          </div>
-        ),
+        render: (r: AdminUser) => {
+          const stores = r.store_objects || [];
+          const shown = stores.slice(0, 2);       // show first 2; change to 3 if you prefer
+          const more = stores.length - shown.length;
+
+          return (
+            <div
+              className="min-w-0 flex items-center gap-1 whitespace-nowrap max-w-[18rem] overflow-hidden"
+              title={stores.map((s: any) => s.name).join(", ")}
+            >
+              {shown.map((s: any) => (
+                <span
+                  key={s.id}
+                  className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200 max-w-[9rem] truncate"
+                >
+                  {s.name}
+                </span>
+              ))}
+              {more > 0 && (
+                <span className="shrink-0 text-xs text-slate-400">+{more}</span>
+              )}
+            </div>
+          );
+        },
         align: "left" as const,
       },
+
+
       {
         key: "actions",
         header: "",
@@ -230,6 +281,57 @@ export default function UsersTab() {
       },
     ];
   }, [data, selectedIds, updatingIds, allChecked, partiallyChecked, meId]);
+
+    
+  const renderRowAfter = React.useCallback((r: AdminUser) => {
+    if (!expandedIds.includes(r.id)) return null;
+    const stores = (r.store_objects || []) as Array<{ id:number; name:string; code?:string }>;
+    return (
+      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-slate-400">User</div>
+            <div className="text-slate-200 break-words">
+              {r.user?.username ?? "—"}{r.user?.email ? ` — ${r.user.email}` : ""}
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Role</div>
+            <div className="text-slate-200">{r.role || "—"}</div>
+            <div className="text-xs text-slate-400 mt-2">Active</div>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-amber-600/30 text-amber-300"}`}>
+              {r.is_active ? "Yes" : "No"}
+            </span>
+          </div>
+          <div>
+            <div className="text-xs text-slate-400">Stores</div>
+            {stores.length ? (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {stores.slice(0, 20).map(s => (
+                  <span key={s.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                    {s.name}{s.code ? ` (${s.code})` : ""}
+                  </span>
+                ))}
+                {stores.length > 20 && (
+                  <span className="text-xs text-slate-400">+{stores.length - 20} more</span>
+                )}
+              </div>
+            ) : (
+              <div className="text-slate-400 text-sm">No stores linked.</div>
+            )}
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-xs text-slate-400" />
+          <div>
+            <button className="text-xs text-blue-400 hover:underline"
+                    onClick={() => { setEditUser(r); setShowUserModal(true); }}>
+              Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [expandedIds, setEditUser, setShowUserModal]);
+
 
   return (
     <div className="space-y-4">
@@ -377,6 +479,7 @@ export default function UsersTab() {
         total={total}
         query={query}
         onQueryChange={(q) => setQuery(prev => ({ ...prev, ...q }))}
+        renderRowAfter={renderRowAfter}
       />
 
       {/* Modals */}
