@@ -1,104 +1,75 @@
-// pos-frontend/src/features/catalog/api.ts
-import { apiFetchJSON, apiFetch } from "@/lib/auth";
+import { apiFetch, apiFetchJSON, authHeaders } from "@/lib/auth";
+import type {
+  ProductListItem,
+  ProductDetail,
+  Paginated,
+  CreateProductDto,
+  UpdateProductDto,
+  CreateVariantDto,
+  UpdateVariantDto,
+  Variant,
+  ID,
+} from "./types";
 
-/* ---------- Types (match your existing ones) ---------- */
-export type Category = { id: number; name: string };
-export type TaxCategory = { id: number; name: string; rate: string | number };
+const API_BASE = import.meta.env.VITE_API_BASE || ""; // your auth.ts handles prefixing with "/api" when empty
 
-export type ProductListItem = {
-  id: number;
-  name: string;
-  code?: string | null;
-  is_active: boolean;
-  image_url?: string | null;
-  category?: { id: number; name: string } | null;
-  tax_category?: { id: number; name: string } | null;
-  variants_count: number;
-  min_price?: string | null;
-  max_price?: string | null;
-  on_hand_total?: number;
-  low_stock?: number;
-};
-
-export type ProductDTO = {
-  id?: number;
-  name: string;
-  code?: string | null;
-  description?: string | null;
-  category_id?: number | null;
-  tax_category_id?: number | null;
-  is_active?: boolean;
-  image_url?: string | null;
-  variants?: Array<{
-    id?: number;
-    sku?: string | null;
-    barcode?: string | null;
-    price: string | number;
-    uom?: string | null;
-    is_active?: boolean;
-    tax_category_id?: number | null;
-  }>;
-};
-
-/* ---------- Helpers ---------- */
-function q(params: Record<string, any>) {
-  const sp = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === "") return;
-    sp.set(k, String(v));
-  });
-  return sp.toString();
-}
-
-/* ---------- API ---------- */
-
-export async function listCategories(): Promise<Category[]> {
-  return apiFetchJSON("/api/v1/catalog/categories");
-}
-
-export async function listTaxCategories(): Promise<TaxCategory[]> {
-  return apiFetchJSON("/api/v1/catalog/tax_categories");
-}
-
-export async function listProducts(params: {
-  q?: string;
-  is_active?: "true" | "false";
-  category_id?: string | number;
-  page?: number;
-  page_size?: number;
-}): Promise<{ count: number; results: ProductListItem[] }> {
-  // backend expects "query=" not "q=" — map it here
-  const { q: query, ...rest } = params || {};
-  const search = q({ query, ...rest });
-  return apiFetchJSON(`/api/v1/catalog/products?${search}`);
-}
-
-export async function createProduct(payload: ProductDTO): Promise<{ id: number }> {
-  return apiFetchJSON("/api/v1/catalog/products", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function updateProduct(id: number, payload: ProductDTO): Promise<{ ok: true }> {
-  return apiFetchJSON(`/api/v1/catalog/products/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteProduct(id: number): Promise<{ ok: true }> {
-  // Soft delete in our API → DELETE sets is_active=false
-  return apiFetchJSON(`/api/v1/catalog/products/${id}`, { method: "DELETE" });
-}
-
-export async function uploadImage(file: File): Promise<{ url: string }> {
+function toFormData(obj: Record<string, any>): FormData {
   const fd = new FormData();
-  fd.append("file", file);
-  const res = await apiFetch("/api/v1/uploads/image", {
-    method: "POST",
-    body: fd, // apiFetch will NOT set JSON header for FormData
+  Object.entries(obj).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    fd.append(k, v as any);
   });
+  return fd;
+}
+
+export async function listProducts(params?: { page?: number; page_size?: number; search?: string; category?: string; active?: boolean }): Promise<Paginated<ProductListItem>> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  if (params?.search) qs.set("search", params.search);
+  if (params?.category) qs.set("category", params.category);
+  if (typeof params?.active === "boolean") qs.set("active", String(params.active));
+  return apiFetchJSON(`/api/catalog/products/?${qs.toString()}`);
+}
+
+export async function getProduct(id: ID): Promise<ProductDetail> {
+  return apiFetchJSON(`/api/catalog/products/${id}/`);
+}
+
+export async function createProduct(data: CreateProductDto): Promise<ProductDetail> {
+  const body = toFormData(data as any);
+  const res = await apiFetch(`/api/catalog/products/`, { method: "POST", body, headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateProduct(id: ID, data: UpdateProductDto): Promise<ProductDetail> {
+  const body = toFormData(data as any);
+  const res = await apiFetch(`/api/catalog/products/${id}/`, { method: "PATCH", body, headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listVariants(params?: { product?: ID; search?: string; page?: number; page_size?: number }): Promise<Paginated<Variant>> {
+  const qs = new URLSearchParams();
+  if (params?.product) qs.set("product", String(params.product));
+  if (params?.search) qs.set("search", params.search);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.page_size) qs.set("page_size", String(params.page_size));
+  return apiFetchJSON(`/api/catalog/variants/?${qs.toString()}`);
+}
+
+export async function createVariant(data: CreateVariantDto): Promise<Variant> {
+  const body = toFormData(data as any);
+  const res = await apiFetch(`/api/catalog/variants/`, { method: "POST", body, headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateVariant(id: ID, data: UpdateVariantDto): Promise<Variant> {
+  const { id: _id, ...rest } = data as any;
+  const body = toFormData(rest);
+  const res = await apiFetch(`/api/catalog/variants/${id}/`, { method: "PATCH", body, headers: authHeaders() });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
