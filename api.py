@@ -59,73 +59,37 @@ def _resolve_request_tenant(request):
 
 # ----------------- Serializers -----------------
 
-# class ProductListSerializer(serializers.ModelSerializer):
-#     variants_count = serializers.IntegerField(read_only=True)
-#     # allow_null=True so we can return None when the field doesn't exist on the model
-#     default_tax_rate = serializers.DecimalField(
-#         max_digits=6, decimal_places=4, required=False, read_only=True, allow_null=True
-#     )
-#     representative_image_url = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Product
-#         fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at", "image_url", "representative_image_url",)
-
-#     def get_representative_image_url(self, obj):
-#         request = self.context.get("request")
-#         if hasattr(obj, "representative_image_url"):
-#             return _abs(request, obj.representative_image_url() or "")
-#         if getattr(obj, "image_url", ""):
-#             return _abs(request, obj.image_url)
-#         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-#         return _abs(request, getattr(v, "image_url", "") if v else "")
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         # File first, then URL
-#         try:
-#             if obj.image_file and obj.image_file.url:
-#                 return _abs(request, obj.image_file.url)
-#         except Exception:
-#             pass
-#         return _abs(request, obj.image_url or "")
-
-
 class ProductListSerializer(serializers.ModelSerializer):
-    # Map is_active -> active to keep frontend unchanged
-    active = serializers.BooleanField(source="is_active", read_only=True)
-    price_min = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    price_max = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    on_hand_sum = serializers.IntegerField(read_only=True)
-    variant_count = serializers.IntegerField(read_only=True)
-    cover_image = serializers.SerializerMethodField()
+    variants_count = serializers.IntegerField(read_only=True)
+    # allow_null=True so we can return None when the field doesn't exist on the model
+    default_tax_rate = serializers.DecimalField(
+        max_digits=6, decimal_places=4, required=False, read_only=True, allow_null=True
+    )
+    representative_image_url = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = [
-            "id", "name", "code", "category", "active",
-            "price_min", "price_max", "on_hand_sum", "variant_count",
-            "cover_image",
-        ]
+        fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at", "image_url", "representative_image_url",)
 
-    def get_cover_image(self, obj):
-        # Prefer product file/url; else first variant image
+    def get_representative_image_url(self, obj):
+        request = self.context.get("request")
+        if hasattr(obj, "representative_image_url"):
+            return _abs(request, obj.representative_image_url() or "")
+        if getattr(obj, "image_url", ""):
+            return _abs(request, obj.image_url)
+        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
+        return _abs(request, getattr(v, "image_url", "") if v else "")
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        # File first, then URL
         try:
             if obj.image_file and obj.image_file.url:
-                return obj.image_file.url
+                return _abs(request, obj.image_file.url)
         except Exception:
             pass
-        if (obj.image_url or "").strip():
-            return obj.image_url
-        v = obj.variants.exclude(image_file__isnull=True).exclude(image_file="").order_by("id").first()
-        if v and v.image_file:
-            try:
-                return v.image_file.url
-            except Exception:
-                pass
-        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-        return v.image_url if v else None
+        return _abs(request, obj.image_url or "")
 
 
 class VariantMiniSerializer(serializers.ModelSerializer):
@@ -156,77 +120,32 @@ class VariantMiniSerializer(serializers.ModelSerializer):
         return _abs(request, url)
 
 
-class VariantPublicSerializer(serializers.ModelSerializer):
-    active = serializers.BooleanField(source="is_active", read_only=True)
-    on_hand = serializers.SerializerMethodField()
+class ProductDetailSerializer(serializers.ModelSerializer):
+    variants = VariantMiniSerializer(many=True, read_only=True)
+    representative_image_url = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = Variant
-        fields = ("id", "name", "sku", "barcode", "price", "cost", "on_hand", "active", "image_url", "product")
+        model = Product
+        fields = ("id", "name", "is_active", "category", "description", "image_url", "representative_image_url", "variants",)
 
-    def get_on_hand(self, obj):
-        # Sum inventory from InventoryItem via reverse accessor used elsewhere (inventoryitem)
-        from inventory.models import InventoryItem  # local import to avoid cycles
-        tenant = getattr(self.context.get("request"), "tenant", None) or self.context.get("tenant")
-        qs = InventoryItem.objects.filter(variant=obj)
-        if tenant:
-            qs = qs.filter(tenant=tenant)
-        # Make sure Sum(...) and the fallback Value(...) share the same DecimalField output,
-        # and also set Coalesce(..., output_field=DecimalField) to avoid mixed-type errors.
-        total = qs.aggregate(
-            n=Coalesce(
-                Sum("on_hand", output_field=DecimalField(max_digits=18, decimal_places=2)),
-                Value(Decimal("0"), output_field=DecimalField(max_digits=18, decimal_places=2)),
-                output_field=DecimalField(max_digits=18, decimal_places=2),
-            )
-        )["n"] or Decimal("0")
-
-        return int(total)
+    def get_representative_image_url(self, obj):
+        request = self.context.get("request")
+        if hasattr(obj, "representative_image_url"):
+            return _abs(request, obj.representative_image_url() or "")
+        if getattr(obj, "image_url", ""):
+            return _abs(request, obj.image_url)
+        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
+        return _abs(request, getattr(v, "image_url", "") if v else "")
 
     def get_image_url(self, obj):
-        # Variant.effective_image_url falls back to product image if needed
+        request = self.context.get("request")
         try:
-            return obj.effective_image_url
+            if obj.image_file and obj.image_file.url:
+                return _abs(request, obj.image_file.url)
         except Exception:
-            return ""
-        
-# class ProductDetailSerializer(serializers.ModelSerializer):
-#     variants = VariantMiniSerializer(many=True, read_only=True)
-#     representative_image_url = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Product
-#         fields = ("id", "name", "is_active", "category", "description", "image_url", "representative_image_url", "variants",)
-
-#     def get_representative_image_url(self, obj):
-#         request = self.context.get("request")
-#         if hasattr(obj, "representative_image_url"):
-#             return _abs(request, obj.representative_image_url() or "")
-#         if getattr(obj, "image_url", ""):
-#             return _abs(request, obj.image_url)
-#         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-#         return _abs(request, getattr(v, "image_url", "") if v else "")
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         try:
-#             if obj.image_file and obj.image_file.url:
-#                 return _abs(request, obj.image_file.url)
-#         except Exception:
-#             pass
-#         return _abs(request, obj.image_url or "")
-
-class ProductDetailSerializer(serializers.ModelSerializer):
-    active = serializers.BooleanField(source="is_active", read_only=True)
-    variants = VariantPublicSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Product
-        fields = ("id", "name", "code", "category", "active", "description", "variants")
-
-
+            pass
+        return _abs(request, obj.image_url or "")
 
 
 
@@ -497,215 +416,63 @@ class VariantImageUploadView(APIView):
 
 
 
-# class ProductViewSet(viewsets.ModelViewSet):
-#     """
-#     Endpoints:
-#       - list: GET /catalog/products?search=&category=&active=
-#       - retrieve: GET /catalog/products/:id
-#       - create/update/partial_update
-#       - /:id/variants (list/create via VariantViewSet or custom route if preferred)
-#     """
-#     queryset = Product.objects.all().select_related().prefetch_related("variants")
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ["name", "code", "category", "variants__name", "variants__sku"]
-
-#     def get_queryset(self):
-#         qs = super().get_queryset()
-
-#         # Annotate aggregates from Variant
-#         # Adjust field names if your Variant model differs.
-#         qs = qs.annotate(
-#             price_min=Coalesce(Min("variants__price"), 0),
-#             price_max=Coalesce(Max("variants__price"), 0),
-#             on_hand_sum=Coalesce(Sum("variants__on_hand"), 0),
-#             variant_count=Coalesce(Count("variants", distinct=True), 0),
-#         )
-
-#         # For cover image fallback, pull first variant per product (optional)
-#         first_variant_sq = Variant.objects.filter(product=OuterRef("pk")).order_by("id").values("pk")[:1]
-#         qs = qs.annotate(first_variant=Subquery(first_variant_sq))
-
-#         # Filters
-#         category = self.request.query_params.get("category")
-#         if category:
-#             qs = qs.filter(category=category)
-
-#         active = self.request.query_params.get("active")
-#         if active in ("true", "false"):
-#             qs = qs.filter(active=(active == "true"))
-
-#         return qs
-
-#     def get_serializer_class(self):
-#         if self.action == "list":
-#             return ProductListSerializer
-#         return ProductDetailSerializer
-
-#     @action(detail=True, methods=["get"])
-#     def summary(self, request, pk=None):
-#         """Small summary payload if the table wants to lazy-load aggregates."""
-#         obj = self.get_queryset().get(pk=pk)
-#         data = {
-#             "id": obj.pk,
-#             "price_min": obj.price_min,
-#             "price_max": obj.price_max,
-#             "on_hand_sum": obj.on_hand_sum,
-#             "variant_count": obj.variant_count,
-#         }
-#         return Response(data)
-
 class ProductViewSet(viewsets.ModelViewSet):
     """
-    GET /api/catalog/products/?search=&category=&active=
-    GET /api/catalog/products/:id/
+    Endpoints:
+      - list: GET /catalog/products?search=&category=&active=
+      - retrieve: GET /catalog/products/:id
+      - create/update/partial_update
+      - /:id/variants (list/create via VariantViewSet or custom route if preferred)
     """
-    queryset = Product.objects.all().select_related()
+    queryset = Product.objects.all().select_related().prefetch_related("variants")
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "code", "category", "variants__name", "variants__sku"]
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]  # <-- allow files
 
     def get_queryset(self):
-        qs = super().get_queryset().prefetch_related("variants")
+        qs = super().get_queryset()
 
-        # price_min/max off Variant.price; on_hand_sum via InventoryItem through Variant
+        # Annotate aggregates from Variant
+        # Adjust field names if your Variant model differs.
         qs = qs.annotate(
-            price_min=Coalesce(
-                Min("variants__price"),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
-                output_field=DecimalField(max_digits=10, decimal_places=2),
-            ),
-            price_max=Coalesce(
-                Max("variants__price"),
-                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
-                output_field=DecimalField(max_digits=10, decimal_places=2),
-            ),
-            # NOTE: InventoryItem reverse accessor is 'inventoryitem' in your codebase
-            on_hand_sum=Coalesce(
-                Sum("variants__inventoryitem__on_hand"),
-                Value(0, output_field=IntegerField()),
-                output_field=IntegerField(),
-            ),
-            variant_count=Coalesce(Count("variants", distinct=True), Value(0, output_field=IntegerField())),
+            price_min=Coalesce(Min("variants__price"), 0),
+            price_max=Coalesce(Max("variants__price"), 0),
+            on_hand_sum=Coalesce(Sum("variants__on_hand"), 0),
+            variant_count=Coalesce(Count("variants", distinct=True), 0),
         )
 
+        # For cover image fallback, pull first variant per product (optional)
+        first_variant_sq = Variant.objects.filter(product=OuterRef("pk")).order_by("id").values("pk")[:1]
+        qs = qs.annotate(first_variant=Subquery(first_variant_sq))
+
+        # Filters
         category = self.request.query_params.get("category")
         if category:
             qs = qs.filter(category=category)
 
         active = self.request.query_params.get("active")
         if active in ("true", "false"):
-            qs = qs.filter(is_active=(active == "true"))
+            qs = qs.filter(active=(active == "true"))
 
         return qs
 
     def get_serializer_class(self):
-        return ProductListSerializer if self.action == "list" else ProductDetailSerializer
-
-    @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        tenant = _resolve_request_tenant(request)
-        if not tenant:
-            return Response({"detail": "Tenant required"}, status=400)
-
-        data = request.data.copy()
-
-        # Map frontend 'active' -> model 'is_active'
-        if "active" in data:
-            data["is_active"] = str(data.get("active")).lower() in ("true", "1", "t", "yes")
-        if "description" in data and (data["description"] == "" or data["description"] is None):
-            data["description"] = None
-
-        # Optional fields
-        image_url = data.get("image_url") or ""
-        tax_category_id = data.get("tax_category") or None
-
-        # Attributes can be JSON text or omitted
-        attrs = data.get("attributes")
-        if isinstance(attrs, str):
-            try:
-                import json
-                attrs = json.loads(attrs)
-            except Exception:
-                return Response({"detail": "attributes must be valid JSON"}, status=400)
-        elif attrs in (None, ""):
-            attrs = {}
-
-        # Build the object
-        obj = Product(
-            tenant=tenant,
-            name=data.get("name") or "",
-            code=data.get("code") or "",
-            category=data.get("category") or "",
-            description=data.get("description"),
-            attributes=attrs,
-            is_active=data.get("is_active", True),
-            image_url=image_url or None,
-        )
-
-        # If tax_category is provided
-        if tax_category_id:
-            try:
-                obj.tax_category_id = int(tax_category_id)
-            except Exception:
-                pass
-
-        # Save first to get PK
-        obj.save()
-
-        # If a file was uploaded, assign it
-        file = request.FILES.get("image_file")
-        if file:
-            obj.image_file.save(file.name, file, save=True)
-            # sync image_url for convenience
-            try:
-                if obj.image_file and obj.image_file.url:
-                    if not obj.image_url:
-                        obj.image_url = obj.image_file.url
-                        obj.save(update_fields=["image_url"])
-            except Exception:
-                pass
-
-        # Return detail serializer payload to match frontend
-        ser = ProductDetailSerializer(obj, context={"request": request})
-        headers = self.get_success_headers(ser.data)
-        return Response(ser.data, status=201, headers=headers)
+        if self.action == "list":
+            return ProductListSerializer
+        return ProductDetailSerializer
 
     @action(detail=True, methods=["get"])
     def summary(self, request, pk=None):
+        """Small summary payload if the table wants to lazy-load aggregates."""
         obj = self.get_queryset().get(pk=pk)
-        return Response({
+        data = {
             "id": obj.pk,
             "price_min": obj.price_min,
             "price_max": obj.price_max,
             "on_hand_sum": obj.on_hand_sum,
             "variant_count": obj.variant_count,
-        })
+        }
+        return Response(data)
 
-
-# class VariantViewSet(
-#     mixins.CreateModelMixin,
-#     mixins.UpdateModelMixin,
-#     mixins.RetrieveModelMixin,
-#     mixins.ListModelMixin,
-#     viewsets.GenericViewSet,
-# ):
-#     """
-#     Endpoints:
-#       - list: GET /catalog/variants?product=<id>&search=
-#       - retrieve: GET /catalog/variants/:id
-#       - create: POST /catalog/variants
-#       - update/partial_update
-#     """
-#     serializer_class = VariantSerializer
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ["name", "sku", "barcode"]
-
-#     def get_queryset(self):
-#         qs = Variant.objects.select_related("product")
-#         product_id = self.request.query_params.get("product")
-#         if product_id:
-#             qs = qs.filter(product_id=product_id)
-#         return qs
 
 class VariantViewSet(
     mixins.CreateModelMixin,
@@ -715,10 +482,13 @@ class VariantViewSet(
     viewsets.GenericViewSet,
 ):
     """
-    GET /api/catalog/variants?product=<id>&search=
-    POST/PATCH supported (multipart accepted in settings if needed)
+    Endpoints:
+      - list: GET /catalog/variants?product=<id>&search=
+      - retrieve: GET /catalog/variants/:id
+      - create: POST /catalog/variants
+      - update/partial_update
     """
-    serializer_class = VariantPublicSerializer
+    serializer_class = VariantSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "sku", "barcode"]
 
@@ -728,6 +498,4 @@ class VariantViewSet(
         if product_id:
             qs = qs.filter(product_id=product_id)
         return qs
-    
-
 

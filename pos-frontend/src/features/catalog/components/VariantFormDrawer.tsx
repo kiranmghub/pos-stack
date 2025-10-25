@@ -1,28 +1,81 @@
+// pos-frontend/src/features/catalog/components/VariantFormDrawer.tsx
 import React from "react";
 import { createVariant, updateVariant } from "../api";
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
+import { apiFetchJSON } from "@/lib/auth";
 
-export function VariantFormDrawer({ open, onClose, productId, variant }: { open: boolean; onClose: () => void; productId?: ID; variant?: { id: ID } & Partial<CreateVariantDto> }) {
+type TaxCategory = { id: ID; name: string; code: string };
+
+export function VariantFormDrawer({
+  open,
+  onClose,
+  productId,
+  variant,
+}: {
+  open: boolean;
+  onClose: () => void;
+  productId?: ID;
+  variant?: { id: ID } & Partial<CreateVariantDto>;
+}) {
   const isEdit = !!variant?.id;
-  const [form, setForm] = React.useState<CreateVariantDto>({
+
+  // All variant fields from models
+  const [form, setForm] = React.useState<CreateVariantDto & {
+    image_url?: string;
+    tax_category?: ID | "";
+    uom?: string;
+  }>({
     product: productId!,
     name: variant?.name || "",
     sku: variant?.sku || "",
     barcode: variant?.barcode || "",
     price: variant?.price ? Number(variant.price) : 0,
     cost: variant?.cost ? Number(variant.cost) : 0,
-    on_hand: variant?.on_hand || 0,
+    on_hand: variant?.on_hand || 0, // initial-count convenience
     active: variant?.active ?? true,
     image_file: null,
+    image_url: (variant as any)?.image_url || "",
+    tax_category: (variant as any)?.tax_category ?? "",
+    uom: (variant as any)?.uom || "each",
   });
 
-  React.useEffect(() => { setForm((s) => ({ ...s, product: productId! })); }, [productId]);
+  const [taxes, setTaxes] = React.useState<TaxCategory[] | null>(null);
+  const [taxFetchError, setTaxFetchError] = React.useState<string | null>(null);
+
+  // Image preview: file > existing variant file/url > image_url text
+  const [newImage, setNewImage] = React.useState<File | null>(null);
+  const previewUrl =
+    newImage ? URL.createObjectURL(newImage) : (variant as any)?.image_file || form.image_url || "";
+
+  React.useEffect(() => {
+    setForm((s) => ({ ...s, product: productId! }));
+  }, [productId]);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        setTaxFetchError(null);
+        const res = await apiFetchJSON("/api/v1/catalog/tax_categories");
+        setTaxes(Array.isArray(res?.results) ? res.results : res);
+      } catch {
+        setTaxFetchError("No tax categories endpoint found; use manual ID.");
+        setTaxes(null);
+      }
+    })();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      if (isEdit) await updateVariant(variant!.id, form as UpdateVariantDto);
-      else await createVariant(form);
+      const payload: UpdateVariantDto & any = {
+        ...form,
+        image_file: newImage || null,
+      };
+      if (isEdit) {
+        await updateVariant(variant!.id, payload);
+      } else {
+        await createVariant(payload);
+      }
       onClose();
     } catch (err) {
       console.error(err);
@@ -32,47 +85,178 @@ export function VariantFormDrawer({ open, onClose, productId, variant }: { open:
 
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "hidden"}`}>
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-[520px] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      <div className="absolute right-0 top-0 h-full w-[560px] bg-zinc-900 text-zinc-100 shadow-2xl border-l border-zinc-800">
+        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
           <h3 className="text-lg font-semibold">{isEdit ? "Edit Variant" : "New Variant"}</h3>
-          <button className="rounded-lg px-3 py-1 text-sm hover:bg-zinc-100" onClick={onClose}>Close</button>
+          <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={onClose}>
+            Close
+          </button>
         </div>
+
         <form className="h-[calc(100%-56px)] overflow-y-auto p-4 space-y-6" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium">Name</label>
-              <input className="w-full rounded-xl border px-3 py-2 text-sm" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
+              <input
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.name}
+                onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">SKU</label>
-              <input className="w-full rounded-xl border px-3 py-2 text-sm" value={form.sku || ""} onChange={(e) => setForm((s) => ({ ...s, sku: e.target.value }))} />
+              <input
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.sku || ""}
+                onChange={(e) => setForm((s) => ({ ...s, sku: e.target.value }))}
+              />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">Barcode</label>
-              <input className="w-full rounded-xl border px-3 py-2 text-sm" value={form.barcode || ""} onChange={(e) => setForm((s) => ({ ...s, barcode: e.target.value }))} />
+              <input
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.barcode || ""}
+                onChange={(e) => setForm((s) => ({ ...s, barcode: e.target.value }))}
+              />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">Price</label>
-              <input type="number" step="0.01" className="w-full rounded-xl border px-3 py-2 text-sm" value={form.price} onChange={(e) => setForm((s) => ({ ...s, price: parseFloat(e.target.value || "0") }))} />
+              <input
+                type="number"
+                step="0.01"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.price}
+                onChange={(e) => setForm((s) => ({ ...s, price: parseFloat(e.target.value || "0") }))}
+              />
             </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">Cost</label>
-              <input type="number" step="0.01" className="w-full rounded-xl border px-3 py-2 text-sm" value={form.cost || 0} onChange={(e) => setForm((s) => ({ ...s, cost: parseFloat(e.target.value || "0") }))} />
+              <input
+                type="number"
+                step="0.01"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.cost || 0}
+                onChange={(e) => setForm((s) => ({ ...s, cost: parseFloat(e.target.value || "0") }))}
+              />
             </div>
+
             <div>
-              <label className="mb-1 block text-sm font-medium">On Hand</label>
-              <input type="number" className="w-full rounded-xl border px-3 py-2 text-sm" value={form.on_hand || 0} onChange={(e) => setForm((s) => ({ ...s, on_hand: parseInt(e.target.value || "0") }))} />
+              <label className="mb-1 block text-sm font-medium">Unit of Measure (UOM)</label>
+              <input
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+                value={form.uom || "each"}
+                onChange={(e) => setForm((s) => ({ ...s, uom: e.target.value }))}
+                placeholder="each, case, lb, etc."
+              />
             </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Tax Category</label>
+              {taxes ? (
+                <select
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                  value={String(form.tax_category || "")}
+                  onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value || "" }))}
+                >
+                  <option value="">— None —</option>
+                  {taxes.map((t) => (
+                    <option key={String(t.id)} value={String(t.id)}>
+                      {t.name} ({t.code})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                    placeholder="Tax Category ID (optional)"
+                    value={String(form.tax_category || "")}
+                    onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
+                  />
+                  {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
+                </div>
+              )}
+            </div>
+
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Image URL (optional)</label>
+                <input
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+                  value={form.image_url || ""}
+                  onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
+                  placeholder="https://..."
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Upload Image (file)</label>
+                <label className="flex h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 text-sm text-zinc-400 hover:border-zinc-500">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setNewImage((e.target.files && e.target.files[0]) || null)}
+                  />
+                  Drag & drop or click to upload
+                </label>
+              </div>
+
+              {(previewUrl || newImage) && (
+                <div className="md:col-span-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="overflow-hidden rounded-xl border border-zinc-800">
+                      {/* @ts-ignore */}
+                      <img src={previewUrl} className="h-24 w-24 object-cover" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Initial On Hand</label>
+              <input
+                type="number"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                value={form.on_hand || 0}
+                onChange={(e) => setForm((s) => ({ ...s, on_hand: parseInt(e.target.value || "0") }))}
+              />
+            </div>
+
             <div className="flex items-center gap-2 pt-6">
-              <input id="vactive" type="checkbox" className="h-4 w-4" checked={!!form.active} onChange={(e) => setForm((s) => ({ ...s, active: e.target.checked }))} />
-              <label htmlFor="vactive" className="text-sm">Active</label>
+              <input
+                id="vactive"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={!!form.active}
+                onChange={(e) => setForm((s) => ({ ...s, active: e.target.checked }))}
+              />
+              <label htmlFor="vactive" className="text-sm text-zinc-200">
+                Active
+              </label>
             </div>
           </div>
 
           <div className="flex justify-end gap-3">
-            <button type="button" className="rounded-xl border px-4 py-2 text-sm hover:bg-zinc-50" onClick={onClose}>Cancel</button>
-            <button type="submit" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">{isEdit ? "Save Changes" : "Create Variant"}</button>
+            <button
+              type="button"
+              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-white/5"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              {isEdit ? "Save Changes" : "Create Variant"}
+            </button>
           </div>
         </form>
       </div>

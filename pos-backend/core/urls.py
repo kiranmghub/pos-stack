@@ -45,6 +45,7 @@ router = DefaultRouter()
 router.register(r"catalog/products", ProductViewSet, basename="catalog-products")
 router.register(r"catalog/variants", VariantViewSet, basename="catalog-variants")
 
+
 urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
