@@ -612,8 +612,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Map frontend 'active' -> model 'is_active'
         if "active" in data:
             data["is_active"] = str(data.get("active")).lower() in ("true", "1", "t", "yes")
-        if "description" in data and (data["description"] == "" or data["description"] is None):
-            data["description"] = None
 
         # Optional fields
         image_url = data.get("image_url") or ""
@@ -636,10 +634,10 @@ class ProductViewSet(viewsets.ModelViewSet):
             name=data.get("name") or "",
             code=data.get("code") or "",
             category=data.get("category") or "",
-            description=data.get("description"),
+            description=data.get("description") or "",
             attributes=attrs,
             is_active=data.get("is_active", True),
-            image_url=image_url or None,
+            image_url=image_url,
         )
 
         # If tax_category is provided

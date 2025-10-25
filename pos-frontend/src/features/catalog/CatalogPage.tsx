@@ -25,13 +25,17 @@ export default function CatalogPage() {
           setFocusedProduct(p);
           setOpenProductForm(true);
         }}
-        onNewProduct={() => setOpenProductForm(true)}
+        onNewProduct={() => {
+          setFocusedProduct(null);        // <-- clear any previously edited product
+          setOpenProductForm(true);
+        }}
         onNewVariant={(p) => setOpenVariantForm({ productId: p?.id })}
       />
 
+
       <ProductFormDrawer
         open={openProductForm}
-        onClose={() => setOpenProductForm(false)}
+        onClose={() => { setOpenProductForm(false); setFocusedProduct(null); }}
         product={
           focusedProduct
             ? {

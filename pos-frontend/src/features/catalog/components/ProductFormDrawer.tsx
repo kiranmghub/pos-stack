@@ -102,6 +102,25 @@ export function ProductFormDrawer({
     setNewImage(null);
   }, [product?.id]);
 
+  // ADD: resets the form whenever the drawer opens with no product (new flow)
+  React.useEffect(() => {
+    if (open && !product?.id) {
+      setForm({
+        name: "",
+        code: "",
+        category: "",
+        description: "",
+        active: true,
+        image_file: null,
+        image_url: "",
+        attributes: "",
+        tax_category: "",
+      });
+      setNewImage(null);
+    }
+  }, [open, product?.id]);
+
+
   React.useEffect(() => {
     // Try to load tax categories; fall back gracefully
     (async () => {
@@ -147,10 +166,26 @@ export function ProductFormDrawer({
 
       if (newImage) payload.image_file = newImage;
 
-      if (isEdit) await updateProduct(product!.id!, payload);
-      else await createProduct(payload);
-
+      if (isEdit) {
+        await updateProduct(product!.id!, payload);
+      } else {
+        await createProduct(payload);
+        // Reset state so the next "New Product" opens blank
+        setForm({
+          name: "",
+          code: "",
+          category: "",
+          description: "",
+          active: true,
+          image_file: null,
+          image_url: "",
+          attributes: "",
+          tax_category: "",
+        });
+        setNewImage(null);
+      }
       onClose();
+
     } catch (err) {
       console.error(err);
       alert("Failed to save product");
