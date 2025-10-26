@@ -86,6 +86,8 @@ export function ProductFormDrawer({
   const [newImage, setNewImage] = React.useState<File | null>(null);
   const previewUrl =
     newImage ? URL.createObjectURL(newImage) : (product as any)?.image_file || form.image_url || "";
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
 
   React.useEffect(() => {
     setForm({
@@ -197,6 +199,68 @@ export function ProductFormDrawer({
   return (
     <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>
       <form className="space-y-6" onSubmit={handleSubmit}>
+        {/* Media (FIRST) */}
+        <section className="space-y-3">
+          <div className="text-sm font-medium">Product Image</div>
+
+          <div className="flex items-start gap-4">
+            {/* Preview card */}
+            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800">
+              {/* @ts-ignore */}
+              {previewUrl ? (
+                <img src={previewUrl} className="h-28 w-28 object-cover" />
+              ) : (
+                <div className="h-28 w-28 grid place-items-center text-xs text-zinc-400">No image</div>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="space-x-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = (e.target.files && e.target.files[0]) || null;
+                  setNewImage(f);
+                }}
+              />
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-white/5"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose Image
+              </button>
+              {previewUrl && (
+                <button
+                  type="button"
+                  className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-white/5"
+                  onClick={() => {
+                    setNewImage(null);
+                    setForm((s) => ({ ...s, image_url: "" }));
+                  }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Optional: allow pasting URL too */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Image URL (optional)</label>
+            <input
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+              value={form.image_url || ""}
+              onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
+              placeholder="https://..."
+            />
+          </div>
+        </section>
+
+
         {/* Essentials */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
@@ -268,38 +332,6 @@ export function ProductFormDrawer({
                   onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
                 />
                 {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Image URL (optional)</label>
-            <input
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
-              value={form.image_url || ""}
-              onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-medium">Upload Image (file)</label>
-            <label className="flex h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 text-sm text-zinc-400 hover:border-zinc-500">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setNewImage((e.target.files && e.target.files[0]) || null)}
-              />
-              Drag & drop or click to upload
-            </label>
-
-            {(previewUrl || newImage) && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <div className="overflow-hidden rounded-xl border border-zinc-800">
-                  {/* @ts-ignore */}
-                  <img src={previewUrl} className="h-24 w-24 object-cover" />
-                </div>
               </div>
             )}
           </div>
