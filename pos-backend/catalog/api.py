@@ -25,6 +25,10 @@ from rest_framework import viewsets, mixins, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+import re
+from django.core.files.base import ContentFile
+
+
 from .models import Product, Variant  # adjust imports
 from .serializers import (
     ProductListSerializer,
@@ -221,16 +225,33 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     active = serializers.BooleanField(source="is_active", read_only=True)
     tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
-    image_url = serializers.CharField(read_only=True)
-    image_file = serializers.ImageField(read_only=True)
+    image_file = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     attributes = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Product
         fields = (
             "id", "name", "code", "category", "active", "description",
-            "tax_category", "image_url", "image_file", "attributes", "variants"
+            "tax_category", "image_file", "image_url", "attributes", "variants"
         )
+
+    def get_image_file(self, obj):
+        request = self.context.get("request")
+        try:
+            if obj.image_file and obj.image_file.url:
+                return request.build_absolute_uri(obj.image_file.url)
+        except Exception:
+            return ""
+        return ""
+
+    def get_image_url(self, obj):
+        request = self.context.get("request")
+        url = getattr(obj, "image_url", "") or ""
+        if url and not url.startswith("http"):
+            return request.build_absolute_uri(url)
+        return url
+
 
 
 
@@ -661,7 +682,17 @@ class ProductViewSet(viewsets.ModelViewSet):
         # expected path: media/tenants/<tenant_code>/products/<filename>
         file = request.FILES.get("image_file")
         if file:
-            # assign directly; first save will write file using upload_to
+            # build a meaningful file name from product name or code
+            base_name = data.get("name") or data.get("code") or "product"
+            base_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", base_name.strip().lower())
+            ext = os.path.splitext(file.name or "")[1] or ".jpg"
+            file.name = f"{base_name}{ext}"
+
+            # if replacing an existing image, delete it
+            if obj.image_file:
+                obj.image_file.delete(save=False)
+            
+            # assign directly so upload_to gets tenant path
             obj.image_file = file
 
         # First save writes instance (and image, if provided) to the correct tenant path
