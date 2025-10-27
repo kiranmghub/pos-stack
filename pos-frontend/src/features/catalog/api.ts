@@ -1,3 +1,4 @@
+// pos-frontend/src/features/catalog/api.ts
 import { apiFetch, apiFetchJSON, authHeaders } from "@/lib/auth";
 import type {
   ProductListItem,
@@ -20,6 +21,26 @@ function toFormData(obj: Record<string, any>): FormData {
     fd.append(k, v as any);
   });
   return fd;
+}
+
+// Upload a product image via the dedicated /image endpoint
+export async function uploadProductImage(
+  productId: ID,
+  file: File
+): Promise<{ image_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file); // field name must be 'file' to match backend
+
+  // Use apiFetch (not apiFetchJSON) because FormData shouldn't have Content-Type: application/json
+  const res = await apiFetch(`/api/v1/catalog/products/${productId}/image`, {
+    method: "POST",
+    body: fd,
+  });
+
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
 }
 
 export async function listProducts(params?: { page?: number; page_size?: number; search?: string; category?: string; active?: boolean }): Promise<Paginated<ProductListItem>> {

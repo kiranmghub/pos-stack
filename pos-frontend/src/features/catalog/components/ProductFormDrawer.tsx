@@ -2,6 +2,8 @@ import React from "react";
 import { createProduct, updateProduct } from "../api";
 import type { CreateProductDto, UpdateProductDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
+import { uploadProductImage } from "../api";
+
 
 function Drawer({
   open,
@@ -171,6 +173,7 @@ export function ProductFormDrawer({
     e.preventDefault();
     setBusy(true);
     try {
+      // 1) Build pure JSON payload (no File here)
       const payload: UpdateProductDto & any = {
         name: form.name,
         code: form.code,
@@ -179,26 +182,28 @@ export function ProductFormDrawer({
         active: form.active,
         image_url: form.image_url || "",
         tax_category: form.tax_category || "",
+        // ⚠️ Send attributes as a string; backend parses robustly
+        attributes: (form.attributes || "").trim(),
       };
 
-      if ((form.attributes || "").trim()) {
-        try {
-          payload.attributes = JSON.parse(form.attributes as string);
-        } catch {
-          alert("Attributes must be valid JSON.");
-          setBusy(false);
-          return;
-        }
+      // 2) Create/Update JSON first
+      let saved: any;
+      if (isEdit) {
+        saved = await updateProduct(product!.id!, payload); // returns detail with id
       } else {
-        payload.attributes = "{}";
+        saved = await createProduct(payload); // returns detail with id
       }
 
-      if (newImage) payload.image_file = newImage;
+      // 3) If user picked a file, upload it via the image endpoint
+      if (newImage) {
+        const r = await uploadProductImage(saved.id, newImage);
+        // update local preview immediately
+        setForm((s) => ({ ...s, image_url: r?.image_url || s.image_url }));
+        setNewImage(null);
+      }
 
-      if (isEdit) {
-        await updateProduct(product!.id!, payload);
-      } else {
-        await createProduct(payload);
+      // 4) Reset for new-product flow
+      if (!isEdit) {
         setForm({
           name: "",
           code: "",
@@ -210,9 +215,9 @@ export function ProductFormDrawer({
           attributes: "",
           tax_category: "",
         });
-        setNewImage(null);
         setHideExisting(false);
       }
+
       onClose();
     } catch (err) {
       console.error(err);
@@ -221,6 +226,7 @@ export function ProductFormDrawer({
       setBusy(false);
     }
   }
+
 
   return (
     <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>

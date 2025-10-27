@@ -99,6 +99,25 @@ def _resolve_request_tenant(request):
 #         return _abs(request, obj.image_url or "")
 
 
+# Accepts either a JSON object/dict OR a JSON string; blank -> {}
+class LenientJSONField(serializers.JSONField):
+    def to_internal_value(self, data):
+        import json as _json
+        if data is None:
+            return {}
+        if isinstance(data, (dict, list)):
+            return data
+        # Strings from multipart/FormData etc.
+        s = str(data).strip()
+        if s in ("", "null", "undefined"):
+            return {}
+        try:
+            return _json.loads(s)
+        except Exception:
+            raise serializers.ValidationError("Invalid JSON in attributes.")
+
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     # Map is_active -> active to keep frontend unchanged
     active = serializers.BooleanField(source="is_active", read_only=True)
@@ -133,6 +152,32 @@ class ProductListSerializer(serializers.ModelSerializer):
                 pass
         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
         return v.image_url if v else None
+
+
+class ProductWriteSerializer(serializers.ModelSerializer):
+    # write-side mapping/validation only
+    active = serializers.BooleanField(source="is_active", required=False)
+    attributes = LenientJSONField(required=False, default=dict)
+    tax_category = serializers.PrimaryKeyRelatedField(
+        queryset=TaxCategory.objects.all(), required=False, allow_null=True
+    )
+
+    class Meta:
+        model = Product
+        fields = ("name", "code", "category", "description", "active", "tax_category", "attributes")
+
+    def create(self, validated_data):
+        tenant = self.context.get("tenant")
+        if not tenant:
+            raise serializers.ValidationError({"detail": "Tenant required"})
+        return Product.objects.create(tenant=tenant, **validated_data)
+
+    def update(self, instance, validated_data):
+        # simple mass-assign
+        for k, v in validated_data.items():
+            setattr(instance, k, v)
+        instance.save()
+        return instance
 
 
 # class VariantMiniSerializer(serializers.ModelSerializer):
@@ -724,7 +769,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         return qs
 
     def get_serializer_class(self):
-        return ProductListSerializer if self.action == "list" else ProductDetailSerializer
+        # Use write serializer on create/update/partial_update, otherwise read serializer
+        if self.action in ("create", "update", "partial_update"):
+            return ProductWriteSerializer
+        return ProductDetailSerializer
+
     
     def get_serializer_context(self):
         """
@@ -740,86 +789,33 @@ class ProductViewSet(viewsets.ModelViewSet):
             ctx["store_id"] = store_id
         return ctx
 
-
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        tenant = _resolve_request_tenant(request)
-        if not tenant:
-            return Response({"detail": "Tenant required"}, status=400)
+        """
+        Create a product using ProductWriteSerializer (metadata only).
+        Image uploads are handled separately via ProductImageUploadView.
+        """
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        obj = ser.save()  # tenant injected via get_serializer_context()
 
-        # ✅ SAFER: don't deepcopy file objects
-        data = request.data.dict() if hasattr(request.data, "dict") else dict(request.data)
+        # Return detail payload for immediate UI consumption
+        read_ser = ProductDetailSerializer(obj, context=self.get_serializer_context())
+        return Response(read_ser.data, status=201)
+    
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Update a product's metadata (no file handling here).
+        Uses ProductWriteSerializer for validation and normalization.
+        """
+        obj = self.get_object()
+        ser = self.get_serializer(obj, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        obj = ser.save()
 
-        # Map frontend 'active' -> model 'is_active'
-        if "active" in data:
-            data["is_active"] = str(data.get("active")).lower() in ("true", "1", "t", "yes")
-
-        # Optional fields
-        image_url = data.get("image_url") or ""
-        tax_category_id = data.get("tax_category") or None
-
-        # Attributes can be JSON text or omitted
-        attrs = data.get("attributes")
-        if isinstance(attrs, str):
-            attrs = attrs.strip()
-            if attrs:
-                try:
-                    attrs = json.loads(attrs)
-                except json.JSONDecodeError:
-                    return Response({"detail": "Invalid JSON in attributes"}, status=400)
-            else:
-                attrs = {}
-        elif not attrs:
-            attrs = {}
-
-        # Build the object (no image yet)
-        obj = Product(
-            tenant=tenant,
-            name=data.get("name") or "",
-            code=data.get("code") or "",
-            category=data.get("category") or "",
-            description=data.get("description") or "",
-            attributes=attrs,
-            is_active=data.get("is_active", True),
-            image_url=image_url,
-        )
-
-        # If tax_category is provided
-        if tax_category_id:
-            try:
-                obj.tax_category_id = int(tax_category_id)
-            except Exception:
-                pass
-
-        # --- Save once to get PK so we can make a meaningful filename
-        obj.save()
-
-        # --- If a file was uploaded, build a meaningful filename and replace any existing file
-        file = request.FILES.get("image_file")
-        if file:
-            # slug base: prefer name, then code, then "product"
-            base = (obj.name or obj.code or "product").strip().lower()
-            base = re.sub(r"[^a-z0-9_-]+", "_", base) or "product"
-            ext = os.path.splitext(file.name or "")[1].lower() or ".jpg"
-            filename = f"{base}_{obj.pk}{ext}"
-
-            if obj.image_file:
-                obj.image_file.delete(save=False)  # replace old if present
-
-            obj.image_file.save(filename, file, save=True)
-
-            # If image_url is empty but image_file now has a URL, sync it for convenience
-            try:
-                if not obj.image_url and getattr(obj.image_file, "url", ""):
-                    obj.image_url = obj.image_file.url
-                    obj.save(update_fields=["image_url"])
-            except Exception:
-                pass
-
-        # Return detail serializer payload to match frontend
-        ser = ProductDetailSerializer(obj, context={"request": request})
-        headers = self.get_success_headers(ser.data)
-        return Response(ser.data, status=201, headers=headers)
+        read_ser = ProductDetailSerializer(obj, context=self.get_serializer_context())
+        return Response(read_ser.data)
 
     @action(detail=True, methods=["get"])
     def summary(self, request, pk=None):
