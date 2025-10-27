@@ -1,3 +1,4 @@
+// pos-frontend/src/features/catalog/components/ImageDropzone.tsx
 import React from "react";
 
 export function ImageDropzone({ onFiles }: { onFiles: (files: File[]) => void }) {

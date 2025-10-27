@@ -31,7 +31,7 @@ from .serializers import (
     ProductDetailSerializer,
     VariantSerializer,
 )
-
+import json
 
 # Build absolute URL when we only have a relative path (/media/...)
 def _abs(request, url: str) -> str:
@@ -220,11 +220,18 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     active = serializers.BooleanField(source="is_active", read_only=True)
-    variants = VariantPublicSerializer(many=True, read_only=True)
+    tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
+    image_url = serializers.CharField(read_only=True)
+    image_file = serializers.ImageField(read_only=True)
+    attributes = serializers.JSONField(read_only=True)
 
     class Meta:
         model = Product
-        fields = ("id", "name", "code", "category", "active", "description", "variants")
+        fields = (
+            "id", "name", "code", "category", "active", "description",
+            "tax_category", "image_url", "image_file", "attributes", "variants"
+        )
+
 
 
 
@@ -620,12 +627,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         # Attributes can be JSON text or omitted
         attrs = data.get("attributes")
         if isinstance(attrs, str):
-            try:
-                import json
-                attrs = json.loads(attrs)
-            except Exception:
-                return Response({"detail": "attributes must be valid JSON"}, status=400)
-        elif attrs in (None, ""):
+            attrs = attrs.strip()
+            if attrs:
+                try:
+                    attrs = json.loads(attrs)
+                except json.JSONDecodeError:
+                    return Response({"detail": "Invalid JSON in attributes"}, status=400)
+            else:
+                attrs = {}
+        elif not attrs:
             attrs = {}
 
         # Build the object
@@ -647,21 +657,23 @@ class ProductViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        # Save first to get PK
-        obj.save()
-
-        # If a file was uploaded, assign it
+        # Attach file BEFORE first save so upload_to sees tenant and builds the
+        # expected path: media/tenants/<tenant_code>/products/<filename>
         file = request.FILES.get("image_file")
         if file:
-            obj.image_file.save(file.name, file, save=True)
-            # sync image_url for convenience
-            try:
-                if obj.image_file and obj.image_file.url:
-                    if not obj.image_url:
-                        obj.image_url = obj.image_file.url
-                        obj.save(update_fields=["image_url"])
-            except Exception:
-                pass
+            # assign directly; first save will write file using upload_to
+            obj.image_file = file
+
+        # First save writes instance (and image, if provided) to the correct tenant path
+        obj.save()
+
+        # If image_url is empty but image_file now has a URL, sync it for convenience
+        try:
+            if not obj.image_url and getattr(obj.image_file, "url", ""):
+                obj.image_url = obj.image_file.url
+                obj.save(update_fields=["image_url"])
+        except Exception:
+            pass
 
         # Return detail serializer payload to match frontend
         ser = ProductDetailSerializer(obj, context={"request": request})
