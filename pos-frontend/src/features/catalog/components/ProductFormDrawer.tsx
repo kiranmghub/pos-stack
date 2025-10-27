@@ -200,66 +200,71 @@ export function ProductFormDrawer({
     <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Media (FIRST) */}
-        <section className="space-y-3">
-          <div className="text-sm font-medium">Product Image</div>
+          <section className="space-y-3">
+            <div className="text-sm font-medium">Product Image</div>
 
-          <div className="flex items-start gap-4">
-            {/* Preview card */}
-            <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800">
-              {/* @ts-ignore */}
+            {/* Full-width clickable image preview */}
+            <div
+              className="relative h-56 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700/50 transition-colors"
+              onClick={() => {
+                if (!previewUrl) fileInputRef.current?.click();
+              }}
+            >
+              {/* Actual image or placeholder */}
               {previewUrl ? (
-                <img src={previewUrl} className="h-28 w-28 object-cover" />
+                <img
+                  src={previewUrl}
+                  className="h-full w-full object-cover cursor-pointer"
+                  alt="Product preview"
+                />
               ) : (
-                <div className="h-28 w-28 grid place-items-center text-xs text-zinc-400">No image</div>
+                <div className="flex h-full w-full items-center justify-center cursor-pointer text-4xl text-zinc-500">
+                  +
+                </div>
               )}
-            </div>
 
-            {/* Controls */}
-            <div className="space-x-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = (e.target.files && e.target.files[0]) || null;
-                  setNewImage(f);
-                }}
-              />
-              <button
-                type="button"
-                className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-white/5"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Choose Image
-              </button>
+              {/* Hover overlay (only if image exists) */}
               {previewUrl && (
-                <button
-                  type="button"
-                  className="rounded-xl border border-zinc-700 px-3 py-2 text-sm hover:bg-white/5"
-                  onClick={() => {
-                    setNewImage(null);
-                    setForm((s) => ({ ...s, image_url: "" }));
-                  }}
-                >
-                  Remove
-                </button>
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-indigo-600 hover:text-white transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click(); // Replace image
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-red-600 hover:text-white transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNewImage(null);
+                      setForm((s) => ({ ...s, image_url: "" }));
+                      setHideExisting(true);
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Optional: allow pasting URL too */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">Image URL (optional)</label>
+            {/* Hidden file input */}
             <input
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
-              value={form.image_url || ""}
-              onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
-              placeholder="https://..."
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = (e.target.files && e.target.files[0]) || null;
+                setNewImage(f);
+                setHideExisting(false);
+              }}
             />
-          </div>
-        </section>
-
+          </section>
 
         {/* Essentials */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
