@@ -251,12 +251,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         if url and not url.startswith("http"):
             return request.build_absolute_uri(url)
         return url
-
-
-
-
-
-
+    
+    
 
 class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
