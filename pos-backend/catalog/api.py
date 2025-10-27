@@ -36,6 +36,9 @@ from .serializers import (
     VariantSerializer,
 )
 import json
+from decimal import Decimal
+from django.db.models import DecimalField
+
 
 # Build absolute URL when we only have a relative path (/media/...)
 def _abs(request, url: str) -> str:
@@ -132,31 +135,85 @@ class ProductListSerializer(serializers.ModelSerializer):
         return v.image_url if v else None
 
 
+# class VariantMiniSerializer(serializers.ModelSerializer):
+#     tax_rate = serializers.SerializerMethodField()
+#     on_hand = serializers.SerializerMethodField()
+#     image_url = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Variant
+#         fields = ("id", "sku", "barcode", "price", "is_active", "tax_category", "tax_rate", "on_hand", "image_url")
+
+#     def get_tax_rate(self, obj):
+#         return str(getattr(obj.tax_category, "rate", 0) or 0)
+
+#     def get_on_hand(self, obj):
+#         ctx = self.context or {}
+#         store_id = ctx.get("store_id")
+#         tenant = ctx.get("tenant")
+#         qs = InventoryItem.objects.filter(variant=obj, tenant=tenant)
+#         if store_id:
+#             qs = qs.filter(store_id=store_id)
+#         total = qs.aggregate(n=Coalesce(Sum("on_hand"), Value(0)))["n"]
+#         return int(total or 0)
+
+#     def get_image_url(self, obj):
+#         request = self.context.get("request")
+#         url = getattr(obj, "effective_image_url", None) or getattr(obj, "image_url", "") or ""
+#         return _abs(request, url)
+
 class VariantMiniSerializer(serializers.ModelSerializer):
+    # alias to match the frontend prop name
+    active = serializers.BooleanField(source="is_active", read_only=True)
     tax_rate = serializers.SerializerMethodField()
     on_hand = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Variant
-        fields = ("id", "sku", "barcode", "price", "is_active", "tax_category", "tax_rate", "on_hand", "image_url")
+        fields = (
+            "id",
+            "name",
+            "sku",
+            "barcode",
+            "price",
+            "cost",
+            "active",
+            "tax_category",
+            "tax_rate",
+            "on_hand",
+            "image_url",
+        )
 
     def get_tax_rate(self, obj):
         return str(getattr(obj.tax_category, "rate", 0) or 0)
 
     def get_on_hand(self, obj):
+        """
+        Keep types consistent: on_hand is integer for display.
+        Use IntegerField outputs throughout to avoid Decimal/Integer mix errors.
+        """
         ctx = self.context or {}
         store_id = ctx.get("store_id")
         tenant = ctx.get("tenant")
+
         qs = InventoryItem.objects.filter(variant=obj, tenant=tenant)
         if store_id:
             qs = qs.filter(store_id=store_id)
-        total = qs.aggregate(n=Coalesce(Sum("on_hand"), Value(0)))["n"]
+
+        total = qs.aggregate(
+            n=Coalesce(
+                Sum("on_hand", output_field=IntegerField()),
+                Value(0, output_field=IntegerField()),
+                output_field=IntegerField(),
+            )
+        )["n"]
         return int(total or 0)
 
     def get_image_url(self, obj):
         request = self.context.get("request")
         url = getattr(obj, "effective_image_url", None) or getattr(obj, "image_url", "") or ""
+        # make absolute if needed
         return _abs(request, url)
 
 
@@ -222,25 +279,71 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 #             pass
 #         return _abs(request, obj.image_url or "")
 
+# class ProductDetailSerializer(serializers.ModelSerializer):
+#     active = serializers.BooleanField(source="is_active", read_only=True)
+#     tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
+#     image_file = serializers.SerializerMethodField()
+#     image_url = serializers.SerializerMethodField()
+#     attributes = serializers.JSONField(read_only=True)
+
+#     class Meta:
+#         model = Product
+#         fields = (
+#             "id", "name", "code", "category", "active", "description",
+#             "tax_category", "image_file", "image_url", "attributes", "variants"
+#         )
+
+#     def get_image_file(self, obj):
+#         request = self.context.get("request")
+#         try:
+#             if obj.image_file and obj.image_file.url:
+#                 return request.build_absolute_uri(obj.image_file.url)
+#         except Exception:
+#             return ""
+#         return ""
+
+#     def get_image_url(self, obj):
+#         request = self.context.get("request")
+#         url = getattr(obj, "image_url", "") or ""
+#         if url and not url.startswith("http"):
+#             return request.build_absolute_uri(url)
+#         return url
+
 class ProductDetailSerializer(serializers.ModelSerializer):
+    # alias to match frontend
     active = serializers.BooleanField(source="is_active", read_only=True)
-    tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    # expose absolute URLs
     image_file = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+
+    # return full variant objects (not IDs)
+    variants = VariantMiniSerializer(many=True, read_only=True)
+
     attributes = serializers.JSONField(read_only=True)
+    tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Product
         fields = (
-            "id", "name", "code", "category", "active", "description",
-            "tax_category", "image_file", "image_url", "attributes", "variants"
+            "id",
+            "name",
+            "code",
+            "category",
+            "active",
+            "description",
+            "tax_category",
+            "image_file",
+            "image_url",
+            "attributes",
+            "variants",
         )
 
     def get_image_file(self, obj):
         request = self.context.get("request")
         try:
             if obj.image_file and obj.image_file.url:
-                return request.build_absolute_uri(obj.image_file.url)
+                return _abs(request, obj.image_file.url)
         except Exception:
             return ""
         return ""
@@ -248,11 +351,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         request = self.context.get("request")
         url = getattr(obj, "image_url", "") or ""
-        if url and not url.startswith("http"):
-            return request.build_absolute_uri(url)
-        return url
+        return _abs(request, url)
+
     
-    
+
 
 class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -586,7 +688,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all().select_related()
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "code", "category", "variants__name", "variants__sku"]
-    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]  # <-- allow files
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]  # allow files
 
     def get_queryset(self):
         qs = super().get_queryset().prefetch_related("variants")
@@ -603,7 +705,6 @@ class ProductViewSet(viewsets.ModelViewSet):
                 Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             ),
-            # NOTE: InventoryItem reverse accessor is 'inventoryitem' in your codebase
             on_hand_sum=Coalesce(
                 Sum("variants__inventoryitem__on_hand"),
                 Value(0, output_field=IntegerField()),
@@ -624,6 +725,21 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         return ProductListSerializer if self.action == "list" else ProductDetailSerializer
+    
+    def get_serializer_context(self):
+        """
+        Ensure tenant (and optional store_id) are available to nested serializers,
+        so VariantMiniSerializer.get_on_hand can aggregate correctly.
+        """
+        ctx = super().get_serializer_context()
+        tenant = _resolve_request_tenant(self.request)
+        store_id = self.request.query_params.get("store_id")
+        if tenant:
+            ctx["tenant"] = tenant
+        if store_id:
+            ctx["store_id"] = store_id
+        return ctx
+
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -631,7 +747,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not tenant:
             return Response({"detail": "Tenant required"}, status=400)
 
-        data = request.data.copy()
+        # ✅ SAFER: don't deepcopy file objects
+        data = request.data.dict() if hasattr(request.data, "dict") else dict(request.data)
 
         # Map frontend 'active' -> model 'is_active'
         if "active" in data:
@@ -655,7 +772,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         elif not attrs:
             attrs = {}
 
-        # Build the object
+        # Build the object (no image yet)
         obj = Product(
             tenant=tenant,
             name=data.get("name") or "",
@@ -674,33 +791,30 @@ class ProductViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        # Attach file BEFORE first save so upload_to sees tenant and builds the
-        # expected path: media/tenants/<tenant_code>/products/<filename>
-        file = request.FILES.get("image_file")
-        if file:
-            # build a meaningful file name from product name or code
-            base_name = data.get("name") or data.get("code") or "product"
-            base_name = re.sub(r"[^a-zA-Z0-9_-]+", "_", base_name.strip().lower())
-            ext = os.path.splitext(file.name or "")[1] or ".jpg"
-            file.name = f"{base_name}{ext}"
-
-            # if replacing an existing image, delete it
-            if obj.image_file:
-                obj.image_file.delete(save=False)
-            
-            # assign directly so upload_to gets tenant path
-            obj.image_file = file
-
-        # First save writes instance (and image, if provided) to the correct tenant path
+        # --- Save once to get PK so we can make a meaningful filename
         obj.save()
 
-        # If image_url is empty but image_file now has a URL, sync it for convenience
-        try:
-            if not obj.image_url and getattr(obj.image_file, "url", ""):
-                obj.image_url = obj.image_file.url
-                obj.save(update_fields=["image_url"])
-        except Exception:
-            pass
+        # --- If a file was uploaded, build a meaningful filename and replace any existing file
+        file = request.FILES.get("image_file")
+        if file:
+            # slug base: prefer name, then code, then "product"
+            base = (obj.name or obj.code or "product").strip().lower()
+            base = re.sub(r"[^a-z0-9_-]+", "_", base) or "product"
+            ext = os.path.splitext(file.name or "")[1].lower() or ".jpg"
+            filename = f"{base}_{obj.pk}{ext}"
+
+            if obj.image_file:
+                obj.image_file.delete(save=False)  # replace old if present
+
+            obj.image_file.save(filename, file, save=True)
+
+            # If image_url is empty but image_file now has a URL, sync it for convenience
+            try:
+                if not obj.image_url and getattr(obj.image_file, "url", ""):
+                    obj.image_url = obj.image_file.url
+                    obj.save(update_fields=["image_url"])
+            except Exception:
+                pass
 
         # Return detail serializer payload to match frontend
         ser = ProductDetailSerializer(obj, context={"request": request})
@@ -717,6 +831,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             "on_hand_sum": obj.on_hand_sum,
             "variant_count": obj.variant_count,
         })
+
 
 
 # class VariantViewSet(

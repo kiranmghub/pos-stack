@@ -1,4 +1,3 @@
-// pos-frontend/src/features/catalog/components/ProductFormDrawer.tsx
 import React from "react";
 import { createProduct, updateProduct } from "../api";
 import type { CreateProductDto, UpdateProductDto, ID } from "../types";
@@ -37,7 +36,7 @@ function Drawer({
   );
 }
 
-type TaxCategory = { id: ID; name: string; code: string };
+type TaxCategory = { id: ID; name: string; code?: string };
 
 export function ProductFormDrawer({
   open,
@@ -61,10 +60,9 @@ export function ProductFormDrawer({
 }) {
   const isEdit = !!product?.id;
 
-  // All product fields (from models)
   const [form, setForm] = React.useState<CreateProductDto & {
     image_url?: string;
-    attributes?: string; // JSON as string in UI
+    attributes?: string;
     tax_category?: ID | "";
   }>({
     name: product?.name || "",
@@ -82,13 +80,19 @@ export function ProductFormDrawer({
   const [taxes, setTaxes] = React.useState<TaxCategory[] | null>(null);
   const [taxFetchError, setTaxFetchError] = React.useState<string | null>(null);
 
-  // image preview: prefer new file > existing file url > existing image_url text
+  // image preview: prefer new file > existing server image > image_url text
   const [newImage, setNewImage] = React.useState<File | null>(null);
+  const [hideExisting, setHideExisting] = React.useState(false);
   const previewUrl =
-    newImage ? URL.createObjectURL(newImage) : (product as any)?.image_file || form.image_url || "";
+    newImage
+      ? URL.createObjectURL(newImage)
+      : hideExisting
+      ? ""
+      : (product as any)?.image_file || form.image_url || "";
+
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-
+  // Hydrate form when switching edit target
   React.useEffect(() => {
     setForm({
       name: product?.name || "",
@@ -102,9 +106,10 @@ export function ProductFormDrawer({
       tax_category: (product as any)?.tax_category ?? "",
     });
     setNewImage(null);
+    setHideExisting(false);
   }, [product?.id]);
 
-  // ADD: resets the form whenever the drawer opens with no product (new flow)
+  // Reset when opening a brand-new form
   React.useEffect(() => {
     if (open && !product?.id) {
       setForm({
@@ -119,16 +124,40 @@ export function ProductFormDrawer({
         tax_category: "",
       });
       setNewImage(null);
+      setHideExisting(false);
     }
   }, [open, product?.id]);
 
-
+  // 🔑 Fetch product detail on Edit so preview + fields show server values (absolute URLs)
   React.useEffect(() => {
-    // Try to load tax categories; fall back gracefully
+    if (!open || !product?.id) return;
+    (async () => {
+      try {
+        const detail = await apiFetchJSON(`/api/catalog/products/${product.id}/`);
+        setForm((s) => ({
+          ...s,
+          name: detail.name || "",
+          code: detail.code || "",
+          category: detail.category || "",
+          description: detail.description || "",
+          active: detail.active ?? true,
+          image_url: detail.image_url || detail.image_file || "",
+          attributes: detail.attributes ? JSON.stringify(detail.attributes, null, 2) : "",
+          tax_category: detail.tax_category || "",
+        }));
+        setNewImage(null);
+        setHideExisting(false);
+      } catch (err) {
+        console.error("Failed to load product detail", err);
+      }
+    })();
+  }, [open, product?.id]);
+
+  // Load tax categories
+  React.useEffect(() => {
     (async () => {
       try {
         setTaxFetchError(null);
-        // Adjust if your endpoint lives elsewhere
         const res = await apiFetchJSON("/api/v1/catalog/tax_categories");
         setTaxes(Array.isArray(res?.results) ? res.results : res);
       } catch (e: any) {
@@ -142,7 +171,6 @@ export function ProductFormDrawer({
     e.preventDefault();
     setBusy(true);
     try {
-      // Build payload
       const payload: UpdateProductDto & any = {
         name: form.name,
         code: form.code,
@@ -153,7 +181,6 @@ export function ProductFormDrawer({
         tax_category: form.tax_category || "",
       };
 
-      // Pass attributes JSON only if valid
       if ((form.attributes || "").trim()) {
         try {
           payload.attributes = JSON.parse(form.attributes as string);
@@ -172,7 +199,6 @@ export function ProductFormDrawer({
         await updateProduct(product!.id!, payload);
       } else {
         await createProduct(payload);
-        // Reset state so the next "New Product" opens blank
         setForm({
           name: "",
           code: "",
@@ -185,9 +211,9 @@ export function ProductFormDrawer({
           tax_category: "",
         });
         setNewImage(null);
+        setHideExisting(false);
       }
       onClose();
-
     } catch (err) {
       console.error(err);
       alert("Failed to save product");
@@ -200,71 +226,69 @@ export function ProductFormDrawer({
     <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Media (FIRST) */}
-          <section className="space-y-3">
-            <div className="text-sm font-medium">Product Image</div>
+        <section className="space-y-3">
+          <div className="text-sm font-medium">Product Image</div>
 
-            {/* Full-width clickable image preview */}
-            <div
-              className="relative h-56 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700/50 transition-colors"
-              onClick={() => {
-                if (!previewUrl) fileInputRef.current?.click();
-              }}
-            >
-              {/* Actual image or placeholder */}
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  className="h-full w-full object-cover cursor-pointer"
-                  alt="Product preview"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center cursor-pointer text-4xl text-zinc-500">
-                  +
-                </div>
-              )}
+          {/* Full-width clickable image preview */}
+          <div
+            className="relative h-56 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700/50 transition-colors"
+            onClick={() => {
+              if (!previewUrl) fileInputRef.current?.click();
+            }}
+          >
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                className="h-full w-full object-cover cursor-pointer"
+                alt="Product preview"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center cursor-pointer text-4xl text-zinc-500">
+                +
+              </div>
+            )}
 
-              {/* Hover overlay (only if image exists) */}
-              {previewUrl && (
-                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-indigo-600 hover:text-white transition"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click(); // Replace image
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-red-600 hover:text-white transition"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setNewImage(null);
-                      setForm((s) => ({ ...s, image_url: "" }));
-                      setHideExisting(true);
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
+            {previewUrl && (
+              <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-indigo-600 hover:text-white transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-red-600 hover:text-white transition"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNewImage(null);
+                    setForm((s) => ({ ...s, image_url: "" }));
+                    setHideExisting(true);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
 
-            {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = (e.target.files && e.target.files[0]) || null;
-                setNewImage(f);
-                setHideExisting(false);
-              }}
-            />
-          </section>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = (e.target.files && e.target.files[0]) || null;
+              setNewImage(f);
+              setHideExisting(false);
+            }}
+          />
+        </section>
 
         {/* Essentials */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -311,7 +335,7 @@ export function ProductFormDrawer({
           </div>
         </section>
 
-        {/* Tax & Uploader */}
+        {/* Tax */}
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium">Tax Category</label>
@@ -324,7 +348,7 @@ export function ProductFormDrawer({
                 <option value="">— None —</option>
                 {taxes.map((t) => (
                   <option key={String(t.id)} value={String(t.id)}>
-                    {t.name} ({t.code})
+                    {t.name}{t.code ? ` (${t.code})` : ""}
                   </option>
                 ))}
               </select>
