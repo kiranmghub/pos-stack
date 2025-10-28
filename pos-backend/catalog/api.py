@@ -179,6 +179,40 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class VariantWriteSerializer(serializers.ModelSerializer):
+    # Map frontend 'active' -> model 'is_active' (optional on create)
+    active = serializers.BooleanField(source="is_active", required=False)
+    tax_category = serializers.PrimaryKeyRelatedField(
+        queryset=TaxCategory.objects.all(), required=False, allow_null=True
+    )
+
+    class Meta:
+        model = Variant
+        fields = (
+            "product",      # required FK
+            "name",
+            "sku",
+            "barcode",
+            "price",
+            "cost",
+            "uom",
+            "tax_category",
+            "active",
+            "image_url",    # file handled by /api/catalog/variants/:id/image later
+        )
+
+    def validate_product(self, product):
+        tenant = self.context.get("tenant")
+        if tenant and getattr(product, "tenant_id", None) != tenant.id:
+            raise serializers.ValidationError("Product does not belong to the current tenant.")
+        return product
+
+    def create(self, validated_data):
+        tenant = self.context.get("tenant")
+        if not tenant:
+            raise serializers.ValidationError({"detail": "Tenant required"})
+        return Variant.objects.create(tenant=tenant, **validated_data)
+
 
 # class VariantMiniSerializer(serializers.ModelSerializer):
 #     tax_rate = serializers.SerializerMethodField()
@@ -921,7 +955,6 @@ class VariantViewSet(
     GET /api/catalog/variants?product=<id>&search=
     POST/PATCH supported (multipart accepted in settings if needed)
     """
-    serializer_class = VariantPublicSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["name", "sku", "barcode"]
 
@@ -930,7 +963,34 @@ class VariantViewSet(
         product_id = self.request.query_params.get("product")
         if product_id:
             qs = qs.filter(product_id=product_id)
+        # (optional) also scope by tenant defensively
+        tenant = _resolve_request_tenant(self.request)
+        if tenant:
+            qs = qs.filter(product__tenant=tenant)
         return qs
+
+    def get_serializer_class(self):
+        if self.action in ("create", "update", "partial_update"):
+            return VariantWriteSerializer
+        return VariantPublicSerializer
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        tenant = _resolve_request_tenant(self.request)
+        if tenant:
+            ctx["tenant"] = tenant
+        return ctx
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        obj = ser.save()  # tenant injected via context
+        # Return the public/read shape (with computed fields) for immediate UI use
+        read_ser = VariantPublicSerializer(obj, context=self.get_serializer_context())
+        return Response(read_ser.data, status=201)
+
+
     
 
 

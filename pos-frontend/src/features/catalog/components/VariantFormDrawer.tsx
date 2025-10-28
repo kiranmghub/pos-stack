@@ -1,12 +1,31 @@
 // pos-frontend/src/features/catalog/components/VariantFormDrawer.tsx
 import React from "react";
-import { listProducts, createVariant, updateVariant } from "../api";
+import { listProducts, createVariant, updateVariant, getProduct } from "../api";
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
 import type { ProductListItem } from "../types";
 import { DebouncedInput } from "./DebouncedInput";
 
 type TaxCategory = { id: ID; name: string; code: string };
+
+// --- fresh form builder ---
+function emptyVariantForm(productId?: string | number) {
+  return {
+    product: productId ?? "",
+    name: "",
+    sku: "",
+    barcode: "",
+    price: 0,
+    cost: 0,
+    on_hand: 0,
+    active: true,
+    image_file: null as File | null,
+    image_url: "",
+    tax_category: "" as string | "" | any,
+    uom: "each",
+  };
+}
+
 
 export function VariantFormDrawer({
   open,
@@ -21,26 +40,30 @@ export function VariantFormDrawer({
 }) {
   const isEdit = !!variant?.id;
 
-  // All variant fields from models
-  const [form, setForm] = React.useState<CreateVariantDto & {
-    image_url?: string;
-    tax_category?: ID | "";
-    uom?: string;
-  }>({
-    // product: productId!,
-    product: productId ?? "",
-    name: variant?.name || "",
-    sku: variant?.sku || "",
-    barcode: variant?.barcode || "",
-    price: variant?.price ? Number(variant.price) : 0,
-    cost: variant?.cost ? Number(variant.cost) : 0,
-    on_hand: variant?.on_hand || 0, // initial-count convenience
-    active: variant?.active ?? true,
-    image_file: null,
-    image_url: (variant as any)?.image_url || "",
-    tax_category: (variant as any)?.tax_category ?? "",
-    uom: (variant as any)?.uom || "each",
-  });
+// All variant fields from models
+const [form, setForm] = React.useState<CreateVariantDto & {
+  image_url?: string;
+  tax_category?: ID | "";
+  uom?: string;
+}>(
+  variant
+    ? {
+        product: (variant as any).product ?? (productId ?? ""),
+        name: variant?.name || "",
+        sku: variant?.sku || "",
+        barcode: variant?.barcode || "",
+        price: variant?.price ? Number(variant.price) : 0,
+        cost: variant?.cost ? Number(variant.cost) : 0,
+        on_hand: (variant as any)?.on_hand || 0,
+        active: variant?.active ?? true,
+        image_file: null,
+        image_url: (variant as any)?.image_url || "",
+        tax_category: (variant as any)?.tax_category ?? "",
+        uom: (variant as any)?.uom || "each",
+      }
+    : emptyVariantForm(productId)
+);
+
 
   const [taxes, setTaxes] = React.useState<TaxCategory[] | null>(null);
   const [taxFetchError, setTaxFetchError] = React.useState<string | null>(null);
@@ -56,6 +79,9 @@ export function VariantFormDrawer({
   const [newImage, setNewImage] = React.useState<File | null>(null);
   const previewUrl =
     newImage ? URL.createObjectURL(newImage) : (variant as any)?.image_file || form.image_url || "";
+
+  const [productLabel, setProductLabel] = React.useState<string>("");
+
 
   // React.useEffect(() => {
   //   setForm((s) => ({ ...s, product: productId! }));
@@ -93,6 +119,69 @@ export function VariantFormDrawer({
     })();
   }, []);
 
+  // 3a) When drawer opens for a NEW variant, start clean
+React.useEffect(() => {
+  if (open && !variant) {
+    setForm(emptyVariantForm(productId));
+    setNewImage(null);
+    setProductQuery("");
+  }
+}, [open, variant, productId]);
+
+// 3b) When switching into EDIT mode (variant prop changes), hydrate from variant
+React.useEffect(() => {
+  if (variant) {
+    setForm({
+      product: (variant as any).product ?? (productId ?? ""),
+      name: variant?.name || "",
+      sku: variant?.sku || "",
+      barcode: variant?.barcode || "",
+      price: variant?.price ? Number(variant.price) : 0,
+      cost: variant?.cost ? Number(variant.cost) : 0,
+      on_hand: (variant as any)?.on_hand || 0,
+      active: variant?.active ?? true,
+      image_file: null,
+      image_url: (variant as any)?.image_url || "",
+      tax_category: (variant as any)?.tax_category ?? "",
+      uom: (variant as any)?.uom || "each",
+    });
+    setNewImage(null);
+  }
+}, [variant, productId]);
+
+// 3c) If productId changes while creating NEW, lock the product field accordingly
+React.useEffect(() => {
+  if (!variant && productId) {
+    setForm((s) => ({ ...s, product: productId }));
+  }
+}, [variant, productId]);
+
+// Show "Product Name (CODE)" in locked mode
+React.useEffect(() => {
+  let cancelled = false;
+
+  async function loadProductLabel() {
+    try {
+      if (!productId) {
+        setProductLabel("");
+        return;
+      }
+      const d = await getProduct(productId);
+      if (!cancelled) {
+        const label = d?.code ? `${d.name} (${d.code})` : d?.name ?? `Product ID: ${String(productId)}`;
+        setProductLabel(label);
+      }
+    } catch {
+      if (!cancelled) setProductLabel(`Product ID: ${String(productId)}`);
+    }
+  }
+
+  loadProductLabel();
+  return () => { cancelled = true; };
+}, [productId]);
+
+
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,21 +201,29 @@ export function VariantFormDrawer({
       }
       // Refresh product list / row counts immediately
       window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: form.product } }));
-      onClose();
+      handleClose();
     } catch (err) {
       console.error(err);
       alert("Failed to save variant");
     }
   }
 
+  function handleClose() {
+    setForm(emptyVariantForm(productId));
+    setNewImage(null);
+    setProductQuery("");
+    onClose();
+  }
+
+
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "hidden"}`}>
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div className="absolute right-0 top-0 h-full w-[560px] bg-zinc-900 text-zinc-100 shadow-2xl border-l border-zinc-800">
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
           <h3 className="text-lg font-semibold">{isEdit ? "Edit Variant" : "New Variant"}</h3>
-          <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={onClose}>
+          <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={handleClose}>
             Close
           </button>
         </div>
@@ -141,7 +238,7 @@ export function VariantFormDrawer({
                 // Locked: show read-only selected product ID
                 <input
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-400"
-                  value={`Product ID: ${String(productId)}`}
+                  value={productLabel || `Product ID: ${String(productId)}`}
                   readOnly
                   title="This variant will be created for the selected product."
                 />
@@ -319,7 +416,7 @@ export function VariantFormDrawer({
             <button
               type="button"
               className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-white/5"
-              onClick={onClose}
+              onClick={handleClose}
             >
               Cancel
             </button>
