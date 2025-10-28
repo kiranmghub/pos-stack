@@ -354,6 +354,7 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 #             return request.build_absolute_uri(url)
 #         return url
 
+
 class ProductDetailSerializer(serializers.ModelSerializer):
     # alias to match frontend
     active = serializers.BooleanField(source="is_active", read_only=True)
@@ -362,8 +363,14 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     image_file = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
-    # return full variant objects (not IDs)
+    # include full variant objects (not IDs)
     variants = VariantMiniSerializer(many=True, read_only=True)
+
+    # NEW: include price range + on-hand aggregates for drawer/header display
+    price_min = serializers.SerializerMethodField()
+    price_max = serializers.SerializerMethodField()
+    on_hand_sum = serializers.SerializerMethodField()
+    variant_count = serializers.SerializerMethodField()
 
     attributes = serializers.JSONField(read_only=True)
     tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -381,6 +388,11 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "image_file",
             "image_url",
             "attributes",
+            # aggregates
+            "price_min",
+            "price_max",
+            "on_hand_sum",
+            "variant_count",
             "variants",
         )
 
@@ -397,6 +409,46 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         url = getattr(obj, "image_url", "") or ""
         return _abs(request, url)
+
+    # --- aggregate helpers ---
+    def _variant_qs(self, obj):
+        return obj.variants.all()
+
+    def get_price_min(self, obj):
+        qs = self._variant_qs(obj)
+        val = qs.aggregate(v=Coalesce(Min("price"), Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))))["v"]
+        return val or 0
+
+    def get_price_max(self, obj):
+        qs = self._variant_qs(obj)
+        val = qs.aggregate(v=Coalesce(Max("price"), Value(0, output_field=DecimalField(max_digits=10, decimal_places=2))))["v"]
+        return val or 0
+
+
+    def get_on_hand_sum(self, obj):
+        # tenant = self.context.get("title")  # typo? see below
+        tenant = self.context.get("tenant")  # <-- this is the correct key you already set in get_serializer_context()
+        # store_id = self.context.get("title")  # typo? see below
+        store_id = self.context.get("store_id")  # <-- correct key
+
+        qs = InventoryItem.objects.filter(variant__product=obj, tenant=tenant)
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+
+        total = qs.aggregate(
+            v=Coalesce(
+                Sum("on_hand", output_field=DecimalField(max_length=18, decimal_places=2)),
+                Value(Decimal("0"), output_field=DecimalField(max_length=18, decimal_places=2)),
+                output_field=DecimalField(max_length=18, decimal_places=2),
+            )
+        )["v"] or Decimal("0")
+
+        return int(total)
+
+
+    def get_variant_count(self, obj):
+        return obj.variants.count()
+
 
     
 
@@ -769,10 +821,13 @@ class ProductViewSet(viewsets.ModelViewSet):
         return qs
 
     def get_serializer_class(self):
-        # Use write serializer on create/update/partial_update, otherwise read serializer
+        # Use the list serializer for list action so row aggregates are present
+        if self.action == "list":
+            return ProductListSerializer
         if self.action in ("create", "update", "partial_update"):
             return ProductWriteSerializer
         return ProductDetailSerializer
+
 
     
     def get_serializer_context(self):

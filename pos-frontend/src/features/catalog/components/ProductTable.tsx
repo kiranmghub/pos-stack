@@ -40,6 +40,16 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
     }
   }
 
+  // ✅ Reload table when a product is saved in the drawer
+  React.useEffect(() => {
+    function onSaved() {
+      load(); // re-fetch rows so 'active' badge updates
+    }
+    window.addEventListener("catalog:product:saved", onSaved);
+    return () => window.removeEventListener("catalog:product:saved", onSaved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   React.useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
@@ -262,6 +272,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
                       </button>
                     </div>
                   </div>
+
 
                   {/* expanded area */}
                   {isOpen && (

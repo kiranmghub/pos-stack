@@ -218,6 +218,13 @@ export function ProductFormDrawer({
         setHideExisting(false);
       }
 
+      // ✅ Dispatch event so ProductTable knows to refresh
+      window.dispatchEvent(
+        new CustomEvent("catalog:product:saved", {
+          detail: { id: saved.id },
+        })
+      );
+
       onClose();
     } catch (err) {
       console.error(err);
