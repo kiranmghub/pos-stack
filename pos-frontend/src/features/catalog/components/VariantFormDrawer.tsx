@@ -1,8 +1,10 @@
 // pos-frontend/src/features/catalog/components/VariantFormDrawer.tsx
 import React from "react";
-import { createVariant, updateVariant } from "../api";
+import { listProducts, createVariant, updateVariant } from "../api";
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
+import type { ProductListItem } from "../types";
+import { DebouncedInput } from "./DebouncedInput";
 
 type TaxCategory = { id: ID; name: string; code: string };
 
@@ -25,7 +27,8 @@ export function VariantFormDrawer({
     tax_category?: ID | "";
     uom?: string;
   }>({
-    product: productId!,
+    // product: productId!,
+    product: productId ?? "",
     name: variant?.name || "",
     sku: variant?.sku || "",
     barcode: variant?.barcode || "",
@@ -42,14 +45,40 @@ export function VariantFormDrawer({
   const [taxes, setTaxes] = React.useState<TaxCategory[] | null>(null);
   const [taxFetchError, setTaxFetchError] = React.useState<string | null>(null);
 
+  // === ADD PRODUCT PICKER STATE HERE ===
+  const [productQuery, setProductQuery] = React.useState("");
+  const [productOptions, setProductOptions] = React.useState<ProductListItem[]>([]);
+  const [loadingProducts, setLoadingProducts] = React.useState(false);
+  // === END ADDITION ===
+
+
   // Image preview: file > existing variant file/url > image_url text
   const [newImage, setNewImage] = React.useState<File | null>(null);
   const previewUrl =
     newImage ? URL.createObjectURL(newImage) : (variant as any)?.image_file || form.image_url || "";
 
+  // React.useEffect(() => {
+  //   setForm((s) => ({ ...s, product: productId! }));
+  // }, [productId]);
+
+  // === ADD PRODUCT FETCH EFFECT AFTER STATE ===
   React.useEffect(() => {
-    setForm((s) => ({ ...s, product: productId! }));
-  }, [productId]);
+    if (productId) return; // locked mode; no need to fetch options
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingProducts(true);
+        const res = await listProducts({ search: productQuery, page_size: 25 });
+        if (!cancelled) setProductOptions(res.results ?? res);
+      } finally {
+        setLoadingProducts(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, productQuery]);
+  // === END ADDITION ===
 
   React.useEffect(() => {
     (async () => {
@@ -64,9 +93,14 @@ export function VariantFormDrawer({
     })();
   }, []);
 
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      if (!form.product) {
+        alert("Please select a product for this variant.");
+        return;
+      }
       const payload: UpdateVariantDto & any = {
         ...form,
         image_file: newImage || null,
@@ -76,6 +110,8 @@ export function VariantFormDrawer({
       } else {
         await createVariant(payload);
       }
+      // Refresh product list / row counts immediately
+      window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: form.product } }));
       onClose();
     } catch (err) {
       console.error(err);
@@ -97,6 +133,42 @@ export function VariantFormDrawer({
 
         <form className="h-[calc(100%-56px)] overflow-y-auto p-4 space-y-6" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Product selection */}
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium">Product</label>
+
+              {productId ? (
+                // Locked: show read-only selected product ID
+                <input
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-400"
+                  value={`Product ID: ${String(productId)}`}
+                  readOnly
+                  title="This variant will be created for the selected product."
+                />
+              ) : (
+                <div className="space-y-2">
+                  <DebouncedInput
+                    value={productQuery}
+                    onChange={setProductQuery}
+                    placeholder="Search products by name or code…"
+                    className="w-full"
+                  />
+                  <select
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                    value={String(form.product || "")}
+                    onChange={(e) => setForm((s) => ({ ...s, product: e.target.value }))}
+                  >
+                    <option value="">{loadingProducts ? "Loading…" : "— Select a product —"}</option>
+                    {productOptions.map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {p.name} {p.code ? `(${p.code})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="mb-1 block text-sm font-medium">Name</label>
               <input
