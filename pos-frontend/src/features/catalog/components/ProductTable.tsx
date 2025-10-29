@@ -50,6 +50,49 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ After a variant is created/updated, refresh just that product’s detail (keep expanded state)
+  React.useEffect(() => {
+    async function refreshProductDetail(productId: string | number) {
+      try {
+        setLoadingRow((s) => ({ ...s, [productId]: true }));
+        const d = await getProduct(productId);
+        // update the detail cache so the variants list refreshes
+        setDetails((s) => ({ ...s, [productId]: d }));
+        // also patch the summary row (price range, on-hand, variant count) without reloading all rows
+        setRows((rows) =>
+          rows.map((r) =>
+            r.id === productId
+              ? {
+                  ...r,
+                  price_min: (d as any).price_min ?? r.price_min,
+                  price_max: (d as any).price_max ?? r.price_max,
+                  on_hand_sum: (d as any).on_hand_sum ?? r.on_hand_sum,
+                  variant_count: (d as any).variants ? (d as any).variants.length : r.variant_count,
+                }
+              : r
+          )
+        );
+      } finally {
+        setLoadingRow((s) => ({ ...s, [productId]: false }));
+      }
+    }
+
+    function onVariantSaved(e: any) {
+      const pid =
+        e?.detail?.productId ??
+        e?.detail?.id ??
+        e?.detail; // be tolerant of payload shapes
+      if (!pid) return;
+      // Only refresh if that row is currently expanded; otherwise it will refresh on expand.
+      refreshProductDetail(pid);
+    }
+
+    window.addEventListener("catalog:variant:saved", onVariantSaved);
+    return () => window.removeEventListener("catalog:variant:saved", onVariantSaved);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
   React.useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);

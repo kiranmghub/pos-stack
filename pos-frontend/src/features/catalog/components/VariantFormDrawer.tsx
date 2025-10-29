@@ -1,12 +1,17 @@
 // pos-frontend/src/features/catalog/components/VariantFormDrawer.tsx
 import React from "react";
-import { listProducts, createVariant, updateVariant, getProduct } from "../api";
+import { listProducts, createVariant, updateVariant, getProduct, uploadVariantImage } from "../api";
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
 import type { ProductListItem } from "../types";
 import { DebouncedInput } from "./DebouncedInput";
 
 type TaxCategory = { id: ID; name: string; code: string };
+
+function productOptionLabel(p: ProductListItem) {
+  return p.code ? `${p.name} (${p.code})` : p.name;
+}
+
 
 // --- fresh form builder ---
 function emptyVariantForm(productId?: string | number) {
@@ -73,12 +78,25 @@ const [form, setForm] = React.useState<CreateVariantDto & {
   const [productOptions, setProductOptions] = React.useState<ProductListItem[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
   // === END ADDITION ===
+  const [showProductMenu, setShowProductMenu] = React.useState(false);
+  const [highlight, setHighlight] = React.useState<number>(-1);
+
+  const productInputRef = React.useRef<HTMLInputElement>(null);
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+
 
 
   // Image preview: file > existing variant file/url > image_url text
+  // const [newImage, setNewImage] = React.useState<File | null>(null);
+  // const previewUrl = newImage ? URL.createObjectURL(newImage) : (variant as any)?.image_file || form.image_url || "";
+
+  // replace the current `previewUrl = ...` line with two lines below
+  const [previewUrl, setPreviewUrl] = React.useState<string>("");
   const [newImage, setNewImage] = React.useState<File | null>(null);
-  const previewUrl =
-    newImage ? URL.createObjectURL(newImage) : (variant as any)?.image_file || form.image_url || "";
+
 
   const [productLabel, setProductLabel] = React.useState<string>("");
 
@@ -124,6 +142,7 @@ React.useEffect(() => {
   if (open && !variant) {
     setForm(emptyVariantForm(productId));
     setNewImage(null);
+    setPreviewUrl("");
     setProductQuery("");
   }
 }, [open, variant, productId]);
@@ -181,6 +200,24 @@ React.useEffect(() => {
 }, [productId]);
 
 
+// Keep a stable object URL for the thumbnail and revoke old ones
+React.useEffect(() => {
+  // when a new file is chosen, show that
+  if (newImage) {
+    const url = URL.createObjectURL(newImage);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }
+  // otherwise fall back to existing server image (if any) or typed URL
+  const fallback =
+    (variant as any)?.image_file ||
+    (variant as any)?.image_url ||
+    (typeof form.image_url === "string" ? form.image_url : "") ||
+    "";
+  setPreviewUrl(fallback);
+  // no cleanup when using a remote URL
+}, [newImage, variant, form.image_url]);
+
 
 
   async function handleSubmit(e: React.FormEvent) {
@@ -194,13 +231,21 @@ React.useEffect(() => {
         ...form,
         image_file: newImage || null,
       };
+      let saved: any;
       if (isEdit) {
-        await updateVariant(variant!.id, payload);
+        saved = await updateVariant(variant!.id, payload);
       } else {
-        await createVariant(payload);
+        saved = await createVariant(payload);
       }
-      // Refresh product list / row counts immediately
-      window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: form.product } }));
+      // If user picked a file, upload via the image endpoint
+      if (newImage) {
+        const r = await uploadVariantImage(saved.id, newImage);
+        // update local preview immediately
+        setForm((s) => ({ ...s, image_url: r?.image_url || s.image_url }));
+        setNewImage(null);
+      }
+      // Refresh the expanded product's variants inline (no collapse)
+      window.dispatchEvent(new CustomEvent("catalog:variant:saved", { detail: { productId: form.product } }));
       handleClose();
     } catch (err) {
       console.error(err);
@@ -211,6 +256,7 @@ React.useEffect(() => {
   function handleClose() {
     setForm(emptyVariantForm(productId));
     setNewImage(null);
+    setPreviewUrl("");
     setProductQuery("");
     onClose();
   }
@@ -243,25 +289,116 @@ React.useEffect(() => {
                   title="This variant will be created for the selected product."
                 />
               ) : (
-                <div className="space-y-2">
-                  <DebouncedInput
-                    value={productQuery}
-                    onChange={setProductQuery}
-                    placeholder="Search products by name or code…"
-                    className="w-full"
-                  />
-                  <select
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
-                    value={String(form.product || "")}
-                    onChange={(e) => setForm((s) => ({ ...s, product: e.target.value }))}
-                  >
-                    <option value="">{loadingProducts ? "Loading…" : "— Select a product —"}</option>
-                    {productOptions.map((p) => (
-                      <option key={String(p.id)} value={String(p.id)}>
-                        {p.name} {p.code ? `(${p.code})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                <div className="relative">
+                  {/* inner wrapper ensures the × centers to the input, not the whole block */}
+                  <div className="relative">
+                    <input
+                      ref={productInputRef}
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 pr-9 text-sm text-zinc-100 placeholder-zinc-500"
+                      placeholder="Type to search products by name or code…"
+                      value={productQuery}
+                      onChange={(e) => {
+                        setProductQuery(e.target.value);
+                        setShowProductMenu(true);
+                        setHighlight(-1);
+                        setForm((s) => ({ ...s, product: "" }));
+                      }}
+                      onFocus={() => { if (productQuery.length > 0) setShowProductMenu(true); }}
+                      onKeyDown={(e) => {
+                        // Handle Tab first so it doesn't move focus to the clear (×)
+                        if (e.key === "Tab") {
+                          if (showProductMenu && productOptions.length > 0) {
+                            e.preventDefault();
+                            const picked = highlight >= 0 ? productOptions[highlight] : productOptions[0];
+                            setForm((s) => ({ ...s, product: picked.id }));
+                            setProductQuery(productOptionLabel(picked));
+                            setShowProductMenu(false);
+                            // Move focus to Name after selection
+                            setTimeout(() => nameInputRef.current?.focus(), 0);
+                          }
+                          return;
+                        }
+
+                        if (!showProductMenu) return;
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setHighlight((h) => Math.min(h + 1, productOptions.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setHighlight((h) => Math.max(h - 1, 0));
+                        } else if (e.key === "Enter") {
+                          if (highlight >= 0 && productOptions[highlight]) {
+                            const p = productOptions[highlight];
+                            setForm((s) => ({ ...s, product: p.id }));
+                            setProductQuery(productOptionLabel(p));
+                            setShowProductMenu(false);
+                            setTimeout(() => nameInputRef.current?.focus(), 0);
+                          }
+                        } else if (e.key === "Escape") {
+                          setShowProductMenu(false);
+                        }
+                      }}
+                      onBlur={() => { setTimeout(() => setShowProductMenu(false), 120); }}
+                    />
+
+                    {(productQuery?.length ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        aria-label="Clear product search"
+                        className="absolute inset-y-0 right-2 my-auto flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-white/5 leading-none"
+                        tabIndex={-1} // ← skip in Tab order
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setProductQuery("");
+                          setForm((s) => ({ ...s, product: "" }));
+                          setShowProductMenu(false);
+                          productInputRef.current?.focus();
+                        }}
+                      >
+                        x
+                      </button>
+                    )}
+                  </div>
+
+                  {/* dropdown */}
+                  {showProductMenu && (productOptions.length > 0 || loadingProducts) && (
+                    <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+                      {loadingProducts && (
+                        <div className="px-3 py-2 text-sm text-zinc-400">Searching…</div>
+                      )}
+                      {!loadingProducts &&
+                        productOptions.map((p, i) => {
+                          const isActive = i === highlight;
+                          return (
+                            <div
+                              key={String(p.id)}
+                              className={`cursor-pointer px-3 py-2 text-sm ${
+                                isActive ? "bg-white/10" : "hover:bg-white/5"
+                              }`}
+                              onMouseEnter={() => setHighlight(i)}
+                              onMouseDown={(e) => {
+                                // use onMouseDown to run before input blur
+                                e.preventDefault();
+                                setForm((s) => ({ ...s, product: p.id }));
+                                setProductQuery(productOptionLabel(p));
+                                setShowProductMenu(false);
+                              }}
+                            >
+                              <div className="text-zinc-100">{p.name}</div>
+                              {p.code && <div className="text-xs text-zinc-400">{p.code}</div>}
+                            </div>
+                          );
+                        })}
+                      {!loadingProducts && productOptions.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-zinc-400">No matches</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* helper text showing selection status */}
+                  <div className="mt-1 text-xs text-zinc-400">
+                    {form.product ? "Product selected" : "Select a product to continue"}
+                  </div>
                 </div>
               )}
             </div>
@@ -269,6 +406,7 @@ React.useEffect(() => {
             <div>
               <label className="mb-1 block text-sm font-medium">Name</label>
               <input
+                ref={nameInputRef}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.name}
                 onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
@@ -367,10 +505,16 @@ React.useEffect(() => {
                 <label className="mb-1 block text-sm font-medium">Upload Image (file)</label>
                 <label className="flex h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 text-sm text-zinc-400 hover:border-zinc-500">
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => setNewImage((e.target.files && e.target.files[0]) || null)}
+                    onChange={(e) => {
+                      const f = (e.target.files && e.target.files[0]) || null;
+                      setNewImage(f);
+                      // allow picking the same file again in the next variant without needing a reload
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
                   />
                   Drag & drop or click to upload
                 </label>

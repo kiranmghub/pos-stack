@@ -736,18 +736,40 @@ class VariantImageUploadView(APIView):
         if not file:
             return Response({"detail": "No file provided as 'file'."}, status=400)
 
-        saved = variant.image_file.save(file.name, file, save=True)
+        # Save under media/tenants/<tenant_code>/variants/<ProductName>_<VariantName>.<ext>
+        tenant_code = getattr(tenant, "code", None) or getattr(tenant, "slug", None) or f"t{tenant.id}"
+
+        # sanitize product and variant names for filesystem
+        product_name = re.sub(r"[^A-Za-z0-9_-]+", "_", variant.product.name.strip())[:50]
+        variant_name = re.sub(r"[^A-Za-z0-9_-]+", "_", variant.name.strip())[:50]
+
+        # get extension from the original file (fallback .jpg)
+        ext = os.path.splitext(file.name)[1] or ".jpg"
+        safe_name = f"{product_name}_{variant_name}{ext}"
+
+        rel_path = f"tenants/{tenant_code}/variants/{safe_name}"
+
+        saved = default_storage.save(rel_path, file)
+
+        # persist on the model
+        variant.image_file.name = saved
+        variant.save(update_fields=["image_file"])
+
+        # Build a URL that works on FS and S3
         try:
             url = variant.image_file.url
         except Exception:
             if isinstance(default_storage, FileSystemStorage):
-                url = request.build_absolute_uri(settings.MEDIA_URL.rstrip("/") + "/" + saved.lstrip("/"))
+                url = request.build_absolute_uri(
+                    settings.MEDIA_URL.rstrip("/") + "/" + saved.lstrip("/")
+                )
             else:
                 url = default_storage.url(saved)
 
         if url and url != (variant.image_url or ""):
             variant.image_url = url
             variant.save(update_fields=["image_url"])
+
 
         return Response({"image_url": url}, status=200)
     

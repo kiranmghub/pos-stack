@@ -43,6 +43,16 @@ export async function uploadProductImage(
   return res.json();
 }
 
+export async function uploadVariantImage(variantId: ID, file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiFetchJSON(`/api/v1/catalog/variants/${variantId}/image`, {
+    method: "POST",
+    body: fd,
+  });
+}
+
+
 export async function listProducts(params?: { page?: number; page_size?: number; search?: string; category?: string; active?: boolean }): Promise<Paginated<ProductListItem>> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
