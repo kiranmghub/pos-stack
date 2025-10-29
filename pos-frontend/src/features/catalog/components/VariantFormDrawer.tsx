@@ -222,6 +222,29 @@ React.useEffect(() => {
   // no cleanup when using a remote URL
 }, [newImage, variant, form.image_url]);
 
+  async function parseApiError(err: any) {
+    // 1) preferred: data attached by fetch helper
+    if (err?.data) return err.data;
+    if (err?.payload) return err.payload;
+    if (err?.response?.data) return err.response.data;
+
+    // 2) native Response-like
+    if (typeof err?.json === "function") {
+      try { return await err.json(); } catch {}
+    }
+    if (typeof err?.response?.json === "function") {
+      try { return await err.response.json(); } catch {}
+    }
+
+    // 3) stringified JSON in message/body
+    const maybe = err?.message || err?.body || err?.responseText;
+    if (typeof maybe === "string") {
+      try { return JSON.parse(maybe); } catch {}
+    }
+
+    // 4) give up: return whatever we have
+    return null;
+  }
 
 
   async function handleSubmit(e: React.FormEvent) {
@@ -255,33 +278,35 @@ React.useEffect(() => {
       success(isEdit ? "Variant updated" : "Variant created");
       if (newImage) success("Image uploaded");
       handleClose();
-    } catch (err: any) {
-      console.error("Save failed", err);
-      let data: any = null;
-      try {
-        if (err?.json) data = await err.json();
-        else if (err?.response?.json) data = await err.response.json();
-      } catch {}
+        } catch (err: any) {
+          console.error("Save failed", err);
+          const data = await parseApiError(err);
 
-      // Field-level errors → inline
-      if (data && typeof data === "object") {
-        const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
-        const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
-        // If DRF/DB sent a set-level error, prefer showing it under the SKU field
-        const inferredSkuMsg =
-          !skuMsg && nf && /(sku|product[^,]*,?\s*sku)/i.test(String(nf))
-            ? "This SKU already exists for this product."
-            : undefined;
+          // Field-level errors → inline
+          if (data && typeof data === "object") {
+            const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+            const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
 
-        setErrors({
-          sku: skuMsg || inferredSkuMsg,
-          name: Array.isArray(data.name) ? data.name[0] : data.name,
-          _non_field: data.detail || (!inferredSkuMsg && nf) || undefined,
-        });
-      }
-      // Global notify summary
-      error(data?.detail || data?.sku?.[0] || "Could not save variant.");
-    }
+            // If DRF/DB sent a set-level error, prefer showing it under the SKU field
+            const inferredSkuMsg =
+              !skuMsg && nf && /(sku|product[^,]*,?\s*sku)/i.test(String(nf))
+                ? "This SKU already exists for this product."
+                : undefined;
+
+            setErrors({
+              sku: skuMsg || inferredSkuMsg,
+              name: Array.isArray(data.name) ? data.name[0] : data.name,
+              _non_field: data.detail || (!inferredSkuMsg && nf) || undefined,
+            });
+          }
+
+          // Global notify summary (kept)
+          error(
+            (data && (data.detail || (Array.isArray(data.sku) && data.sku[0]) || data.sku)) ||
+            "Could not save variant."
+          );
+        }
+
 
   }
 
