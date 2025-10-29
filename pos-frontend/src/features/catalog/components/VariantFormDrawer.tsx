@@ -268,7 +268,11 @@ React.useEffect(() => {
         const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
         const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
         // If DRF/DB sent a set-level error, prefer showing it under the SKU field
-        const inferredSkuMsg = !skuMsg && nf && /sku/i.test(String(nf)) ? String(nf) : undefined;
+        const inferredSkuMsg =
+          !skuMsg && nf && /(sku|product[^,]*,?\s*sku)/i.test(String(nf))
+            ? "This SKU already exists for this product."
+            : undefined;
+
         setErrors({
           sku: skuMsg || inferredSkuMsg,
           name: Array.isArray(data.name) ? data.name[0] : data.name,
