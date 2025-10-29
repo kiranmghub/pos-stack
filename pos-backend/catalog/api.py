@@ -208,20 +208,29 @@ class VariantWriteSerializer(serializers.ModelSerializer):
         return product
     
     def validate(self, attrs):
-        """
-        Enforce tenant-scoped unique SKU.
-        """
         tenant = self.context.get("tenant")
-        sku = attrs.get("sku") or getattr(self.instance, "sku", None)
-        if tenant and sku:
-            qs = Variant.objects.filter(product__tenant=tenant, sku__iexact=sku)
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+        sku = (attrs.get("sku") or getattr(self.instance, "sku", None) or "").strip()
+        if product and sku:
+            qs = Variant.objects.filter(product=product, sku__iexact=sku)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise serializers.ValidationError({
-                    "sku": "This SKU already exists for your tenant."
+                    "sku": "This SKU already exists for this product."
+                })
+        # (optional) tenant-wide uniqueness
+        if tenant and sku:
+            qs_t = Variant.objects.filter(product__tenant=tenant, sku__iexact=sku)
+            if self.instance:
+                qs_t = qs_t.exclude(pk=self.instance.pk)
+            # Only flag tenant-wide if not already caught by product-level
+            if qs_t.exists() and not attrs.get("product"):
+                raise serializers.ValidationError({
+                    "sku": "This SKU already exists within your tenant."
                 })
         return attrs
+
 
 
     def create(self, validated_data):

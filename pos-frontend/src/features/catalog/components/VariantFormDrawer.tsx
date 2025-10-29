@@ -4,6 +4,7 @@ import { listProducts, createVariant, updateVariant, getProduct, uploadVariantIm
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
 import type { ProductListItem } from "../types";
+import { useNotify } from "@/lib/notify";
 import { DebouncedInput } from "./DebouncedInput";
 
 type TaxCategory = { id: ID; name: string; code: string };
@@ -44,6 +45,9 @@ export function VariantFormDrawer({
   variant?: { id: ID } & Partial<CreateVariantDto>;
 }) {
   const isEdit = !!variant?.id;
+  const { error, success, info, warn } = useNotify(); // destructure what you expose in /lib/notify
+  const [errors, setErrors] = React.useState<{ [k: string]: string | undefined }>({});
+
 
 // All variant fields from models
 const [form, setForm] = React.useState<CreateVariantDto & {
@@ -224,7 +228,9 @@ React.useEffect(() => {
     e.preventDefault();
     try {
       if (!form.product) {
-        alert("Please select a product for this variant.");
+        // alert("Please select a product for this variant.");
+        setErrors((e) => ({ ...e, _non_field: "Please select a product for this variant." }));
+        error("Please select a product."); // global, non-blocking
         return;
       }
       const payload: UpdateVariantDto & any = {
@@ -246,11 +252,33 @@ React.useEffect(() => {
       }
       // Refresh the expanded product's variants inline (no collapse)
       window.dispatchEvent(new CustomEvent("catalog:variant:saved", { detail: { productId: form.product } }));
+      success(isEdit ? "Variant updated" : "Variant created");
+      if (newImage) success("Image uploaded");
       handleClose();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save variant");
+    } catch (err: any) {
+      console.error("Save failed", err);
+      let data: any = null;
+      try {
+        if (err?.json) data = await err.json();
+        else if (err?.response?.json) data = await err.response.json();
+      } catch {}
+
+      // Field-level errors → inline
+      if (data && typeof data === "object") {
+        const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+        const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
+        // If DRF/DB sent a set-level error, prefer showing it under the SKU field
+        const inferredSkuMsg = !skuMsg && nf && /sku/i.test(String(nf)) ? String(nf) : undefined;
+        setErrors({
+          sku: skuMsg || inferredSkuMsg,
+          name: Array.isArray(data.name) ? data.name[0] : data.name,
+          _non_field: data.detail || (!inferredSkuMsg && nf) || undefined,
+        });
+      }
+      // Global notify summary
+      error(data?.detail || data?.sku?.[0] || "Could not save variant.");
     }
+
   }
 
   function handleClose() {
@@ -275,6 +303,11 @@ React.useEffect(() => {
         </div>
 
         <form className="h-[calc(100%-56px)] overflow-y-auto p-4 space-y-6" onSubmit={handleSubmit}>
+          {errors._non_field && (
+            <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200">
+              {errors._non_field}
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Product selection */}
             <div className="md:col-span-2">
@@ -416,10 +449,17 @@ React.useEffect(() => {
             <div>
               <label className="mb-1 block text-sm font-medium">SKU</label>
               <input
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                  errors.sku ? "border-red-500" : "border-zinc-700"
+                }`}
                 value={form.sku || ""}
-                onChange={(e) => setForm((s) => ({ ...s, sku: e.target.value }))}
+                onChange={(e) => {
+                  setForm((s) => ({ ...s, sku: e.target.value }));
+                  // setErrors((e2) => ({ ...e2, sku: undefined }));
+                  setErrors((e2) => ({ ...e2, sku: undefined, _non_field: undefined }));
+                }}
               />
+              {errors.sku && <div className="mt-1 text-xs text-red-400">{errors.sku}</div>}
             </div>
 
             <div>
