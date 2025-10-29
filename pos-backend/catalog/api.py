@@ -206,6 +206,23 @@ class VariantWriteSerializer(serializers.ModelSerializer):
         if tenant and getattr(product, "tenant_id", None) != tenant.id:
             raise serializers.ValidationError("Product does not belong to the current tenant.")
         return product
+    
+    def validate(self, attrs):
+        """
+        Enforce tenant-scoped unique SKU.
+        """
+        tenant = self.context.get("tenant")
+        sku = attrs.get("sku") or getattr(self.instance, "sku", None)
+        if tenant and sku:
+            qs = Variant.objects.filter(product__tenant=tenant, sku__iexact=sku)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({
+                    "sku": "This SKU already exists for your tenant."
+                })
+        return attrs
+
 
     def create(self, validated_data):
         tenant = self.context.get("tenant")
