@@ -19,6 +19,7 @@ class TaxCategory(TimeStampedModel):
 
     class Meta:
         unique_together = ("tenant", "code")
+        models.UniqueConstraint(Lower("code"), "tenant", name="uniq_taxcategory_code_ci_per_tenant")
         indexes = [
             models.Index(fields=["tenant", "code"]),
         ]
@@ -81,6 +82,7 @@ class Category(TimeStampedModel):
 
     class Meta:
         unique_together = ("tenant", "name")
+        models.UniqueConstraint(Lower("code"), "tenant", name="uniq_category_code_ci_per_tenant")
         indexes = [
             models.Index(fields=["tenant", "name"]),
             models.Index(fields=["tenant", "code"]),
@@ -99,7 +101,7 @@ class Category(TimeStampedModel):
 class Product(TimeStampedModel):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
-    code = models.SlugField(blank=True, default="")
+    code = models.SlugField(blank=False)
     category = models.CharField(max_length=120, blank=True)
     description = models.TextField(blank=True, default="")
     attributes = models.JSONField(default=dict)
@@ -113,6 +115,14 @@ class Product(TimeStampedModel):
     tax_category = models.ForeignKey(TaxCategory, null=True, blank=True, on_delete=models.SET_NULL)
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("code"), "tenant",
+                name="uniq_product_code_ci_per_tenant",
+            ),
+            models.UniqueConstraint(fields=["tenant", "name"], name="uniq_product_name_per_tenant"),
+            models.CheckConstraint(check=~Q(code=""), name="product_code_not_blank"),
+        ]
         indexes = [
             models.Index(fields=["tenant", "name"]),
             models.Index(fields=["tenant", "is_active"]),
@@ -164,12 +174,14 @@ class Variant(TimeStampedModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["tenant", "sku"], name="uniq_variant_sku_per_tenant"),
+            models.UniqueConstraint(Lower("sku"), "tenant", name="uniq_variant_sku_ci_per_tenant"),
             models.UniqueConstraint(
                 fields=["tenant", "barcode"],
                 condition=Q(barcode__gt=""),
                 name="uniq_variant_barcode_per_tenant_when_present",
             ),
+            models.UniqueConstraint(Lower("name"), "product", name="uniq_variant_name_ci_per_product"),
+            models.CheckConstraint(check=~Q(name=""), name="variant_name_not_blank"),
         ]
 
         indexes = [

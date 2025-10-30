@@ -3,6 +3,8 @@ import { createProduct, updateProduct } from "../api";
 import type { CreateProductDto, UpdateProductDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
 import { uploadProductImage } from "../api";
+import { useNotify } from "@/lib/notify";
+
 
 
 function Drawer({
@@ -61,6 +63,9 @@ export function ProductFormDrawer({
   };
 }) {
   const isEdit = !!product?.id;
+  const { error, success } = useNotify();
+  const [errors, setErrors] = React.useState<{ [k: string]: string | undefined }>({});
+
 
   const [form, setForm] = React.useState<CreateProductDto & {
     image_url?: string;
@@ -109,6 +114,7 @@ export function ProductFormDrawer({
     });
     setNewImage(null);
     setHideExisting(false);
+    setErrors({});
   }, [product?.id]);
 
   // Reset when opening a brand-new form
@@ -127,6 +133,7 @@ export function ProductFormDrawer({
       });
       setNewImage(null);
       setHideExisting(false);
+      setErrors({});
     }
   }, [open, product?.id]);
 
@@ -168,6 +175,18 @@ export function ProductFormDrawer({
       }
     })();
   }, []);
+
+  async function parseApiError(err: any) {
+    if (err?.data) return err.data;
+    if (err?.payload) return err.payload;
+    if (err?.response?.data) return err.response.data;
+    if (typeof err?.json === "function") { try { return await err.json(); } catch {} }
+    if (typeof err?.response?.json === "function") { try { return await err.response.json(); } catch {} }
+    const maybe = err?.message || err?.body || err?.responseText;
+    if (typeof maybe === "string") { try { return JSON.parse(maybe); } catch {} }
+    return null;
+  }
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -225,10 +244,44 @@ export function ProductFormDrawer({
         })
       );
 
+      success(
+        isEdit
+        ? (newImage ? "Product updated and image uploaded" : "Product updated")
+        : (newImage ? "Product created and image uploaded" : "Product created")
+      );
+
       onClose();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save product");
+    } catch (err: any) {
+      console.error("Product save failed", err);
+      const data = await parseApiError(err);
+
+      if (data && typeof data === "object") {
+        const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
+        const codeMsg = Array.isArray(data.code) ? data.code[0] : data.code;
+        const nameMsg = Array.isArray(data.name) ? data.name[0] : data.name;
+
+        // Infer from set-level messages if needed
+        const inferredCodeMsg =
+          !codeMsg && nf && /(code|tenant[^,]*,?\s*code)/i.test(String(nf))
+            ? "This code already exists within your tenant."
+            : undefined;
+
+        const inferredNameMsg =
+          !nameMsg && nf && /(name|tenant[^,]*,?\s*name)/i.test(String(nf))
+            ? "A product with this name already exists in your tenant."
+            : undefined;
+
+        setErrors({
+          code: codeMsg || inferredCodeMsg,
+          name: nameMsg || inferredNameMsg,
+          _non_field: data.detail || (!inferredCodeMsg && !inferredNameMsg && nf) || undefined,
+        });
+      }
+
+      error(
+        (data && (data.detail || data.code?.[0] || data.code || data.name?.[0] || data.name)) ||
+        "Could not save product."
+      );
     } finally {
       setBusy(false);
     }
@@ -238,6 +291,12 @@ export function ProductFormDrawer({
   return (
     <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>
       <form className="space-y-6" onSubmit={handleSubmit}>
+        {errors._non_field && (
+          <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200 mb-2">
+            {errors._non_field}
+          </div>
+        )}
+
         {/* Media (FIRST) */}
         <section className="space-y-3">
           <div className="text-sm font-medium">Product Image</div>
@@ -308,20 +367,33 @@ export function ProductFormDrawer({
           <div>
             <label className="mb-1 block text-sm font-medium">Name</label>
             <input
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                errors.name ? "border-red-500" : "border-zinc-700"
+              }`}
               value={form.name}
-              onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              onChange={(e) => {
+                setForm((s) => ({ ...s, name: e.target.value }));
+                setErrors((e2) => ({ ...e2, name: undefined, _non_field: undefined }));
+              }}
               required
             />
+            {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium">Code</label>
             <input
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                errors.code ? "border-red-500" : "border-zinc-700"
+              }`}
               value={form.code || ""}
-              onChange={(e) => setForm((s) => ({ ...s, code: e.target.value }))}
+              onChange={(e) => {
+                setForm((s) => ({ ...s, code: e.target.value }));
+                setErrors((e2) => ({ ...e2, code: undefined, _non_field: undefined }));
+              }}
+              required
             />
+            {errors.code && <div className="mt-1 text-xs text-red-400">{errors.code}</div>}
           </div>
 
           <div>

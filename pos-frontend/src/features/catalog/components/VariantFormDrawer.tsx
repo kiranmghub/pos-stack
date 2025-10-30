@@ -148,6 +148,7 @@ React.useEffect(() => {
     setNewImage(null);
     setPreviewUrl("");
     setProductQuery("");
+    setErrors({});
   }
 }, [open, variant, productId]);
 
@@ -275,8 +276,11 @@ React.useEffect(() => {
       }
       // Refresh the expanded product's variants inline (no collapse)
       window.dispatchEvent(new CustomEvent("catalog:variant:saved", { detail: { productId: form.product } }));
-      success(isEdit ? "Variant updated" : "Variant created");
-      if (newImage) success("Image uploaded");
+      success(
+        isEdit
+          ? (newImage ? "Variant updated and image uploaded" : "Variant updated")
+          : (newImage ? "Variant created and image uploaded" : "Variant created")
+      );
       handleClose();
         } catch (err: any) {
           console.error("Save failed", err);
@@ -285,26 +289,46 @@ React.useEffect(() => {
           // Field-level errors → inline
           if (data && typeof data === "object") {
             const nf = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors;
-            const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
 
-            // If DRF/DB sent a set-level error, prefer showing it under the SKU field
+            const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
+            const nameMsg = Array.isArray(data.name) ? data.name[0] : data.name;
+            const barcodeMsg = Array.isArray(data.barcode) ? data.barcode[0] : data.barcode;
+
+            // Infer field messages from set-level errors (DB/DRF unique-together text)
             const inferredSkuMsg =
               !skuMsg && nf && /(sku|product[^,]*,?\s*sku)/i.test(String(nf))
                 ? "This SKU already exists for this product."
                 : undefined;
 
+            const inferredNameMsg =
+              !nameMsg && nf && /(name|product[^,]*,?\s*name)/i.test(String(nf))
+                ? "A variant with this name already exists for this product."
+                : undefined;
+
+            const inferredBarcodeMsg =
+              !barcodeMsg && nf && /(barcode|tenant[^,]*,?\s*barcode)/i.test(String(nf))
+                ? "This barcode already exists within your tenant."
+                : undefined;
+
             setErrors({
               sku: skuMsg || inferredSkuMsg,
-              name: Array.isArray(data.name) ? data.name[0] : data.name,
-              _non_field: data.detail || (!inferredSkuMsg && nf) || undefined,
+              name: nameMsg || inferredNameMsg,
+              barcode: barcodeMsg || inferredBarcodeMsg,
+              _non_field: data.detail || (!inferredSkuMsg && !inferredNameMsg && !inferredBarcodeMsg && nf) || undefined,
             });
           }
 
-          // Global notify summary (kept)
+          // Global notify summary (prefer first specific field message)
           error(
-            (data && (data.detail || (Array.isArray(data.sku) && data.sku[0]) || data.sku)) ||
-            "Could not save variant."
+            (data && (
+              data.detail ||
+              skuMsg || nameMsg || barcodeMsg ||
+              (Array.isArray(data.sku) && data.sku[0]) ||
+              (Array.isArray(data.name) && data.name[0]) ||
+              (Array.isArray(data.barcode) && data.barcode[0])
+            )) || "Could not save variant."
           );
+
         }
 
 
@@ -315,6 +339,7 @@ React.useEffect(() => {
     setNewImage(null);
     setPreviewUrl("");
     setProductQuery("");
+    setErrors({});
     onClose();
   }
 
@@ -469,10 +494,16 @@ React.useEffect(() => {
               <label className="mb-1 block text-sm font-medium">Name</label>
               <input
                 ref={nameInputRef}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                  errors.name ? "border-red-500" : "border-zinc-700"
+                }`}
                 value={form.name}
-                onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                onChange={(e) => {
+                  setForm((s) => ({ ...s, name: e.target.value }));
+                  setErrors((e2) => ({ ...e2, name: undefined, _non_field: undefined }));
+                }}
               />
+              {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
             </div>
 
             <div>
@@ -494,10 +525,16 @@ React.useEffect(() => {
             <div>
               <label className="mb-1 block text-sm font-medium">Barcode</label>
               <input
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                  errors.barcode ? "border-red-500" : "border-zinc-700"
+                }`}
                 value={form.barcode || ""}
-                onChange={(e) => setForm((s) => ({ ...s, barcode: e.target.value }))}
+                onChange={(e) => {
+                  setForm((s) => ({ ...s, barcode: e.target.value }));
+                  setErrors((e2) => ({ ...e2, barcode: undefined, _non_field: undefined }));
+                }}
               />
+              {errors.barcode && <div className="mt-1 text-xs text-red-400">{errors.barcode}</div>}
             </div>
 
             <div>

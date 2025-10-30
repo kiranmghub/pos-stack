@@ -166,6 +166,36 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         model = Product
         fields = ("name", "code", "category", "description", "active", "tax_category", "attributes")
 
+    def validate(self, attrs):
+       tenant = self.context.get("tenant")
+       name = (attrs.get("name") or getattr(self.instance, "name", "") or "").strip()
+       code = (attrs.get("code") or getattr(self.instance, "code", "") or "").strip()
+
+       if not code:
+           raise serializers.ValidationError({"code": "Code is required."})
+
+       # CI-unique product code within tenant
+       if tenant and code:
+           qs = Product.objects.filter(tenant=tenant).extra(
+               where=["LOWER(code) = LOWER(%s)"], params=[code]
+           )
+           if self.instance:
+               qs = qs.exclude(pk=self.instance.pk)
+           if qs.exists():
+               raise serializers.ValidationError({"code": "This code already exists within your tenant."})
+
+       # (Optional) CI-unique product name within tenant (matches your model if enabled)
+       if tenant and name:
+           qs_name = Product.objects.filter(tenant=tenant).extra(
+               where=["LOWER(name) = LOWER(%s)"], params=[name]
+           )
+           if self.instance:
+               qs_name = qs_name.exclude(pk=self.instance.pk)
+           if qs_name.exists():
+               raise serializers.ValidationError({"name": "A product with this name already exists in your tenant."})
+
+       return attrs
+
     def create(self, validated_data):
         tenant = self.context.get("tenant")
         if not tenant:
@@ -206,11 +236,15 @@ class VariantWriteSerializer(serializers.ModelSerializer):
         if tenant and getattr(product, "tenant_id", None) != tenant.id:
             raise serializers.ValidationError("Product does not belong to the current tenant.")
         return product
-    
+
     def validate(self, attrs):
         tenant = self.context.get("tenant")
         product = attrs.get("product") or getattr(self.instance, "product", None)
         sku = (attrs.get("sku") or getattr(self.instance, "sku", None) or "").strip()
+        if not sku and not product:
+            return attrs
+
+        # 1) product-level duplicate (SKU)
         if product and sku:
             qs = Variant.objects.filter(product=product, sku__iexact=sku)
             if self.instance:
@@ -219,17 +253,47 @@ class VariantWriteSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "sku": "This SKU already exists for this product."
                 })
-        # (optional) tenant-wide uniqueness
+
+        # 2) tenant-level duplicate (SKU)
         if tenant and sku:
-            qs_t = Variant.objects.filter(product__tenant=tenant, sku__iexact=sku)
+            qs_tenant = Variant.objects.filter(product__tenant=tenant, sku__iexact=sku)
             if self.instance:
-                qs_t = qs_t.exclude(pk=self.instance.pk)
-            # Only flag tenant-wide if not already caught by product-level
-            if qs_t.exists() and not attrs.get("product"):
+                qs_tenant = qs_tenant.exclude(pk=self.instance.pk)
+            if qs_tenant.exists():
+                conflict = qs_tenant.select_related("product").first()
+                prod = getattr(conflict, "product", None)
+                prod_name = getattr(prod, "name", "another product")
+                prod_code = getattr(prod, "code", "")
+                display = f'{prod_name} ({prod_code})' if prod_code else prod_name
                 raise serializers.ValidationError({
-                    "sku": "This SKU already exists within your tenant."
+                    "sku": f"This SKU is already used by {display} in your tenant."
                 })
+
+        # 3) product-level duplicate (Name, case-insensitive)
+        name = (attrs.get("name") or getattr(self.instance, "name", None) or "").strip()
+        if product and name:
+            qs_name = Variant.objects.filter(product=product, name__iexact=name)
+            if self.instance:
+                qs_name = qs_name.exclude(pk=self.instance.pk)
+            if qs_name.exists():
+                raise serializers.ValidationError({
+                    "name": "A variant with this name already exists for this product."
+                })
+
+        # 4) tenant-level duplicate (Barcode, case-insensitive, only if provided)
+        barcode = (attrs.get("barcode") or getattr(self.instance, "barcode", None) or "").strip()
+        if tenant and barcode:
+            qs_bar = Variant.objects.filter(product__tenant=tenant, barcode__gt="", barcode__iexact=barcode)
+            if self.instance:
+                qs_bar = qs_bar.exclude(pk=self.instance.pk)
+            if qs_bar.exists():
+                raise serializers.ValidationError({
+                    "barcode": "This barcode already exists within your tenant."
+                })
+
         return attrs
+
+
 
 
 
