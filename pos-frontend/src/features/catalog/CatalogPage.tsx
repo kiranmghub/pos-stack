@@ -7,7 +7,7 @@ import type { ProductListItem, ProductDetail, ID } from "./types";
 
 export default function CatalogPage() {
   const [openProductForm, setOpenProductForm] = React.useState(false);
-  const [openVariantForm, setOpenVariantForm] = React.useState<null | { productId?: ID }>(null);
+  const [openVariantForm, setOpenVariantForm] = React.useState<null | { productId?: ID, variant?: any }>(null);
   const [focusedProduct, setFocusedProduct] =
     React.useState<(ProductListItem | ProductDetail) | null>(null);
 
@@ -30,6 +30,7 @@ export default function CatalogPage() {
           setOpenProductForm(true);
         }}
         onNewVariant={(p) => setOpenVariantForm({ productId: p?.id })}
+        onEditVariant={(p, v) => setOpenVariantForm({ productId: p.id, variant: v })}
       />
 
 
@@ -54,6 +55,7 @@ export default function CatalogPage() {
         open={!!openVariantForm}
         onClose={() => setOpenVariantForm(null)}
         productId={openVariantForm?.productId ?? focusedProduct?.id}
+        variant={openVariantForm?.variant}
       />
     </div>
   );

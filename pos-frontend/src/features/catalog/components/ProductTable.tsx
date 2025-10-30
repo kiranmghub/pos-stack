@@ -1,7 +1,8 @@
 // pos-frontend/src/features/catalog/components/ProductTable.tsx
 import React from "react";
-import { listProducts, getProduct } from "../api";
+import { listProducts, getProduct, updateVariant, deleteVariant} from "../api";
 import type { ProductListItem, ProductDetail, Variant } from "../types";
+import { useNotify } from "@/lib/notify";
 
 const currency = (v: string | number) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(v));
@@ -10,9 +11,10 @@ type Props = {
   onEditProduct: (p: ProductListItem | ProductDetail) => void;
   onNewProduct: () => void;
   onNewVariant: (product?: ProductListItem | ProductDetail) => void;
+  onEditVariant: (product: ProductListItem | ProductDetail, variant: Variant) => void;
 };
 
-export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Props) {
+export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEditVariant }: Props) {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [onlyLow, setOnlyLow] = React.useState(false);
@@ -23,6 +25,21 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
   const [expanded, setExpanded] = React.useState<Record<string | number, boolean>>({});
   const [details, setDetails] = React.useState<Record<string | number, ProductDetail>>({});
   const [loadingRow, setLoadingRow] = React.useState<Record<string | number, boolean>>({});
+
+  const { success, error } = useNotify();
+  const [openMenu, setOpenMenu] = React.useState<null | number>(null); // variantId whose menu is open
+
+  React.useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[aria-haspopup='menu']") && !target.closest("[role='menu']")) {
+        setOpenMenu(null);
+      }
+    }
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
 
   async function load() {
     setLoading(true);
@@ -87,8 +104,18 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
       refreshProductDetail(pid);
     }
 
+    function onVariantDeleted(e: any) {
+      const pid = e?.detail?.productId ?? e?.detail?.id ?? e?.detail;
+      if (!pid) return;
+      refreshProductDetail(pid);
+    }
+
     window.addEventListener("catalog:variant:saved", onVariantSaved);
-    return () => window.removeEventListener("catalog:variant:saved", onVariantSaved);
+    window.addEventListener("catalog:variant:deleted", onVariantDeleted);
+    return () => {
+      window.removeEventListener("catalog:variant:saved", onVariantSaved);
+      window.removeEventListener("catalog:variant:deleted", onVariantDeleted);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -118,14 +145,47 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
     }
   }
 
+  async function toggleVariantActive(p: ProductListItem | ProductDetail, v: Variant) {
+    try {
+      await updateVariant(v.id, { active: !(v as any).active });
+      success((v as any).active ? "Variant deactivated" : "Variant activated");
+      window.dispatchEvent(new CustomEvent("catalog:variant:saved", { detail: { productId: p.id } }));
+    } catch (e) {
+      console.error(e);
+      error("Failed to update variant status.");
+    }
+  }
+
+async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant) {
+  try {
+    await deleteVariant(v.id);
+    success("Variant deleted");
+    window.dispatchEvent(new CustomEvent("catalog:variant:deleted", { detail: { productId: p.id } }));
+  } catch (e) {
+    console.error(e);
+    error("Failed to delete variant.");
+  }
+}
+
+
+
   // function VariantRow({ v }: { v: Variant }) {
   //   return (
-  //     <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
-  //       <div className="truncate font-medium text-zinc-100" title={v.name}>
-  //         {v.name}
+  //     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
+  //       {/* Name + SKU stacked on left */}
+  //       <div className="min-w-0">
+  //         <div className="truncate font-medium text-zinc-100" title={v.name}>
+  //           {v.name}
+  //         </div>
+  //         <div className="truncate text-xs text-zinc-400" title={v.sku}>
+  //           {v.sku}
+  //         </div>
   //       </div>
-  //       <div className="hidden text-zinc-400 md:block">{v.sku}</div>
+
+  //       {/* Price */}
   //       <div className="justify-self-end text-zinc-200">{currency(v.price)}</div>
+
+  //       {/* On-hand count */}
   //       <div
   //         className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${
   //           v.on_hand === 0
@@ -137,6 +197,8 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
   //       >
   //         {v.on_hand}
   //       </div>
+
+  //       {/* Status */}
   //       <div className="justify-self-end">
   //         <span
   //           className={`rounded-full px-2 py-0.5 text-xs ${
@@ -151,9 +213,14 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
   //     </div>
   //   );
   // }
+
   function VariantRow({ v }: { v: Variant }) {
+    const pid = (v as any).product || ""; // detail payload includes product id in your VariantPublicSerializer
+    // we need the product row object to pass to handlers; we can derive from details
+    // locate the product detail using pid
+    // In this scope we can close over p via the render below; so we won't use pid here.
     return (
-      <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
+      <div className="relative grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
         {/* Name + SKU stacked on left */}
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100" title={v.name}>
@@ -184,17 +251,65 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
         <div className="justify-self-end">
           <span
             className={`rounded-full px-2 py-0.5 text-xs ${
-              (v as any).active
-                ? "bg-indigo-500/15 text-indigo-300"
-                : "bg-zinc-600/20 text-zinc-300"
+              (v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
             }`}
           >
             {(v as any).active ? "Active" : "Inactive"}
           </span>
         </div>
+
+        {/* Kebab */}
+        <div className="relative justify-self-end">
+          <button
+            className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5"
+            onClick={() => setOpenMenu((m) => (m === v.id ? null : v.id))}
+            aria-haspopup="menu"
+            aria-expanded={openMenu === v.id}
+          >
+            ⋯
+          </button>
+          {openMenu === v.id && (
+            <div
+              className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+              role="menu"
+            >
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                onClick={() => {
+                  setOpenMenu(null);
+                  // we’ll pass product row object from outer render below
+                }}
+                data-action="edit"
+              >
+                Edit
+              </button>
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                onClick={() => {
+                  setOpenMenu(null);
+                  // toggle handled from outer render with product context
+                }}
+                data-action={(v as any).active ? "deactivate" : "activate"}
+              >
+                {(v as any).active ? "Deactivate" : "Activate"}
+              </button>
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                onClick={() => {
+                  setOpenMenu(null);
+                  // delete handled from outer render with product context
+                }}
+                data-action="delete"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
+
 
 
 
@@ -344,9 +459,26 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant }: Prop
 
                       {d?.variants && (
                         <div className="grid gap-2">
-                          {d.variants.map((v) => (
-                            <VariantRow key={v.id} v={v} />
-                          ))}
+                        {d.variants.map((v) => (
+                          <div key={v.id}
+                            onClick={(e) => {
+                              // delegate clicks from the menu to correct action with product context
+                              const t = e.target as HTMLElement;
+                              const action = t?.closest("[data-action]")?.getAttribute("data-action");
+                              if (!action) return;
+                              if (action === "edit") {
+                                onEditVariant(d ?? (p as any), v);
+                              } else if (action === "activate" || action === "deactivate") {
+                                toggleVariantActive(d ?? (p as any), v);
+                              } else if (action === "delete") {
+                                hardDeleteVariant(d ?? (p as any), v);
+                              }
+                            }}
+                          >
+                            <VariantRow v={v} />
+                          </div>
+                        ))}
+
                         </div>
                       )}
                     </div>

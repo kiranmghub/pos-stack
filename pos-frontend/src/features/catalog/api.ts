@@ -104,3 +104,21 @@ export async function updateVariant(id: ID, data: UpdateVariantDto): Promise<Var
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function deleteVariant(id: ID) {
+  // Use the raw fetch wrapper, not the JSON helper.
+  const res = await apiFetch(`/api/catalog/variants/${id}/`, { method: "DELETE" });
+  if (!res.ok) {
+    // If you have a shared error util, use it here instead of throwing a generic error
+    // e.g., throw await toApiError(res)
+    let msg = "Failed to delete variant";
+    try {
+      const data = await res.json();
+      msg = data?.detail || msg;
+    } catch { /* 204 -> no body, ignore */ }
+    throw new Error(msg);
+  }
+  // success: 204 No Content -> just return void
+  return;
+}
+
