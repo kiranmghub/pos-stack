@@ -90,12 +90,7 @@ export function ProductFormDrawer({
   // image preview: prefer new file > existing server image > image_url text
   const [newImage, setNewImage] = React.useState<File | null>(null);
   const [hideExisting, setHideExisting] = React.useState(false);
-  const previewUrl =
-    newImage
-      ? URL.createObjectURL(newImage)
-      : hideExisting
-      ? ""
-      : (product as any)?.image_file || form.image_url || "";
+  const [previewUrl, setPreviewUrl] = React.useState<string>("");
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
@@ -176,6 +171,25 @@ export function ProductFormDrawer({
     })();
   }, []);
 
+  // Keep a stable object URL for the thumbnail and revoke old ones (mirror Variant)
+  React.useEffect(() => {
+    if (newImage) {
+      const url = URL.createObjectURL(newImage);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    // otherwise fall back to existing server image (if any) or typed URL
+    const fallback =
+      hideExisting
+        ? ""
+        : (product as any)?.image_file ||
+          (product as any)?.image_url ||
+          (typeof form.image_url === "string" ? form.image_url : "") ||
+          "";
+    setPreviewUrl(fallback);
+  }, [newImage, hideExisting, product, form.image_url]);
+
+
   async function parseApiError(err: any) {
     if (err?.data) return err.data;
     if (err?.payload) return err.payload;
@@ -190,6 +204,15 @@ export function ProductFormDrawer({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // client-side required checks (our UI, not the browser)
+    const missing: Record<string, string> = {};
+    if (!form.name?.trim()) missing.name = "Name is required.";
+    if (!form.code?.trim()) missing.code = "Code is required.";
+    if (Object.keys(missing).length) {
+      setErrors((prev) => ({ ...prev, ...missing, _non_field: undefined }));
+      error("Please fix the highlighted fields."); // use useNotify()
+      return;
+    }
     setBusy(true);
     try {
       // 1) Build pure JSON payload (no File here)
@@ -287,10 +310,17 @@ export function ProductFormDrawer({
     }
   }
 
+  function handleClose() {
+    // Clear any stale inline errors before closing (exactly like Variant does)
+    setErrors({});
+    onClose();
+  }
+
+
 
   return (
-    <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={onClose}>
-      <form className="space-y-6" onSubmit={handleSubmit}>
+    <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={handleClose}>
+      <form className="space-y-6" onSubmit={handleSubmit} noValidate>
         {errors._non_field && (
           <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200 mb-2">
             {errors._non_field}
@@ -358,6 +388,7 @@ export function ProductFormDrawer({
               const f = (e.target.files && e.target.files[0]) || null;
               setNewImage(f);
               setHideExisting(false);
+              if (fileInputRef.current) fileInputRef.current.value = ""; // mirror Variant behavior
             }}
           />
         </section>
@@ -375,7 +406,6 @@ export function ProductFormDrawer({
                 setForm((s) => ({ ...s, name: e.target.value }));
                 setErrors((e2) => ({ ...e2, name: undefined, _non_field: undefined }));
               }}
-              required
             />
             {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
           </div>
@@ -391,7 +421,6 @@ export function ProductFormDrawer({
                 setForm((s) => ({ ...s, code: e.target.value }));
                 setErrors((e2) => ({ ...e2, code: undefined, _non_field: undefined }));
               }}
-              required
             />
             {errors.code && <div className="mt-1 text-xs text-red-400">{errors.code}</div>}
           </div>
@@ -479,7 +508,7 @@ export function ProductFormDrawer({
           <button
             type="button"
             className="rounded-xl border border-zinc-700 px-4 py-2 text-sm hover:bg-white/5"
-            onClick={onClose}
+            onClick={handleClose}
           >
             Cancel
           </button>
