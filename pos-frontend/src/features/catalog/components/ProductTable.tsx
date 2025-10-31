@@ -449,8 +449,8 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
                               if (action === "edit") {
                                 onEditVariant(d ?? (p as any), v);
                               } else if (action === "view") {
-                                // open in read-only mode
-                                onViewVariant({ productId: (d ?? p).id, variant: v, mode: "view" });
+                                // open in read-only mode with correct signature (product, variant)
+                                onViewVariant(d ?? (p as any), v);
                               } else if (action === "activate" || action === "deactivate") {
                                 toggleVariantActive(d ?? (p as any), v);
                               } else if (action === "delete") {

@@ -13,6 +13,13 @@ function productOptionLabel(p: ProductListItem) {
   return p.code ? `${p.name} (${p.code})` : p.name;
 }
 
+function fmt(dt?: string) {
+  if (!dt) return "";
+  const d = new Date(dt);
+  if (isNaN(d as any)) return dt;
+  return d.toLocaleString();
+}
+
 
 // --- fresh form builder ---
 function emptyVariantForm(productId?: string | number) {
@@ -46,6 +53,7 @@ export function VariantFormDrawer({
   variant?: { id: ID } & Partial<CreateVariantDto>;
   mode?: "view" | "edit";
 }) {
+  const lockedProductId = productId ?? (variant as any)?.product;
   const isEdit = !!variant?.id;
   const [mode, setMode] = React.useState<"view" | "edit">(initialMode);
   React.useEffect(() => setMode(initialMode), [initialMode]);
@@ -192,13 +200,13 @@ React.useEffect(() => {
 
   async function loadProductLabel() {
     try {
-      if (!productId) {
+      if (!lockedProductId) {
         setProductLabel("");
         return;
       }
-      const d = await getProduct(productId);
+      const d = await getProduct(lockedProductId);
       if (!cancelled) {
-        const label = d?.code ? `${d.name} (${d.code})` : d?.name ?? `Product ID: ${String(productId)}`;
+        const label = d?.code ? `${d.name} (${d.code})` : d?.name ?? `Product ID: ${String(lockedProductId)}`;
         setProductLabel(label);
       }
     } catch {
@@ -208,7 +216,7 @@ React.useEffect(() => {
 
   loadProductLabel();
   return () => { cancelled = true; };
-}, [productId]);
+}, [lockedProductId]);
 
 
 // Keep a stable object URL for the thumbnail and revoke old ones
@@ -393,11 +401,11 @@ React.useEffect(() => {
             <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-medium">Product</label>
 
-              {productId ? (
+              {lockedProductId ? (
                 // Locked: show read-only selected product ID
                 <input
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-400"
-                  value={productLabel || `Product ID: ${String(productId)}`}
+                  value={productLabel || `Product ID: ${String(lockedProductId)}`}
                   readOnly
                   title="This variant will be created for the selected product."
                 />
@@ -698,6 +706,25 @@ React.useEffect(() => {
               </label>
             </div>
           </div>
+
+          {isView && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 text-sm">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div className="text-zinc-400">
+                  <div className="text-xs uppercase tracking-wide">Created</div>
+                  <div className="text-zinc-200">
+                    {fmt((variant as any)?.created_at)}
+                  </div>
+                </div>
+                <div className="text-zinc-400">
+                  <div className="text-xs uppercase tracking-wide">Updated</div>
+                  <div className="text-zinc-200">
+                    {fmt((variant as any)?.updated_at)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {!isView && (
             <div className="flex justify-end gap-3">

@@ -354,6 +354,8 @@ class VariantMiniSerializer(serializers.ModelSerializer):
             "tax_rate",
             "on_hand",
             "image_url",
+            "created_at",
+            "updated_at",
         )
 
     def get_tax_rate(self, obj):
@@ -395,7 +397,7 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variant
-        fields = ("id", "name", "sku", "barcode", "price", "cost", "on_hand", "active", "image_url", "product")
+        fields = ("id", "name", "sku", "barcode", "price", "cost", "on_hand", "active", "image_url", "product", "created_at", "updated_at")
 
     def get_on_hand(self, obj):
         # Sum inventory from InventoryItem via reverse accessor used elsewhere (inventoryitem)
