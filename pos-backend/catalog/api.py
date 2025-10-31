@@ -38,6 +38,8 @@ from .serializers import (
 import json
 from decimal import Decimal
 from django.db.models import DecimalField
+from django.db.models import ProtectedError
+
 
 
 # Build absolute URL when we only have a relative path (/media/...)
@@ -1102,6 +1104,14 @@ class VariantViewSet(
         # Return the public/read shape (with computed fields) for immediate UI use
         read_ser = VariantPublicSerializer(obj, context=self.get_serializer_context())
         return Response(read_ser.data, status=201)
+    
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError as e:
+            msg = "This variant cannot be deleted because it is linked to existing sales or inventory records. Try deactivating it instead."
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
     

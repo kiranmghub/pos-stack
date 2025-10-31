@@ -38,13 +38,19 @@ export function VariantFormDrawer({
   onClose,
   productId,
   variant,
+  mode: initialMode = "edit",
 }: {
   open: boolean;
   onClose: () => void;
   productId?: ID;
   variant?: { id: ID } & Partial<CreateVariantDto>;
+  mode?: "view" | "edit";
 }) {
   const isEdit = !!variant?.id;
+  const [mode, setMode] = React.useState<"view" | "edit">(initialMode);
+  React.useEffect(() => setMode(initialMode), [initialMode]);
+  const isView = mode === "view";
+
   const { error, success, info, warn } = useNotify(); // destructure what you expose in /lib/notify
   const [errors, setErrors] = React.useState<{ [k: string]: string | undefined }>({});
 
@@ -223,6 +229,13 @@ React.useEffect(() => {
   // no cleanup when using a remote URL
 }, [newImage, variant, form.image_url]);
 
+
+// Clear any prior field errors when switching into view mode
+React.useEffect(() => {
+  if (initialMode === "view") setErrors({});
+}, [initialMode]);
+
+
   async function parseApiError(err: any) {
     // 1) preferred: data attached by fetch helper
     if (err?.data) return err.data;
@@ -350,11 +363,24 @@ React.useEffect(() => {
 
       <div className="absolute right-0 top-0 h-full w-[560px] bg-zinc-900 text-zinc-100 shadow-2xl border-l border-zinc-800">
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-          <h3 className="text-lg font-semibold">{isEdit ? "Edit Variant" : "New Variant"}</h3>
-          <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={handleClose}>
-            Close
-          </button>
+          <h3 className="text-lg font-semibold">
+            {isView ? "Variant Details" : isEdit ? "Edit Variant" : "New Variant"}
+          </h3>
+          <div className="flex gap-2">
+            {isView && (
+              <button
+                className="rounded-lg px-3 py-1 text-sm text-indigo-300 hover:bg-indigo-600/10"
+                onClick={() => setMode("edit")}
+              >
+                Edit
+              </button>
+            )}
+            <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={handleClose}>
+              Close
+            </button>
+          </div>
         </div>
+
 
         <form className="h-[calc(100%-56px)] overflow-y-auto p-4 space-y-6" onSubmit={handleSubmit}>
           {errors._non_field && (
@@ -502,6 +528,7 @@ React.useEffect(() => {
                   setForm((s) => ({ ...s, name: e.target.value }));
                   setErrors((e2) => ({ ...e2, name: undefined, _non_field: undefined }));
                 }}
+                disabled={isView}
               />
               {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
             </div>
@@ -518,6 +545,7 @@ React.useEffect(() => {
                   // setErrors((e2) => ({ ...e2, sku: undefined }));
                   setErrors((e2) => ({ ...e2, sku: undefined, _non_field: undefined }));
                 }}
+                disabled={isView}
               />
               {errors.sku && <div className="mt-1 text-xs text-red-400">{errors.sku}</div>}
             </div>
@@ -533,6 +561,7 @@ React.useEffect(() => {
                   setForm((s) => ({ ...s, barcode: e.target.value }));
                   setErrors((e2) => ({ ...e2, barcode: undefined, _non_field: undefined }));
                 }}
+                disabled={isView}
               />
               {errors.barcode && <div className="mt-1 text-xs text-red-400">{errors.barcode}</div>}
             </div>
@@ -545,6 +574,7 @@ React.useEffect(() => {
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.price}
                 onChange={(e) => setForm((s) => ({ ...s, price: parseFloat(e.target.value || "0") }))}
+                disabled={isView}
               />
             </div>
 
@@ -556,6 +586,7 @@ React.useEffect(() => {
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.cost || 0}
                 onChange={(e) => setForm((s) => ({ ...s, cost: parseFloat(e.target.value || "0") }))}
+                disabled={isView}
               />
             </div>
 
@@ -566,6 +597,7 @@ React.useEffect(() => {
                 value={form.uom || "each"}
                 onChange={(e) => setForm((s) => ({ ...s, uom: e.target.value }))}
                 placeholder="each, case, lb, etc."
+                disabled={isView}
               />
             </div>
 
@@ -576,6 +608,7 @@ React.useEffect(() => {
                   className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
                   value={String(form.tax_category || "")}
                   onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value || "" }))}
+                  disabled={isView}
                 >
                   <option value="">— None —</option>
                   {taxes.map((t) => (
@@ -591,6 +624,7 @@ React.useEffect(() => {
                     placeholder="Tax Category ID (optional)"
                     value={String(form.tax_category || "")}
                     onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
+                    disabled={isView}
                   />
                   {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
                 </div>
@@ -605,6 +639,7 @@ React.useEffect(() => {
                   value={form.image_url || ""}
                   onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
                   placeholder="https://..."
+                  disabled={isView}
                 />
               </div>
               <div>
@@ -615,6 +650,7 @@ React.useEffect(() => {
                     type="file"
                     accept="image/*"
                     className="hidden"
+                    disabled={isView}
                     onChange={(e) => {
                       const f = (e.target.files && e.target.files[0]) || null;
                       setNewImage(f);
@@ -645,6 +681,7 @@ React.useEffect(() => {
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.on_hand || 0}
                 onChange={(e) => setForm((s) => ({ ...s, on_hand: parseInt(e.target.value || "0") }))}
+                disabled={isView}
               />
             </div>
 
@@ -662,21 +699,23 @@ React.useEffect(() => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-white/5"
-              onClick={handleClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-            >
-              {isEdit ? "Save Changes" : "Create Variant"}
-            </button>
-          </div>
+          {!isView && (
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-white/5"
+                onClick={handleClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+              >
+                {isEdit ? "Save Changes" : "Create Variant"}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

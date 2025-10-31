@@ -7,9 +7,9 @@ import type { ProductListItem, ProductDetail, ID } from "./types";
 
 export default function CatalogPage() {
   const [openProductForm, setOpenProductForm] = React.useState(false);
-  const [openVariantForm, setOpenVariantForm] = React.useState<null | { productId?: ID, variant?: any }>(null);
-  const [focusedProduct, setFocusedProduct] =
-    React.useState<(ProductListItem | ProductDetail) | null>(null);
+  const [openVariantForm, setOpenVariantForm] = React.useState<null | { productId?: ID, variant?: any, mode?: "view" | "edit" }>(null);
+  const [focusedProduct, setFocusedProduct] = React.useState<(ProductListItem | ProductDetail) | null>(null);
+
 
   return (
     <div className="mx-auto max-w-7xl p-4 md:p-6">
@@ -31,6 +31,7 @@ export default function CatalogPage() {
         }}
         onNewVariant={(p) => setOpenVariantForm({ productId: p?.id })}
         onEditVariant={(p, v) => setOpenVariantForm({ productId: p.id, variant: v })}
+        onViewVariant={(p, v) => setOpenVariantForm({ productId: p.id, variant: v, mode: "view" })}
       />
 
 
@@ -56,6 +57,7 @@ export default function CatalogPage() {
         onClose={() => setOpenVariantForm(null)}
         productId={openVariantForm?.productId ?? focusedProduct?.id}
         variant={openVariantForm?.variant}
+        mode={openVariantForm?.mode ?? "edit"}
       />
     </div>
   );

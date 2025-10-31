@@ -12,9 +12,10 @@ type Props = {
   onNewProduct: () => void;
   onNewVariant: (product?: ProductListItem | ProductDetail) => void;
   onEditVariant: (product: ProductListItem | ProductDetail, variant: Variant) => void;
+  onViewVariant: (product: ProductListItem | ProductDetail, variant: Variant) => void;
 };
 
-export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEditVariant }: Props) {
+export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEditVariant, onViewVariant }: Props) {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [onlyLow, setOnlyLow] = React.useState(false);
@@ -163,56 +164,11 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
     window.dispatchEvent(new CustomEvent("catalog:variant:deleted", { detail: { productId: p.id } }));
   } catch (e) {
     console.error(e);
-    error("Failed to delete variant.");
+    const msg = e?.message || e?.detail || "Failed to delete variant.";
+    error(msg);
   }
 }
 
-
-
-  // function VariantRow({ v }: { v: Variant }) {
-  //   return (
-  //     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
-  //       {/* Name + SKU stacked on left */}
-  //       <div className="min-w-0">
-  //         <div className="truncate font-medium text-zinc-100" title={v.name}>
-  //           {v.name}
-  //         </div>
-  //         <div className="truncate text-xs text-zinc-400" title={v.sku}>
-  //           {v.sku}
-  //         </div>
-  //       </div>
-
-  //       {/* Price */}
-  //       <div className="justify-self-end text-zinc-200">{currency(v.price)}</div>
-
-  //       {/* On-hand count */}
-  //       <div
-  //         className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${
-  //           v.on_hand === 0
-  //             ? "bg-red-500/15 text-red-300"
-  //             : v.on_hand < 5
-  //             ? "bg-amber-500/15 text-amber-300"
-  //             : "bg-emerald-500/15 text-emerald-300"
-  //         }`}
-  //       >
-  //         {v.on_hand}
-  //       </div>
-
-  //       {/* Status */}
-  //       <div className="justify-self-end">
-  //         <span
-  //           className={`rounded-full px-2 py-0.5 text-xs ${
-  //             (v as any).active
-  //               ? "bg-indigo-500/15 text-indigo-300"
-  //               : "bg-zinc-600/20 text-zinc-300"
-  //           }`}
-  //         >
-  //           {(v as any).active ? "Active" : "Inactive"}
-  //         </span>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   function VariantRow({ v }: { v: Variant }) {
     const pid = (v as any).product || ""; // detail payload includes product id in your VariantPublicSerializer
@@ -268,43 +224,67 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
           >
             ⋯
           </button>
-          {openMenu === v.id && (
-            <div
-              className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
-              role="menu"
-            >
-              <button
-                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                onClick={() => {
-                  setOpenMenu(null);
-                  // we’ll pass product row object from outer render below
-                }}
-                data-action="edit"
+            {openMenu === v.id && (
+              <div
+                className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                role="menu"
               >
-                Edit
-              </button>
-              <button
-                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                onClick={() => {
-                  setOpenMenu(null);
-                  // toggle handled from outer render with product context
-                }}
-                data-action={(v as any).active ? "deactivate" : "activate"}
-              >
-                {(v as any).active ? "Deactivate" : "Activate"}
-              </button>
-              <button
-                className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
-                onClick={() => {
-                  setOpenMenu(null);
-                  // delete handled from outer render with product context
-                }}
-                data-action="delete"
-              >
-                Delete
-              </button>
-            </div>
-          )}
+                {/* View Details */}
+                <button
+                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    // handled by outer onClick delegation
+                  }}
+                  data-action="view"
+                >
+                  View Details
+                </button>
+                <div className="my-1 h-px bg-zinc-800" />
+
+                {/* Edit */}
+                <button
+                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    // handled by outer onClick delegation
+                  }}
+                  data-action="edit"
+                >
+                  Edit
+                </button>
+
+                {/* Activate / Deactivate */}
+                <button
+                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    // handled by outer onClick delegation
+                  }}
+                  data-action={(v as any).active ? "deactivate" : "activate"}
+                >
+                  {(v as any).active ? "Deactivate" : "Activate"}
+                </button>
+
+                {/* Show Delete ONLY when inactive */}
+                {!(v as any).active && (
+                  <>
+                    <div className="my-1 h-px bg-zinc-800" />
+                    <button
+                      className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                      title="Only allowed if not used in sales"
+                      onClick={() => {
+                        setOpenMenu(null);
+                        // handled by outer onClick delegation
+                      }}
+                      data-action="delete"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
         </div>
       </div>
     );
@@ -468,6 +448,9 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
                               if (!action) return;
                               if (action === "edit") {
                                 onEditVariant(d ?? (p as any), v);
+                              } else if (action === "view") {
+                                // open in read-only mode
+                                onViewVariant({ productId: (d ?? p).id, variant: v, mode: "view" });
                               } else if (action === "activate" || action === "deactivate") {
                                 toggleVariantActive(d ?? (p as any), v);
                               } else if (action === "delete") {
