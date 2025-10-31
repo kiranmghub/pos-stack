@@ -122,3 +122,13 @@ export async function deleteVariant(id: ID) {
   return;
 }
 
+export async function deleteProduct(id: ID) {
+  const res = await apiFetch(`/api/catalog/products/${id}/`, { method: "DELETE" });
+  if (!res.ok) {
+    let msg = "Failed to delete product.";
+    try { const d = await res.json(); msg = d?.detail || msg; } catch {}
+    throw new Error(msg);
+  }
+}
+
+

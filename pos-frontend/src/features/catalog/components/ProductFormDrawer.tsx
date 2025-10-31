@@ -6,6 +6,12 @@ import { uploadProductImage } from "../api";
 import { useNotify } from "@/lib/notify";
 
 
+function fmt(dt?: string) {
+  if (!dt) return "";
+  const d = new Date(dt);
+  return isNaN(d as any) ? dt : d.toLocaleString();
+}
+
 
 function Drawer({
   open,
@@ -46,6 +52,7 @@ export function ProductFormDrawer({
   open,
   onClose,
   product,
+  mode: initialMode = "edit",
 }: {
   open: boolean;
   onClose: () => void;
@@ -61,8 +68,14 @@ export function ProductFormDrawer({
     attributes?: Record<string, unknown>;
     tax_category?: ID | null;
   };
+  mode?: "view" | "edit";
 }) {
   const isEdit = !!product?.id;
+  const [mode, setMode] = React.useState<"view" | "edit">(initialMode);
+
+  React.useEffect(() => setMode(initialMode), [initialMode]);
+  const isView = mode === "view";
+
   const { error, success } = useNotify();
   const [errors, setErrors] = React.useState<{ [k: string]: string | undefined }>({});
 
@@ -319,8 +332,20 @@ export function ProductFormDrawer({
 
 
   return (
-    <Drawer open={open} title={isEdit ? "Edit Product" : "New Product"} onClose={handleClose}>
+    <Drawer open={open} title={isView ? "Product Details" : isEdit ? "Edit Product" : "New Product"} onClose={handleClose}>
       <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+        {isView && (
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              className="rounded-lg px-3 py-1 text-sm text-indigo-300 hover:bg-indigo-600/10"
+              onClick={() => setMode("edit")}
+            >
+              Edit
+            </button>
+          </div>
+        )}
+
         {errors._non_field && (
           <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200 mb-2">
             {errors._non_field}
@@ -335,6 +360,7 @@ export function ProductFormDrawer({
           <div
             className="relative h-56 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700/50 transition-colors"
             onClick={() => {
+              if (isView) return;
               if (!previewUrl) fileInputRef.current?.click();
             }}
           >
@@ -351,6 +377,7 @@ export function ProductFormDrawer({
             )}
 
             {previewUrl && (
+              !isView && (
               <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
                 <button
                   type="button"
@@ -375,6 +402,7 @@ export function ProductFormDrawer({
                   Delete
                 </button>
               </div>
+              )
             )}
           </div>
 
@@ -390,6 +418,7 @@ export function ProductFormDrawer({
               setHideExisting(false);
               if (fileInputRef.current) fileInputRef.current.value = ""; // mirror Variant behavior
             }}
+            disabled={isView}
           />
         </section>
 
@@ -406,6 +435,7 @@ export function ProductFormDrawer({
                 setForm((s) => ({ ...s, name: e.target.value }));
                 setErrors((e2) => ({ ...e2, name: undefined, _non_field: undefined }));
               }}
+              disabled={isView}
             />
             {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
           </div>
@@ -421,6 +451,7 @@ export function ProductFormDrawer({
                 setForm((s) => ({ ...s, code: e.target.value }));
                 setErrors((e2) => ({ ...e2, code: undefined, _non_field: undefined }));
               }}
+              disabled={isView}
             />
             {errors.code && <div className="mt-1 text-xs text-red-400">{errors.code}</div>}
           </div>
@@ -432,6 +463,7 @@ export function ProductFormDrawer({
               value={form.category}
               onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
               placeholder="e.g., Electronics"
+              disabled={isView}
             />
           </div>
 
@@ -442,6 +474,7 @@ export function ProductFormDrawer({
               className="h-4 w-4"
               checked={!!form.active}
               onChange={(e) => setForm((s) => ({ ...s, active: e.target.checked }))}
+              disabled={isView}
             />
             <label htmlFor="active" className="text-sm">
               Active
@@ -458,6 +491,7 @@ export function ProductFormDrawer({
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
                 value={String(form.tax_category || "")}
                 onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value || "" }))}
+                disabled={isView}
               >
                 <option value="">— None —</option>
                 {taxes.map((t) => (
@@ -473,6 +507,7 @@ export function ProductFormDrawer({
                   placeholder="Tax Category ID (optional)"
                   value={String(form.tax_category || "")}
                   onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
+                  disabled={isView}
                 />
                 {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
               </div>
@@ -489,6 +524,7 @@ export function ProductFormDrawer({
               rows={4}
               value={form.description || ""}
               onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+              disabled={isView}
             />
           </div>
 
@@ -500,26 +536,44 @@ export function ProductFormDrawer({
               placeholder='e.g. {"brand":"Acme","color":"black"}'
               value={form.attributes || ""}
               onChange={(e) => setForm((s) => ({ ...s, attributes: e.target.value }))}
+              disabled={isView}
             />
           </div>
         </section>
 
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            className="rounded-xl border border-zinc-700 px-4 py-2 text-sm hover:bg-white/5"
-            onClick={handleClose}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-            disabled={busy}
-          >
-            {isEdit ? "Save Changes" : "Create Product"}
-          </button>
-        </div>
+        {isView && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 text-sm">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="text-zinc-400">
+                <div className="text-xs uppercase tracking-wide">Created</div>
+                <div className="text-zinc-200">{fmt((product as any)?.created_at)}</div>
+              </div>
+              <div className="text-zinc-400">
+                <div className="text-xs uppercase tracking-wide">Updated</div>
+                <div className="text-zinc-200">{fmt((product as any)?.updated_at)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isView && (
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm hover:bg-white/5"
+              onClick={handleClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+              disabled={busy}
+            >
+              {isEdit ? "Save Changes" : "Create Product"}
+            </button>
+          </div>
+        )}
       </form>
     </Drawer>
   );

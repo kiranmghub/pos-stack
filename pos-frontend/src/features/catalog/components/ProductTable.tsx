@@ -1,6 +1,6 @@
 // pos-frontend/src/features/catalog/components/ProductTable.tsx
 import React from "react";
-import { listProducts, getProduct, updateVariant, deleteVariant} from "../api";
+import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct } from "../api";
 import type { ProductListItem, ProductDetail, Variant } from "../types";
 import { useNotify } from "@/lib/notify";
 
@@ -13,9 +13,10 @@ type Props = {
   onNewVariant: (product?: ProductListItem | ProductDetail) => void;
   onEditVariant: (product: ProductListItem | ProductDetail, variant: Variant) => void;
   onViewVariant: (product: ProductListItem | ProductDetail, variant: Variant) => void;
+  onViewProduct: (p: ProductListItem | ProductDetail) => void;
 };
 
-export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEditVariant, onViewVariant }: Props) {
+export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEditVariant, onViewVariant, onViewProduct }: Props) {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState("");
   const [onlyLow, setOnlyLow] = React.useState(false);
@@ -29,6 +30,8 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
   const { success, error } = useNotify();
   const [openMenu, setOpenMenu] = React.useState<null | number>(null); // variantId whose menu is open
+  const [openProdMenu, setOpenProdMenu] = React.useState<null | number>(null); // productId whose menu is open
+
 
   React.useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
@@ -401,16 +404,54 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
                       >
                         {p.active ? "Active" : "Inactive"}
                       </span>
-                      {/* explicit edit button to open drawer */}
-                      <button
-                        className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5"
-                        onClick={() => onEditProduct(d ?? (p as any))}
-                      >
-                        Edit
-                      </button>
+                      <button className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5" onClick={() => onEditProduct(d ?? (p as any))}>Edit</button>
+                      <div className="relative">
+                        <button
+                          className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5"
+                          onClick={() => setOpenProdMenu((m) => (m === p.id ? null : p.id))}
+                          aria-haspopup="menu"
+                          aria-expanded={openProdMenu === p.id}
+                        >
+                          ⋯
+                        </button>
+                        {openProdMenu === p.id && (
+                          <div className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl" role="menu">
+                            <button
+                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              onClick={() => { setOpenProdMenu(null); onViewProduct(d ?? (p as any)); }}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              onClick={() => { setOpenProdMenu(null); onEditProduct(d ?? (p as any)); }}
+                            >
+                              Edit
+                            </button>
+                            <div className="my-1 h-px bg-zinc-800" />
+                            <button
+                              className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                              title="Only allowed if not used in sales"
+                              onClick={async () => {
+                                setOpenProdMenu(null);
+                                try {
+                                  await deleteProduct(p.id);
+                                  success("Product deleted");
+                                  // Refresh master list
+                                  load();
+                                } catch (e: any) {
+                                  const msg = e?.message || e?.detail || "Failed to delete product.";
+                                  error(msg);
+                                }
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-
 
                   {/* expanded area */}
                   {isOpen && (

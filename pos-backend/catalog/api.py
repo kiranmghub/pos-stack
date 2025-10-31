@@ -516,6 +516,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "image_file",
             "image_url",
             "attributes",
+            "created_at",
+            "updated_at",
             # aggregates
             "price_min",
             "price_max",
@@ -1032,6 +1034,16 @@ class ProductViewSet(viewsets.ModelViewSet):
             "on_hand_sum": obj.on_hand_sum,
             "variant_count": obj.variant_count,
         })
+    
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            msg = ("This product cannot be deleted because it or its variants are "
+                   "referenced by existing sales/inventory records. Try deactivating it instead.")
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 

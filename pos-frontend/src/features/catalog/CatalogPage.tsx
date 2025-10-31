@@ -9,6 +9,7 @@ export default function CatalogPage() {
   const [openProductForm, setOpenProductForm] = React.useState(false);
   const [openVariantForm, setOpenVariantForm] = React.useState<null | { productId?: ID, variant?: any, mode?: "view" | "edit" }>(null);
   const [focusedProduct, setFocusedProduct] = React.useState<(ProductListItem | ProductDetail) | null>(null);
+  const [productMode, setProductMode] = React.useState<"view" | "edit">("edit");
 
 
   return (
@@ -23,21 +24,25 @@ export default function CatalogPage() {
       <ProductTable
         onEditProduct={(p) => {
           setFocusedProduct(p);
+          setProductMode("edit");
           setOpenProductForm(true);
         }}
         onNewProduct={() => {
-          setFocusedProduct(null);        // <-- clear any previously edited product
+          setFocusedProduct(null);
+          setProductMode("edit");
           setOpenProductForm(true);
         }}
         onNewVariant={(p) => setOpenVariantForm({ productId: p?.id })}
         onEditVariant={(p, v) => setOpenVariantForm({ productId: p.id, variant: v })}
         onViewVariant={(p, v) => setOpenVariantForm({ productId: p.id, variant: v, mode: "view" })}
+        onViewProduct={(p) => { setFocusedProduct(p); setOpenProductForm(true); setProductMode("view"); }}
       />
 
 
       <ProductFormDrawer
         open={openProductForm}
         onClose={() => { setOpenProductForm(false); setFocusedProduct(null); }}
+        mode={productMode}
         product={
           focusedProduct
             ? {
