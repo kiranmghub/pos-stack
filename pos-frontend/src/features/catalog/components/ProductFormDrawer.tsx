@@ -19,12 +19,14 @@ function Drawer({
   onClose,
   children,
   width = 560,
+  headerRight,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   width?: number;
+  headerRight?: React.ReactNode;
 }) {
   if (!open) return null;
   return (
@@ -36,9 +38,12 @@ function Drawer({
       >
         <div className="flex items-center justify-between border-b border-zinc-800 p-4">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={onClose}>
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            {headerRight}
+            <button className="rounded-lg px-3 py-1 text-sm hover:bg-white/5" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
         <div className="h-[calc(100%-56px)] overflow-y-auto p-4">{children}</div>
       </div>
@@ -74,6 +79,13 @@ export function ProductFormDrawer({
   const [mode, setMode] = React.useState<"view" | "edit">(initialMode);
 
   React.useEffect(() => setMode(initialMode), [initialMode]);
+  // Force reset mode each time the drawer is opened with a new product or reopened
+  React.useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+    }
+  }, [open, initialMode, product?.id]);
+
   const isView = mode === "view";
 
   const { error, success } = useNotify();
@@ -146,6 +158,7 @@ export function ProductFormDrawer({
   }, [open, product?.id]);
 
   // 🔑 Fetch product detail on Edit so preview + fields show server values (absolute URLs)
+  const [meta, setMeta] = React.useState<{ created_at?: string; updated_at?: string }>({});
   React.useEffect(() => {
     if (!open || !product?.id) return;
     (async () => {
@@ -164,6 +177,7 @@ export function ProductFormDrawer({
         }));
         setNewImage(null);
         setHideExisting(false);
+        setMeta({ created_at: detail.created_at, updated_at: detail.updated_at });
       } catch (err) {
         console.error("Failed to load product detail", err);
       }
@@ -332,10 +346,12 @@ export function ProductFormDrawer({
 
 
   return (
-    <Drawer open={open} title={isView ? "Product Details" : isEdit ? "Edit Product" : "New Product"} onClose={handleClose}>
-      <form className="space-y-6" onSubmit={handleSubmit} noValidate>
-        {isView && (
-          <div className="mb-2 flex justify-end">
+    <Drawer
+        open={open}
+        title={isView ? "Product Details" : isEdit ? "Edit Product" : "New Product"}
+        onClose={handleClose}
+        headerRight={
+          isView ? (
             <button
               type="button"
               className="rounded-lg px-3 py-1 text-sm text-indigo-300 hover:bg-indigo-600/10"
@@ -343,8 +359,11 @@ export function ProductFormDrawer({
             >
               Edit
             </button>
-          </div>
-        )}
+          ) : null
+        }
+      >
+      <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+
 
         {errors._non_field && (
           <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200 mb-2">
@@ -546,11 +565,11 @@ export function ProductFormDrawer({
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <div className="text-zinc-400">
                 <div className="text-xs uppercase tracking-wide">Created</div>
-                <div className="text-zinc-200">{fmt((product as any)?.created_at)}</div>
+                <div className="text-zinc-200">{fmt(meta.created_at)}</div>
               </div>
               <div className="text-zinc-400">
                 <div className="text-xs uppercase tracking-wide">Updated</div>
-                <div className="text-zinc-200">{fmt((product as any)?.updated_at)}</div>
+                <div className="text-zinc-200">{fmt(meta.updated_at)}</div>
               </div>
             </div>
           </div>

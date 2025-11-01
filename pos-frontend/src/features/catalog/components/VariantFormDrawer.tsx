@@ -282,15 +282,18 @@ React.useEffect(() => {
         ...form,
         image_file: newImage || null,
       };
-      let saved: any;
+      let savedId: ID;
       if (isEdit) {
-        saved = await updateVariant(variant!.id, payload);
+        await updateVariant(variant!.id, payload);
+        // PATCH returns {ok: true}, so reuse the existing id for upload:
+        savedId = variant!.id as ID;
       } else {
-        saved = await createVariant(payload);
+        const saved = await createVariant(payload);   // returns full VariantPublicSerializer
+        savedId = (saved as any).id as ID;           // use server id on create
       }
-      // If user picked a file, upload via the image endpoint
+
       if (newImage) {
-        const r = await uploadVariantImage(saved.id, newImage);
+        const r = await uploadVariantImage(savedId, newImage);
         // update local preview immediately
         setForm((s) => ({ ...s, image_url: r?.image_url || s.image_url }));
         setNewImage(null);

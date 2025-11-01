@@ -1,6 +1,6 @@
 // pos-frontend/src/features/catalog/components/ProductTable.tsx
 import React from "react";
-import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct } from "../api";
+import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, updateProduct } from "../api";
 import type { ProductListItem, ProductDetail, Variant } from "../types";
 import { useNotify } from "@/lib/notify";
 
@@ -31,6 +31,10 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const { success, error } = useNotify();
   const [openMenu, setOpenMenu] = React.useState<null | number>(null); // variantId whose menu is open
   const [openProdMenu, setOpenProdMenu] = React.useState<null | number>(null); // productId whose menu is open
+  const [menuDirection, setMenuDirection] = React.useState<"up" | "down">("down");
+  const tableRef = React.useRef<HTMLDivElement>(null);
+
+
 
 
   React.useEffect(() => {
@@ -38,6 +42,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
       const target = e.target as HTMLElement;
       if (!target.closest("[aria-haspopup='menu']") && !target.closest("[role='menu']")) {
         setOpenMenu(null);
+        setOpenProdMenu(null); // also close product menus
       }
     }
     window.addEventListener("click", handleOutsideClick);
@@ -172,6 +177,19 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
   }
 }
 
+async function toggleProductActive(p: ProductListItem | ProductDetail) {
+  try {
+    await updateProduct(p.id, { active: !(p as any).active });
+    success((p as any).active ? "Product deactivated" : "Product activated");
+    // let listeners reload list & badges
+    window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: p.id } }));
+  } catch (e) {
+    console.error(e);
+    error("Failed to update product status.");
+  }
+}
+
+
 
   function VariantRow({ v }: { v: Variant }) {
     const pid = (v as any).product || ""; // detail payload includes product id in your VariantPublicSerializer
@@ -179,7 +197,22 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
     // locate the product detail using pid
     // In this scope we can close over p via the render below; so we won't use pid here.
     return (
-      <div className="relative grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
+      <div className="relative grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
+
+        {/* Image */}
+        <div className="w-10">
+          <div className="h-10 w-10 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800">
+            {(v as any).image_url ? (
+              <img
+                src={(v as any).image_url}
+                className="h-full w-full object-cover"
+                alt={v.name || "Variant"}
+              />
+            ) : null}
+          </div>
+        </div>
+
+
         {/* Name + SKU stacked on left */}
         <div className="min-w-0">
           <div className="truncate font-medium text-zinc-100" title={v.name}>
@@ -229,57 +262,45 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
           </button>
             {openMenu === v.id && (
               <div
-                className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+                className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
                 role="menu"
               >
                 {/* View Details */}
                 <button
                   className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    // handled by outer onClick delegation
-                  }}
+                  onClick={() => { setOpenMenu(null); }}
                   data-action="view"
                 >
                   View Details
                 </button>
+
                 <div className="my-1 h-px bg-zinc-800" />
 
                 {/* Edit */}
                 <button
-                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    // handled by outer onClick delegation
-                  }}
+                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200"
+                  onClick={() => { setOpenMenu(null); }}
                   data-action="edit"
                 >
                   Edit
                 </button>
 
-                {/* Activate / Deactivate */}
+                {/* Activate / Deactivate (variant) */}
                 <button
                   className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                  onClick={() => {
-                    setOpenMenu(null);
-                    // handled by outer onClick delegation
-                  }}
+                  onClick={() => { setOpenMenu(null); }}
                   data-action={(v as any).active ? "deactivate" : "activate"}
                 >
                   {(v as any).active ? "Deactivate" : "Activate"}
                 </button>
 
-                {/* Show Delete ONLY when inactive */}
+                {/* Show Delete ONLY when inactive (variant) */}
                 {!(v as any).active && (
                   <>
                     <div className="my-1 h-px bg-zinc-800" />
                     <button
                       className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
-                      title="Only allowed if not used in sales"
-                      onClick={() => {
-                        setOpenMenu(null);
-                        // handled by outer onClick delegation
-                      }}
+                      onClick={() => { setOpenMenu(null); }}
                       data-action="delete"
                     >
                       Delete
@@ -288,6 +309,7 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
                 )}
               </div>
             )}
+
         </div>
       </div>
     );
@@ -335,7 +357,8 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-zinc-800">
+      {/* <div ref={tableRef} className="overflow-hidden rounded-2xl border border-zinc-800 relative"> */}
+      <div ref={tableRef} className="relative overflow-visible rounded-2xl border border-zinc-800">
         <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 bg-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
           <div className="w-12">Image</div>
           <div>Product</div>
@@ -404,49 +427,78 @@ async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant)
                       >
                         {p.active ? "Active" : "Inactive"}
                       </span>
-                      <button className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-white/5" onClick={() => onEditProduct(d ?? (p as any))}>Edit</button>
                       <div className="relative">
                         <button
                           className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5"
-                          onClick={() => setOpenProdMenu((m) => (m === p.id ? null : p.id))}
+                          onClick={(e) => {
+                            const buttonRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const containerRect = tableRef.current?.getBoundingClientRect();
+                            const spaceBelow = containerRect
+                              ? containerRect.bottom - buttonRect.bottom
+                              : window.innerHeight - buttonRect.bottom;
+                            const estimatedMenuHeight = 150; // approx menu height
+                            setMenuDirection(spaceBelow < estimatedMenuHeight ? "up" : "down");
+                            setOpenProdMenu((m) => (m === p.id ? null : p.id));
+                          }}
                           aria-haspopup="menu"
                           aria-expanded={openProdMenu === p.id}
                         >
                           ⋯
                         </button>
                         {openProdMenu === p.id && (
-                          <div className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl" role="menu">
+                          <div
+                            className={`absolute right-0 z-30 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl ${
+                              menuDirection === "up" ? "-translate-y-2 bottom-full" : "translate-y-2 top-full"
+                            }`}
+                            role="menu"
+                          >
+                            {/* View Details */}
                             <button
                               className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
                               onClick={() => { setOpenProdMenu(null); onViewProduct(d ?? (p as any)); }}
                             >
                               View Details
                             </button>
+
+                            {/* Edit */}
                             <button
                               className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
                               onClick={() => { setOpenProdMenu(null); onEditProduct(d ?? (p as any)); }}
                             >
                               Edit
                             </button>
-                            <div className="my-1 h-px bg-zinc-800" />
+
+                            {/* Activate / Deactivate (product) */}
                             <button
-                              className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
-                              title="Only allowed if not used in sales"
-                              onClick={async () => {
-                                setOpenProdMenu(null);
-                                try {
-                                  await deleteProduct(p.id);
-                                  success("Product deleted");
-                                  // Refresh master list
-                                  load();
-                                } catch (e: any) {
-                                  const msg = e?.message || e?.detail || "Failed to delete product.";
-                                  error(msg);
-                                }
-                              }}
+                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              onClick={() => { setOpenProdMenu(null); toggleProductActive(d ?? (p as any)); }}
                             >
-                              Delete
+                              {(p as any).active ? "Deactivate" : "Activate"}
                             </button>
+
+                            {/* Show Delete ONLY when inactive (product) */}
+                            {!(p as any).active && (
+                              <>
+                                <div className="my-1 h-px bg-zinc-800" />
+                                <button
+                                  className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                                  title="Only allowed if not used in sales"
+                                  onClick={async () => {
+                                    setOpenProdMenu(null);
+                                    try {
+                                      await deleteProduct(p.id);
+                                      success("Product deleted");
+                                      await load(); // refresh list
+                                    } catch (e: any) {
+                                      const msg = e?.message || e?.detail || "Failed to delete product.";
+                                      error(msg);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

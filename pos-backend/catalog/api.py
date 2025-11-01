@@ -129,6 +129,30 @@ class ProductListSerializer(serializers.ModelSerializer):
     variant_count = serializers.IntegerField(read_only=True)
     cover_image = serializers.SerializerMethodField()
 
+
+    def get_cover_image(self, obj):
+        """
+        Prefer product.image_file; else product.image_url; else None.
+        Return an absolute URL when request is available.
+        """
+        request = self.context.get("request")
+
+        # 1) image_file first
+        try:
+            if obj.image_file and obj.image_file.url:
+                url = obj.image_file.url
+                return request.build_absolute_uri(url) if request else url
+        except Exception:
+            pass
+
+        # 2) image_url second (may already be absolute)
+        if (obj.image_url or "").strip():
+            url = obj.image_url
+            return request.build_absolute_uri(url) if (request and url.startswith("/")) else url
+
+        # 3) nothing
+        return None
+    
     class Meta:
         model = Product
         fields = [
@@ -136,24 +160,6 @@ class ProductListSerializer(serializers.ModelSerializer):
             "price_min", "price_max", "on_hand_sum", "variant_count",
             "cover_image",
         ]
-
-    def get_cover_image(self, obj):
-        # Prefer product file/url; else first variant image
-        try:
-            if obj.image_file and obj.image_file.url:
-                return obj.image_file.url
-        except Exception:
-            pass
-        if (obj.image_url or "").strip():
-            return obj.image_url
-        v = obj.variants.exclude(image_file__isnull=True).exclude(image_file="").order_by("id").first()
-        if v and v.image_file:
-            try:
-                return v.image_file.url
-            except Exception:
-                pass
-        v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-        return v.image_url if v else None
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
@@ -385,9 +391,16 @@ class VariantMiniSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         request = self.context.get("request")
-        url = getattr(obj, "effective_image_url", None) or getattr(obj, "image_url", "") or ""
-        # make absolute if needed
+        # 1) image_file first
+        try:
+            if obj.image_file and obj.image_file.url:
+                return _abs(request, obj.image_file.url)
+        except Exception:
+            pass
+        # 2) image_url second
+        url = (obj.image_url or "").strip()
         return _abs(request, url)
+
 
 
 class VariantPublicSerializer(serializers.ModelSerializer):
@@ -419,11 +432,14 @@ class VariantPublicSerializer(serializers.ModelSerializer):
         return int(total)
 
     def get_image_url(self, obj):
-        # Variant.effective_image_url falls back to product image if needed
+        request = self.context.get("request")
         try:
-            return obj.effective_image_url
+            if obj.image_file and obj.image_file.url:
+                return _abs(request, obj.image_file.url)
         except Exception:
-            return ""
+            pass
+        return _abs(request, (obj.image_url or "").strip())
+
         
 # class ProductDetailSerializer(serializers.ModelSerializer):
 #     variants = VariantMiniSerializer(many=True, read_only=True)
