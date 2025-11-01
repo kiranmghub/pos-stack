@@ -40,6 +40,35 @@ from decimal import Decimal
 from django.db.models import DecimalField
 from django.db.models import ProtectedError
 
+import random
+import re
+from django.db import transaction
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+
+
+# helper: base36
+def _b36(n: int) -> str:
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    s = ""
+    if n == 0: return "0"
+    while n:
+        n, r = divmod(n, 36)
+        s = chars[r] + s
+    return s
+
+def _slug_code(s: str, max_len: int) -> str:
+    s = (s or "").upper()
+    s = re.sub(r"[^A-Z0-9]+", "-", s).strip("-")
+    return s[:max_len] if len(s) > max_len else s
+
+def _rand_suffix(n: int = 3) -> str:
+    return _b36(random.getrandbits(20))[:n]
+
+MAX_CODE_LEN = 12
+
+
 
 
 # Build absolute URL when we only have a relative path (/media/...)
@@ -67,38 +96,6 @@ def _resolve_request_tenant(request):
 
 
 # ----------------- Serializers -----------------
-
-# class ProductListSerializer(serializers.ModelSerializer):
-#     variants_count = serializers.IntegerField(read_only=True)
-#     # allow_null=True so we can return None when the field doesn't exist on the model
-#     default_tax_rate = serializers.DecimalField(
-#         max_digits=6, decimal_places=4, required=False, read_only=True, allow_null=True
-#     )
-#     representative_image_url = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Product
-#         fields = ("id", "name", "is_active", "category", "variants_count", "default_tax_rate", "created_at", "image_url", "representative_image_url",)
-
-#     def get_representative_image_url(self, obj):
-#         request = self.context.get("request")
-#         if hasattr(obj, "representative_image_url"):
-#             return _abs(request, obj.representative_image_url() or "")
-#         if getattr(obj, "image_url", ""):
-#             return _abs(request, obj.image_url)
-#         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-#         return _abs(request, getattr(v, "image_url", "") if v else "")
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         # File first, then URL
-#         try:
-#             if obj.image_file and obj.image_file.url:
-#                 return _abs(request, obj.image_file.url)
-#         except Exception:
-#             pass
-#         return _abs(request, obj.image_url or "")
 
 
 # Accepts either a JSON object/dict OR a JSON string; blank -> {}
@@ -179,8 +176,8 @@ class ProductWriteSerializer(serializers.ModelSerializer):
        name = (attrs.get("name") or getattr(self.instance, "name", "") or "").strip()
        code = (attrs.get("code") or getattr(self.instance, "code", "") or "").strip()
 
-       if not code:
-           raise serializers.ValidationError({"code": "Code is required."})
+    #    if not code:
+    #        raise serializers.ValidationError({"code": "Code is required."})
 
        # CI-unique product code within tenant
        if tenant and code:
@@ -208,7 +205,21 @@ class ProductWriteSerializer(serializers.ModelSerializer):
         tenant = self.context.get("tenant")
         if not tenant:
             raise serializers.ValidationError({"detail": "Tenant required"})
-        return Product.objects.create(tenant=tenant, **validated_data)
+        
+        # Server-side default code on create (Hybrid: slug + short suffix)
+        code = (validated_data.get("code") or "").strip().upper()
+        if not code:
+            # leave room for "-XXX"
+            base_len = max(1, MAX_CODE_LEN - 4)
+            base = _slug_code(validated_data.get("name") or "PROD", base_len) or "PROD"
+            for _ in range(25):
+                candidate = f"{base}-{_rand_suffix(3)}"
+                if not Product.objects.filter(tenant=tenant, code__iexact=candidate).exists():
+                    validated_data["code"] = candidate
+                    break
+            else:
+                raise serializers.ValidationError({"code": "Could not allocate unique product code."})
+            return Product.objects.create(tenant=tenant, **validated_data)
 
     def update(self, instance, validated_data):
         # simple mass-assign
@@ -301,43 +312,47 @@ class VariantWriteSerializer(serializers.ModelSerializer):
 
         return attrs
 
-
-
-
-
     def create(self, validated_data):
         tenant = self.context.get("tenant")
         if not tenant:
             raise serializers.ValidationError({"detail": "Tenant required"})
+        # return Variant.objects.create(tenant=tenant, **validated_data)
+        product = validated_data.get("product")
+        if not product:
+            raise serializers.ValidationError({"product": "Product is required."})
+
+            # --- SKU: Hybrid (product slug + short suffix) ---
+        sku = (validated_data.get("sku") or "").strip().upper()
+        if not sku:
+            # source for base: product.code else product.name
+            prod_slug = _slug_code((product.code or product.name or "VAR"), MAX_CODE_LEN)
+            base_len = max(1, MAX_CODE_LEN - 4)
+            left = (prod_slug[:base_len] or "VAR")
+            # optional: 1-char hint from variant name if present
+            v_hint = _slug_code(validated_data.get("name") or "", 2)[:1]
+            left = (left[:max(1, base_len - len(v_hint))] + v_hint)[:base_len]
+            for _ in range(25):
+                candidate = f"{left}-{_rand_suffix(3)}"
+                if not Variant.objects.filter(product__tenant=tenant, sku__iexact=candidate).exists():
+                    validated_data["sku"] = candidate
+                    break
+            else:
+                raise serializers.ValidationError({"sku": "Could not allocate unique SKU."})
+
+        # --- Barcode: tenant-config toggle; only if missing ---
+        barcode = (validated_data.get("barcode") or "").strip()
+        if not barcode:
+            btype = _tenant_barcode_type(tenant)
+            for _ in range(50):
+                candidate = _gen_ean13(tenant) if btype == "EAN13" else _gen_code128(tenant)
+                if not Variant.objects.filter(product__tenant=tenant, barcode__iexact=candidate).exists():
+                    validated_data["barcode"] = candidate
+                    break
+            else:
+                raise serializers.ValidationError({"barcode": "Could not allocate unique barcode."})
+
         return Variant.objects.create(tenant=tenant, **validated_data)
 
-
-# class VariantMiniSerializer(serializers.ModelSerializer):
-#     tax_rate = serializers.SerializerMethodField()
-#     on_hand = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Variant
-#         fields = ("id", "sku", "barcode", "price", "is_active", "tax_category", "tax_rate", "on_hand", "image_url")
-
-#     def get_tax_rate(self, obj):
-#         return str(getattr(obj.tax_category, "rate", 0) or 0)
-
-#     def get_on_hand(self, obj):
-#         ctx = self.context or {}
-#         store_id = ctx.get("store_id")
-#         tenant = ctx.get("tenant")
-#         qs = InventoryItem.objects.filter(variant=obj, tenant=tenant)
-#         if store_id:
-#             qs = qs.filter(store_id=store_id)
-#         total = qs.aggregate(n=Coalesce(Sum("on_hand"), Value(0)))["n"]
-#         return int(total or 0)
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         url = getattr(obj, "effective_image_url", None) or getattr(obj, "image_url", "") or ""
-#         return _abs(request, url)
 
 class VariantMiniSerializer(serializers.ModelSerializer):
     # alias to match the frontend prop name
@@ -440,63 +455,6 @@ class VariantPublicSerializer(serializers.ModelSerializer):
             pass
         return _abs(request, (obj.image_url or "").strip())
 
-        
-# class ProductDetailSerializer(serializers.ModelSerializer):
-#     variants = VariantMiniSerializer(many=True, read_only=True)
-#     representative_image_url = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Product
-#         fields = ("id", "name", "is_active", "category", "description", "image_url", "representative_image_url", "variants",)
-
-#     def get_representative_image_url(self, obj):
-#         request = self.context.get("request")
-#         if hasattr(obj, "representative_image_url"):
-#             return _abs(request, obj.representative_image_url() or "")
-#         if getattr(obj, "image_url", ""):
-#             return _abs(request, obj.image_url)
-#         v = obj.variants.exclude(image_url__isnull=True).exclude(image_url="").order_by("id").first()
-#         return _abs(request, getattr(v, "image_url", "") if v else "")
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         try:
-#             if obj.image_file and obj.image_file.url:
-#                 return _abs(request, obj.image_file.url)
-#         except Exception:
-#             pass
-#         return _abs(request, obj.image_url or "")
-
-# class ProductDetailSerializer(serializers.ModelSerializer):
-#     active = serializers.BooleanField(source="is_active", read_only=True)
-#     tax_category = serializers.PrimaryKeyRelatedField(read_only=True)
-#     image_file = serializers.SerializerMethodField()
-#     image_url = serializers.SerializerMethodField()
-#     attributes = serializers.JSONField(read_only=True)
-
-#     class Meta:
-#         model = Product
-#         fields = (
-#             "id", "name", "code", "category", "active", "description",
-#             "tax_category", "image_file", "image_url", "attributes", "variants"
-#         )
-
-#     def get_image_file(self, obj):
-#         request = self.context.get("request")
-#         try:
-#             if obj.image_file and obj.image_file.url:
-#                 return request.build_absolute_uri(obj.image_file.url)
-#         except Exception:
-#             return ""
-#         return ""
-
-#     def get_image_url(self, obj):
-#         request = self.context.get("request")
-#         url = getattr(obj, "image_url", "") or ""
-#         if url and not url.startswith("http"):
-#             return request.build_absolute_uri(url)
-#         return url
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
@@ -887,64 +845,6 @@ class VariantImageUploadView(APIView):
     
 
 
-
-# class ProductViewSet(viewsets.ModelViewSet):
-#     """
-#     Endpoints:
-#       - list: GET /catalog/products?search=&category=&active=
-#       - retrieve: GET /catalog/products/:id
-#       - create/update/partial_update
-#       - /:id/variants (list/create via VariantViewSet or custom route if preferred)
-#     """
-#     queryset = Product.objects.all().select_related().prefetch_related("variants")
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ["name", "code", "category", "variants__name", "variants__sku"]
-
-#     def get_queryset(self):
-#         qs = super().get_queryset()
-
-#         # Annotate aggregates from Variant
-#         # Adjust field names if your Variant model differs.
-#         qs = qs.annotate(
-#             price_min=Coalesce(Min("variants__price"), 0),
-#             price_max=Coalesce(Max("variants__price"), 0),
-#             on_hand_sum=Coalesce(Sum("variants__on_hand"), 0),
-#             variant_count=Coalesce(Count("variants", distinct=True), 0),
-#         )
-
-#         # For cover image fallback, pull first variant per product (optional)
-#         first_variant_sq = Variant.objects.filter(product=OuterRef("pk")).order_by("id").values("pk")[:1]
-#         qs = qs.annotate(first_variant=Subquery(first_variant_sq))
-
-#         # Filters
-#         category = self.request.query_params.get("category")
-#         if category:
-#             qs = qs.filter(category=category)
-
-#         active = self.request.query_params.get("active")
-#         if active in ("true", "false"):
-#             qs = qs.filter(active=(active == "true"))
-
-#         return qs
-
-#     def get_serializer_class(self):
-#         if self.action == "list":
-#             return ProductListSerializer
-#         return ProductDetailSerializer
-
-#     @action(detail=True, methods=["get"])
-#     def summary(self, request, pk=None):
-#         """Small summary payload if the table wants to lazy-load aggregates."""
-#         obj = self.get_queryset().get(pk=pk)
-#         data = {
-#             "id": obj.pk,
-#             "price_min": obj.price_min,
-#             "price_max": obj.price_max,
-#             "on_hand_sum": obj.on_hand_sum,
-#             "variant_count": obj.variant_count,
-#         }
-#         return Response(data)
-
 class ProductViewSet(viewsets.ModelViewSet):
     """
     GET /api/catalog/products/?search=&category=&active=
@@ -1061,33 +961,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-
-# class VariantViewSet(
-#     mixins.CreateModelMixin,
-#     mixins.UpdateModelMixin,
-#     mixins.RetrieveModelMixin,
-#     mixins.ListModelMixin,
-#     viewsets.GenericViewSet,
-# ):
-#     """
-#     Endpoints:
-#       - list: GET /catalog/variants?product=<id>&search=
-#       - retrieve: GET /catalog/variants/:id
-#       - create: POST /catalog/variants
-#       - update/partial_update
-#     """
-#     serializer_class = VariantSerializer
-#     filter_backends = [filters.SearchFilter]
-#     search_fields = ["name", "sku", "barcode"]
-
-#     def get_queryset(self):
-#         qs = Variant.objects.select_related("product")
-#         product_id = self.request.query_params.get("product")
-#         if product_id:
-#             qs = qs.filter(product_id=product_id)
-#         return qs
-
 class VariantViewSet(
     mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
@@ -1145,5 +1018,104 @@ class VariantViewSet(
 
 
     
+class CodeGenerateView(APIView):
+    """
+    POST /api/catalog/codes
+    Body:
+      { "scope": "product", "name": "Product Name" }
+      { "scope": "variant", "product_id": 123, "name": "Variant Name" }
+    Returns:
+      { "code": "ABC-123" }  # product code or variant sku
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tenant = _resolve_request_tenant(request)
+        scope = (request.data or {}).get("scope", "")
+        name = (request.data or {}).get("name", "")
+        product_id = (request.data or {}).get("product_id")
+
+        if scope not in ("product", "variant"):
+            return Response({"detail": "scope must be 'product' or 'variant'."}, status=400)
+
+        if scope == "product":
+            base = _slug_code(name, MAX_CODE_LEN)
+            # ensure room for '-XXX'
+            base_len = max(1, MAX_CODE_LEN - 4)
+            base = _slug_code(name, base_len) or "PROD"
+            # loop until unique
+            for _ in range(25):
+                code = f"{base}-{_rand_suffix(3)}"
+                if not Product.objects.filter(tenant=tenant, code__iexact=code).exists():
+                    return Response({"code": code})
+            return Response({"detail": "Could not generate unique product code"}, status=409)
+
+        else:  # variant
+            if not product_id:
+                return Response({"detail": "product_id is required for variant codes."}, status=400)
+            product = get_object_or_404(Product, pk=product_id, tenant=tenant)
+            # prefer product.code slug, else product.name slug
+            prod_slug = _slug_code(product.code or product.name or "VAR", MAX_CODE_LEN)
+            # reserve room for '-XXX'
+            base_len = max(1, MAX_CODE_LEN - 4)
+            left = (prod_slug[:base_len] or "VAR")
+            # if name provided add a single char from variant name head (optional)
+            v_hint = _slug_code(name, 2)[:1] if name else ""
+            left = (left[:max(1, base_len - len(v_hint))] + v_hint)[:base_len]
+            for _ in range(25):
+                sku = f"{left}-{_rand_suffix(3)}"
+                if not Variant.objects.filter(product__tenant=tenant, sku__iexact=sku).exists():
+                    return Response({"code": sku})
+            return Response({"detail": "Could not generate unique variant SKU"}, status=409)
+        
+
+
+"""
+Barcode generation endpoint with tenant toggle
+We’ll let tenants choose EAN13 or CODE128. If your Tenant model already has barcode_type, great; if not, we’ll default to EAN13.
+"""
+def _tenant_barcode_type(tenant) -> str:
+    t = getattr(tenant, "barcode_type", None)
+    return (t or "EAN13").upper()
+
+def _ean13_checksum12(d12: str) -> str:
+    # d12: 12 numeric chars
+    s = sum((int(n) * (3 if (i % 2) else 1)) for i, n in enumerate(d12[::-1], start=0))
+    return str((10 - (s % 10)) % 10)
+
+def _gen_ean13(tenant) -> str:
+    # 12-digit base: tenant id (3 digits) + random (9 digits)
+    tid = int(tenant.id) % 1000
+    left = f"{tid:03d}{random.randrange(0, 10**9):09d}"
+    chk = _ean13_checksum12(left)
+    return left + chk
+
+def _gen_code128(tenant) -> str:
+    # 12-char base36-ish alnum
+    return (_b36(random.getrandbits(64)) + _b36(random.getrandbits(64)))[:12]
+
+class BarcodeGenerateView(APIView):
+    """
+    POST /api/catalog/barcodes
+    Body: {} or {"type":"EAN13"|"CODE128"}
+    Returns: { "barcode": "...", "type": "EAN13" }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tenant = _resolve_request_tenant(request)
+        req_type = (request.data or {}).get("type")
+        btype = (req_type or _tenant_barcode_type(tenant)).upper()
+        if btype not in ("EAN13", "CODE128"):
+            return Response({"detail": "Unsupported barcode type."}, status=400)
+
+        # loop for uniqueness within tenant
+        for _ in range(50):
+            code = _gen_ean13(tenant) if btype == "EAN13" else _gen_code128(tenant)
+            if not Variant.objects.filter(product__tenant=tenant, barcode__iexact=code).exists():
+                return Response({"barcode": code, "type": btype})
+        return Response({"detail": "Could not allocate unique barcode"}, status=409)
+
+
 
 

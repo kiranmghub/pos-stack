@@ -2,7 +2,7 @@ import React from "react";
 import { createProduct, updateProduct } from "../api";
 import type { CreateProductDto, UpdateProductDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
-import { uploadProductImage } from "../api";
+import { uploadProductImage, generateProductCode } from "../api";
 import { useNotify } from "@/lib/notify";
 
 
@@ -460,7 +460,24 @@ export function ProductFormDrawer({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Code</label>
+            {/* <label className="mb-1 block text-sm font-medium">Code</label> */}
+             <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm font-medium">Code</span>
+              {!isView && (
+                <button
+                  type="button"
+                  className="text-xs text-indigo-300 hover:text-indigo-200"
+                  onClick={async () => {
+                    try {
+                      const r = await generateProductCode(form.name || "");
+                      setForm((s) => ({ ...s, code: r.code || s.code }));
+                    } catch (e) { error("Failed to generate code"); }
+                  }}
+                >
+                  Generate
+                </button>
+              )}
+            </div>
             <input
               className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
                 errors.code ? "border-red-500" : "border-zinc-700"

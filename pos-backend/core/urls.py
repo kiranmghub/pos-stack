@@ -34,7 +34,7 @@ from catalog.api import (
     CatalogProductDetailView,
     VariantDetailView,
     TaxCategoryListView,
-    CategoryListView, ProductImageUploadView, VariantImageUploadView,
+    CategoryListView, ProductImageUploadView, VariantImageUploadView, CodeGenerateView, BarcodeGenerateView
 )
 # from inventory.api import AdjustStockView
 from rest_framework.routers import DefaultRouter
@@ -83,6 +83,9 @@ urlpatterns = [
     path("api/v1/discounts/", include("discounts.urls", namespace="discounts")),
     path("api/v1/taxes/", include("taxes.urls", namespace="taxes")),
     path("api/v1/tenant-admin/", include("tenant_admin.urls")),
+    path("api/v1/catalog/codes", CodeGenerateView.as_view()),
+    path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
+
 
 ]
 

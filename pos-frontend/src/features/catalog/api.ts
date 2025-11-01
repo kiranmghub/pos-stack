@@ -153,3 +153,23 @@ export async function deleteProduct(id: ID) {
 }
 
 
+export async function generateProductCode(name: string) {
+  return apiFetchJSON("/api/v1/catalog/codes", {
+    method: "POST",
+    body: JSON.stringify({ scope: "product", name }),
+  }); // -> { code }
+}
+
+export async function generateVariantSku(productId: ID, name: string) {
+  return apiFetchJSON("/api/v1/catalog/codes", {
+    method: "POST",
+    body: JSON.stringify({ scope: "variant", product_id: productId, name }),
+  }); // -> { code }
+}
+
+export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
+  return apiFetchJSON("/api/v1/catalog/barcodes", {
+    method: "POST",
+    body: JSON.stringify(preferred ? { type: preferred } : {}),
+  }); // -> { barcode, type }
+}

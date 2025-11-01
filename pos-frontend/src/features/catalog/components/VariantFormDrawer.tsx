@@ -1,11 +1,13 @@
 // pos-frontend/src/features/catalog/components/VariantFormDrawer.tsx
 import React from "react";
-import { listProducts, createVariant, updateVariant, getProduct, uploadVariantImage } from "../api";
+import { listProducts, createVariant, updateVariant, getProduct, uploadVariantImage, generateVariantSku, generateBarcode } from "../api";
 import type { CreateVariantDto, UpdateVariantDto, ID } from "../types";
 import { apiFetchJSON } from "@/lib/auth";
 import type { ProductListItem } from "../types";
 import { useNotify } from "@/lib/notify";
 import { DebouncedInput } from "./DebouncedInput";
+// import bwipjs from "bwip-js"; // npm i bwip-js
+import bwipjs from "bwip-js/browser"; // ✅ ensures it uses the browser bundle
 
 type TaxCategory = { id: ID; name: string; code: string };
 
@@ -242,6 +244,30 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (initialMode === "view") setErrors({});
 }, [initialMode]);
+
+
+const barcodeCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+React.useEffect(() => {
+  const value = (form.barcode || "").trim();
+  // if (!value || !barcodeCanvasRef.current) return;
+  if (!open || !value || !barcodeCanvasRef.current) return;
+  // choose symbology based on simple heuristic or tenant default later
+  const bctype = value.length === 13 && /^\d+$/.test(value) ? "ean13" : "code128";
+  try {
+    bwipjs.toCanvas(barcodeCanvasRef.current, {
+      bcid: bctype,   // 'ean13' or 'code128'
+      text: value,
+      scale: 3,
+      height: 40,
+      includetext: true,
+      textxalign: 'center',
+    });
+  } catch (e) {
+    // no-op on invalid interim text
+  }
+}, [open, form.barcode]);
+
 
 
   async function parseApiError(err: any) {
@@ -545,7 +571,24 @@ React.useEffect(() => {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">SKU</label>
+              {/* <label className="mb-1 block text-sm font-medium">SKU</label> */}
+               <div className="mb-1 flex items-center justify-between">
+                <span className="text-sm font-medium">SKU</span>
+                {!isView && (
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-300 hover:text-indigo-200"
+                    onClick={async () => {
+                      try {
+                        const r = await generateVariantSku(form.product as any, form.name || "");
+                        setForm((s) => ({ ...s, sku: r.code || s.sku }));
+                      } catch (e) { error("Failed to generate SKU"); }
+                    }}
+                  >
+                    Generate
+                  </button>
+                )}
+              </div>
               <input
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
                   errors.sku ? "border-red-500" : "border-zinc-700"
@@ -562,7 +605,24 @@ React.useEffect(() => {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium">Barcode</label>
+              {/* <label className="mb-1 block text-sm font-medium">Barcode</label> */}
+               <div className="mb-1 flex items-center justify-between">
+                <span className="text-sm font-medium">Barcode</span>
+                {!isView && (
+                  <button
+                    type="button"
+                    className="text-xs text-indigo-300 hover:text-indigo-200"
+                    onClick={async () => {
+                      try {
+                        const r = await generateBarcode(); // backend decides type by tenant config
+                        setForm((s) => ({ ...s, barcode: r.barcode || s.barcode }));
+                      } catch (e) { error("Failed to generate barcode"); }
+                    }}
+                  >
+                    Generate
+                  </button>
+                )}
+              </div>
               <input
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
                   errors.barcode ? "border-red-500" : "border-zinc-700"
@@ -575,6 +635,12 @@ React.useEffect(() => {
                 disabled={isView}
               />
               {errors.barcode && <div className="mt-1 text-xs text-red-400">{errors.barcode}</div>}
+              {form.barcode ? (
+                <div className="mt-2 inline-block rounded-lg bg-white p-2">
+                  <canvas ref={barcodeCanvasRef} />
+                </div>
+              ) : null}
+
             </div>
 
             <div>
