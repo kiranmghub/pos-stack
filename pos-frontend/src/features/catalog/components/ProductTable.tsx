@@ -22,6 +22,10 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [onlyLow, setOnlyLow] = React.useState(false);
   const [rows, setRows] = React.useState<ProductListItem[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(20);
+
 
   // expand state & product detail cache (variants)
   const [expanded, setExpanded] = React.useState<Record<string | number, boolean>>({});
@@ -54,11 +58,17 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     setLoading(true);
     try {
       const data = await listProducts({
-        page_size: 50,
+        page_size: pageSize,
+        page,
         search: query || undefined,
         category: category || undefined,
       });
       setRows(data.results || []);
+      setTotalCount(Number(data.count || 0));
+      const lastPage = Math.max(1, Math.ceil((Number(data.count || 0)) / pageSize));
+      if (page > lastPage && lastPage !== page) {
+        setPage(lastPage);
+      }
       // collapse rows when search/category changes
       setExpanded({});
     } finally {
@@ -130,10 +140,10 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
 
   React.useEffect(() => {
-    const t = setTimeout(load, 250);
+    const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category]);
+  }, [query, category, page, pageSize]);
 
   const filtered = React.useMemo(
     () => (onlyLow ? rows.filter((p) => p.on_hand_sum <= 5) : rows),
@@ -327,16 +337,18 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
             className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
             placeholder="Search name, code, SKU, category…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
           />
           <input
             className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
             placeholder="Category"
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => { setCategory(e.target.value); setPage(1); }}
           />
           <label className="flex items-center gap-2 text-sm text-zinc-300">
-            <input type="checkbox" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
+            <input type="checkbox" checked={onlyLow}
+            onChange={(e) => { setOnlyLow(e.target.checked); setPage(1); }}
+            />
             Low / OOS
           </label>
         </div>
@@ -567,6 +579,52 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
             <div className="p-6 text-sm text-zinc-500">No products found.</div>
           )}
         </div>
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800 bg-zinc-900/40">
+          <div className="text-xs text-zinc-400">
+            {totalCount === 0
+              ? "No results"
+              : `Showing ${Math.min((page - 1) * pageSize + 1, totalCount)}–${Math.min(page * pageSize, totalCount)} of ${totalCount}`}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-zinc-300">
+              Rows per page:&nbsp;
+              <select
+                className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              >
+                {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                Prev
+              </button>
+              <div className="min-w-[3rem] text-center text-xs text-zinc-300">
+                {page}
+              </div>
+              <button
+                className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => {
+                  const last = Math.max(1, Math.ceil(totalCount / pageSize));
+                  setPage((p) => Math.min(last, p + 1));
+                }}
+                disabled={page >= Math.max(1, Math.ceil(totalCount / pageSize))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

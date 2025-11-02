@@ -599,6 +599,26 @@ class CatalogProductListCreateView(ListCreateAPIView):
             variants_count=Count("variants")
         )
 
+        # ✅ add the same aggregates used by the router viewset
+        qs = qs.annotate(
+            price_min=Coalesce(
+                Min("variants__price"),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            price_max=Coalesce(
+                Max("variants__price"),
+                Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+            ),
+            on_hand_sum=Coalesce(
+                Sum("variants__inventoryitem__on_hand"),
+                Value(0, output_field=IntegerField()),
+                output_field=IntegerField(),
+            ),
+            variant_count=Count("variants", distinct=True),
+        )
+
         # Always annotate default_tax_rate with a known output_field to avoid FieldError.
         if has_default_tax_rate:
             qs = qs.annotate(

@@ -74,14 +74,36 @@ export async function uploadVariantImage(variantId: ID, file: File) {
 
 
 
-export async function listProducts(params?: { page?: number; page_size?: number; search?: string; category?: string; active?: boolean }): Promise<Paginated<ProductListItem>> {
+// export async function listProducts(params?: {
+//   page?: number;
+//   page_size?: number;
+//   search?: string;
+//   category?: string;
+//   active?: boolean }): Promise<Paginated<ProductListItem>> {
+//   const qs = new URLSearchParams();
+//   if (params?.page) qs.set("page", String(params.page));
+//   if (params?.page_size) qs.set("page_size", String(params.page_size));
+//   if (params?.search) qs.set("search", params.search);
+//   if (params?.category) qs.set("category", params.category);
+//   if (typeof params?.active === "boolean") qs.set("active", String(params.active));
+//   return apiFetchJSON(`/api/catalog/products/?${qs.toString()}`);
+// }
+
+export async function listProducts(params?: {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  category?: string;
+  active?: boolean;
+}): Promise<Paginated<ProductListItem>> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.page_size) qs.set("page_size", String(params.page_size));
-  if (params?.search) qs.set("search", params.search);
+  if (params?.search) qs.set("query", params.search); // or keep "search"
   if (params?.category) qs.set("category", params.category);
   if (typeof params?.active === "boolean") qs.set("active", String(params.active));
-  return apiFetchJSON(`/api/catalog/products/?${qs.toString()}`);
+
+  return apiFetchJSON(`/api/v1/catalog/products?${qs.toString()}`);
 }
 
 export async function getProduct(id: ID): Promise<ProductDetail> {
