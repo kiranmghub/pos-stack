@@ -1079,9 +1079,23 @@ def _tenant_barcode_type(tenant) -> str:
     return (t or "EAN13").upper()
 
 def _ean13_checksum12(d12: str) -> str:
-    # d12: 12 numeric chars
-    s = sum((int(n) * (3 if (i % 2) else 1)) for i, n in enumerate(d12[::-1], start=0))
-    return str((10 - (s % 10)) % 10)
+    """
+    Compute the EAN-13 check digit for a 12-digit base.
+    Weights: positions counted from the left (1-based)
+        odd  -> weight 1
+        even -> weight 3
+    The check digit = (10 - (sum % 10)) % 10
+    """
+    if not d12.isdigit() or len(d12) != 12:
+        raise ValueError("EAN-13 base must be exactly 12 digits")
+
+    total = 0
+    for i, ch in enumerate(d12, start=1):
+        num = int(ch)
+        total += num * (3 if i % 2 == 0 else 1)
+    check = (10 - (total % 10)) % 10
+    return str(check)
+
 
 def _gen_ean13(tenant) -> str:
     # 12-digit base: tenant id (3 digits) + random (9 digits)

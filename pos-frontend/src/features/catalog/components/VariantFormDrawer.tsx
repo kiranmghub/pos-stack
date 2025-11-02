@@ -248,25 +248,47 @@ React.useEffect(() => {
 
 const barcodeCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
+
 React.useEffect(() => {
+  const canvas = barcodeCanvasRef.current;
   const value = (form.barcode || "").trim();
-  // if (!value || !barcodeCanvasRef.current) return;
-  if (!open || !value || !barcodeCanvasRef.current) return;
-  // choose symbology based on simple heuristic or tenant default later
-  const bctype = value.length === 13 && /^\d+$/.test(value) ? "ean13" : "code128";
-  try {
-    bwipjs.toCanvas(barcodeCanvasRef.current, {
-      bcid: bctype,   // 'ean13' or 'code128'
-      text: value,
-      scale: 3,
-      height: 40,
-      includetext: true,
-      textxalign: 'center',
-    });
-  } catch (e) {
-    // no-op on invalid interim text
-  }
+
+  if (!open || !value || !canvas) return;
+
+  // Wait for next frame to ensure canvas is in DOM and has size
+  const renderBarcode = () => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      // Still not ready — try again
+      requestAnimationFrame(renderBarcode);
+      return;
+    }
+
+    const bctype = value.length === 13 && /^\d+$/.test(value) ? "ean13" : "code128";
+    try {
+      bwipjs.toCanvas(canvas, {
+        bcid: bctype,
+        text: value,
+        scale: 3,
+        height: 15,
+        includetext: true,
+        textxalign: 'center',
+        barcolor: '000000',        // Use hex for reliability
+        backgroundcolor: 'FFFFFF'  // Use hex
+      });
+    } catch (e) {
+      console.error('Barcode rendering error:', e);
+    }
+  };
+
+  // Small delay to allow DOM to settle
+  const timeoutId = setTimeout(() => {
+    requestAnimationFrame(renderBarcode);
+  }, 10);
+
+  return () => clearTimeout(timeoutId);
 }, [open, form.barcode]);
+
 
 
 
@@ -635,9 +657,35 @@ React.useEffect(() => {
                 disabled={isView}
               />
               {errors.barcode && <div className="mt-1 text-xs text-red-400">{errors.barcode}</div>}
+              {/* {form.barcode ? (
+                // <div className="mt-2 inline-block rounded-md bg-white/90 p-2 shadow-md">
+                //   <canvas ref={barcodeCanvasRef}/>
+                // </div>
+                  <div className="mt-2 inline-block rounded-md bg-white/90 p-2 shadow-md">
+                    <canvas
+                      ref={barcodeCanvasRef}
+                      width={240}
+                      height={80}
+                      style={{ display: "block", width: "240px", height: "80px" }}
+                    />
+                  </div>
+              ) : null} */}
+              {/* ----------- BARCODE (full-width, responsive) ----------- */}
               {form.barcode ? (
-                <div className="mt-2 inline-block rounded-lg bg-white p-2">
-                  <canvas ref={barcodeCanvasRef} />
+                <div className="mt-2 w-full rounded-md bg-white/90 p-2 shadow-md">
+                  {/* Canvas wrapper – 100% of parent, fixed aspect ratio */}
+                  <div
+                    className="relative w-full"
+                    style={{ aspectRatio: "3 / 1" }}   // 3:1 keeps barcode shape nice
+                  >
+                    <canvas
+                      ref={barcodeCanvasRef}
+                      // The *drawing buffer* is set to a high-resolution size
+                      width={720}      // 3 × 240  (scale-friendly)
+                      height={240}     // 3 × 80
+                      className="absolute inset-0 h-full w-full object-contain"
+                    />
+                  </div>
                 </div>
               ) : null}
 
