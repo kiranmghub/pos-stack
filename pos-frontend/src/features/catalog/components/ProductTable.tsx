@@ -150,6 +150,8 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     [rows, onlyLow]
   );
 
+  const lastPage = Math.max(1, Math.ceil(totalCount / pageSize));
+
   async function toggleExpand(p: ProductListItem) {
     const next = !expanded[p.id];
     setExpanded((s) => ({ ...s, [p.id]: next }));
@@ -608,8 +610,8 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
               >
                 Prev
               </button>
-              <div className="min-w-[3rem] text-center text-xs text-zinc-300">
-                {page}
+              <div className="min-w-[7rem] text-center text-xs text-zinc-300">
+                Page {page} of {lastPage}
               </div>
               <button
                 className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -617,7 +619,7 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
                   const last = Math.max(1, Math.ceil(totalCount / pageSize));
                   setPage((p) => Math.min(last, p + 1));
                 }}
-                disabled={page >= Math.max(1, Math.ceil(totalCount / pageSize))}
+                disabled={page >= lastPage}
               >
                 Next
               </button>

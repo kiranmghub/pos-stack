@@ -219,7 +219,9 @@ class ProductWriteSerializer(serializers.ModelSerializer):
                     break
             else:
                 raise serializers.ValidationError({"code": "Could not allocate unique product code."})
-            return Product.objects.create(tenant=tenant, **validated_data)
+            
+        # Always create/return the object (whether code was generated or provided)    
+        return Product.objects.create(tenant=tenant, **validated_data)
 
     def update(self, instance, validated_data):
         # simple mass-assign
