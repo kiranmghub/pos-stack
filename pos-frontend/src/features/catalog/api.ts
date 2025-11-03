@@ -195,3 +195,5 @@ export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
     body: JSON.stringify(preferred ? { type: preferred } : {}),
   }); // -> { barcode, type }
 }
+
+

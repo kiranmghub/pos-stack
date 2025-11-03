@@ -636,7 +636,22 @@ class CatalogProductListCreateView(ListCreateAPIView):
                 default_tax_rate=Value(None, output_field=DecimalField(max_digits=6, decimal_places=4))
             )
 
-        qs = qs.order_by("name")
+        # qs = qs.order_by("name")
+        # ✅ server-side sorting
+        sort = (self.request.GET.get("sort") or "name").lower()
+        direction = (self.request.GET.get("direction") or "asc").lower()
+        # allow-listed mapping from public sort keys → concrete DB fields
+        sort_map = {
+            "name": "name",
+            "price": "price_min",      # treat "price" as min price
+            "price_min": "price_min",
+            "price_max": "price_max",
+            "on_hand": "on_hand_sum",
+            "active": "is_active",
+        }
+        sort_field = sort_map.get(sort, "name")
+        prefix = "" if direction != "desc" else "-"
+        qs = qs.order_by(f"{prefix}{sort_field}", "id")
 
         q = (self.request.GET.get("query") or "").strip()
         if q:

@@ -25,6 +25,12 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [totalCount, setTotalCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
+  // Product-level sort (sent to backend)
+  const [sortBy, setSortBy] = React.useState<"name" | "price" | "price_min" | "price_max" | "on_hand" | "active">("name");
+  const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc");
+  // Variant-level sort (toolbar choice for expanded rows; applied later)
+  const [variantSortBy, setVariantSortBy] = React.useState<"name" | "price" | "on_hand" | "active">("name");
+  const [variantSortDir, setVariantSortDir] = React.useState<"asc" | "desc">("asc");
 
 
   // expand state & product detail cache (variants)
@@ -62,6 +68,8 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         page,
         search: query || undefined,
         category: category || undefined,
+        sort: sortBy,
+        direction: sortDir,
       });
       setRows(data.results || []);
       setTotalCount(Number(data.count || 0));
@@ -143,7 +151,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category, page, pageSize]);
+  }, [query, category, page, pageSize, sortBy, sortDir]);
 
   const filtered = React.useMemo(
     () => (onlyLow ? rows.filter((p) => p.on_hand_sum <= 5) : rows),
@@ -353,6 +361,54 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
             />
             Low / OOS
           </label>
+
+          {/* Product sort */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-300">Product sort</label>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value as any); setPage(1); }}
+            >
+              <option value="name">Name</option>
+              <option value="price">Price (min)</option>
+              <option value="price_min">Price (min)</option>
+              <option value="price_max">Price (max)</option>
+              <option value="on_hand">On hand</option>
+              <option value="active">Active</option>
+            </select>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={sortDir}
+              onChange={(e) => { setSortDir(e.target.value as "asc" | "desc"); setPage(1); }}
+            >
+              <option value="asc">Asc</option>
+              <option value="desc">Desc</option>
+            </select>
+          </div>
+          {/* Variant sort (choice only; applied later to expanded rows) */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-300">Variant sort</label>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={variantSortBy}
+              onChange={(e) => setVariantSortBy(e.target.value as any)}
+            >
+              <option value="name">Name</option>
+              <option value="price">Price</option>
+              <option value="on_hand">On hand</option>
+              <option value="active">Active</option>
+            </select>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={variantSortDir}
+              onChange={(e) => setVariantSortDir(e.target.value as "asc" | "desc")}
+            >
+              <option value="asc">Asc</option>
+              <option value="desc">Desc</option>
+            </select>
+          </div>
+
         </div>
         <div className="flex gap-2">
           <button
