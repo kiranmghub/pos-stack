@@ -5,8 +5,9 @@ from rest_framework import viewsets
 from common.api_mixins import TenantScopedViewSetMixin, IsInTenant, RoleRequired
 from common.roles import TenantRole
 from .models import Store, Register
-from .serializers import StoreSerializer, RegisterSerializer
-from rest_framework.response import Response
+from .serializers import StoreSerializer, RegisterSerializer, StoreMiniSerializer
+from django.db.models import QuerySet
+from rest_framework import viewsets, permissions
 
 
 class StoreViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -32,3 +33,16 @@ class RegisterViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
                          "DELETE": [TenantRole.ADMIN, TenantRole.OWNER] }
     tenant_field = None
     tenant_path  = "store__tenant"  # auto-filters by request.tenant
+
+
+
+class StoreLiteViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
+
+    serializer_class = StoreMiniSerializer
+    permission_classes = [IsInTenant]
+    tenant_field = "tenant"
+
+    def get_queryset(self) -> QuerySet:
+        qs = Store.objects.select_related("tenant").filter(is_active=True)
+        # TenantScopedViewSetMixin will filter by request.tenant using tenant_field
+        return qs.order_by("name")

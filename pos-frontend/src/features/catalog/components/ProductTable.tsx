@@ -195,7 +195,7 @@ React.useEffect(() => {
         setLoadingRow((s) => ({ ...s, [productId]: true }));
         // const d = await getProduct(productId);
         const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
-        const d = await getProduct(productId, { vsort: vk, vdirection: vdir });
+        const d = await getProduct(productId, { vsort: vk, vdirection: vdir, store_id: storeId || undefined});
         // update the detail cache so the variants list refreshes
         setDetails((s) => ({ ...s, [productId]: d }));
         // also patch the summary row (price range, on-hand, variant count) without reloading all rows
@@ -250,21 +250,21 @@ React.useEffect(() => {
       try {
         setLoadingRow((s) => ({ ...s, [id]: true }));
         const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
-        const d = await getProduct(Number(id), { vsort: vk, vdirection: vdir });
+        const d = await getProduct(Number(id), { vsort: vk, vdirection: vdir, store_id: storeId || undefined });
         setDetails((s) => ({ ...s, [id]: d }));
       } finally {
         setLoadingRow((s) => ({ ...s, [id]: false }));
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variantOrder]);
+  }, [variantOrder, storeId]);
 
   React.useEffect(() => {
     if (!bootstrapped) return;
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bootstrapped, query, category, page, pageSize, productOrder]);
+  }, [bootstrapped, query, category, page, pageSize, productOrder, storeId]);
 
   const filtered = React.useMemo(
     () => (onlyLow ? rows.filter((p) => p.on_hand_sum <= 5) : rows),
@@ -517,6 +517,7 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
   </div>
 
   {/* Store selector */}
+  
   <div className="flex items-center gap-2">
     <label className="text-xs text-zinc-300">Store</label>
     <select

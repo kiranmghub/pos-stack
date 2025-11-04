@@ -43,15 +43,6 @@ export async function uploadProductImage(
   return res.json();
 }
 
-// export async function uploadVariantImage(variantId: ID, file: File) {
-//   const fd = new FormData();
-//   fd.append("file", file);
-//   return apiFetchJSON(`/api/v1/catalog/variants/${variantId}/image`, {
-//     method: "POST",
-//     body: fd,
-//   });
-// }
-
 export async function uploadVariantImage(variantId: ID, file: File) {
   const fd = new FormData();
   fd.append("file", file);
@@ -73,40 +64,6 @@ export async function uploadVariantImage(variantId: ID, file: File) {
 }
 
 
-
-// export async function listProducts(params?: {
-//   page?: number;
-//   page_size?: number;
-//   search?: string;
-//   category?: string;
-//   active?: boolean }): Promise<Paginated<ProductListItem>> {
-//   const qs = new URLSearchParams();
-//   if (params?.page) qs.set("page", String(params.page));
-//   if (params?.page_size) qs.set("page_size", String(params.page_size));
-//   if (params?.search) qs.set("search", params.search);
-//   if (params?.category) qs.set("category", params.category);
-//   if (typeof params?.active === "boolean") qs.set("active", String(params.active));
-//   return apiFetchJSON(`/api/catalog/products/?${qs.toString()}`);
-// }
-
-// export async function listProducts(params?: {
-//   page?: number;
-//   page_size?: number;
-//   search?: string;
-//   category?: string;
-//   active?: boolean;
-// }): Promise<Paginated<ProductListItem>> {
-//   const qs = new URLSearchParams();
-//   if (params?.page) qs.set("page", String(params.page));
-//   if (params?.page_size) qs.set("page_size", String(params.page_size));
-//   if (params?.search) qs.set("query", params.search); // or keep "search"
-//   if (params?.category) qs.set("category", params.category);
-//   if (typeof params?.active === "boolean") qs.set("active", String(params.active));
-
-//   return apiFetchJSON(`/api/v1/catalog/products?${qs.toString()}`);
-// }
-
-// pos-frontend/src/features/catalog/api.ts
 export async function listProducts(params: {
   page?: number;
   page_size?: number;
@@ -114,6 +71,7 @@ export async function listProducts(params: {
   category?: string;
   sort?: "name" | "price_min" | "price_max" | "on_hand" | "active";
   direction?: "asc" | "desc";
+  store_id?: string | number;
 }) {
   const q = new URLSearchParams();
   if (params.page) q.set("page", String(params.page));
@@ -122,33 +80,23 @@ export async function listProducts(params: {
   if (params.category) q.set("category", params.category);
   if (params.sort) q.set("sort", params.sort);
   if (params.direction) q.set("direction", params.direction);
+  if (params?.store_id) q.set("store_id", String(params.store_id));
   return apiFetchJSON(`/api/v1/catalog/products?${q.toString()}`);
 }
 
 
-// export async function getProduct(id: ID): Promise<ProductDetail> {
-//   return apiFetchJSON(`/api/catalog/products/${id}/`);
-// }
-
-// export async function getProduct(
-//   id: ID,
-//   opts?: { vsort?: "name"|"price"|"on_hand"|"active"; vdirection?: "asc"|"desc" }
-// ) {
-//   const qs = new URLSearchParams();
-//   if (opts?.vsort) qs.set("vsort", opts.vsort);
-//   if (opts?.vdirection) qs.set("vdirection", opts.vdirection);
-//   const suffix = qs.toString() ? `?${qs.toString()}` : "";
-//   return apiFetchJSON(`/api/catalog/products/${id}/${suffix}`);
-// }
-
-// keep the explicit result type
 export async function getProduct(
   id: ID,
-  opts?: { vsort?: "name" | "price" | "on_hand" | "active"; vdirection?: "asc" | "desc" }
+  opts?: { 
+    vsort?: "name" | "price" | "on_hand" | "active"; 
+    vdirection?: "asc" | "desc";
+    store_id?: string | number;
+   }
 ): Promise<ProductDetail> {
   const qs = new URLSearchParams();
   if (opts?.vsort) qs.set("vsort", opts.vsort);
   if (opts?.vdirection) qs.set("vdirection", opts.vdirection);
+  if (opts?.store_id) qs.set("store_id", String(opts.store_id));
   const suffix = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetchJSON(`/api/catalog/products/${id}/${suffix}`) as Promise<ProductDetail>;
 }
@@ -241,6 +189,14 @@ export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
 }
 
 
+// Fetch lightweight store options for the dropdown
+export async function listInventoryStores(): Promise<{ id: number; name: string }[]> {
+  const data = await apiFetchJSON("/api/v1/stores/stores-lite");
+  // If DRF pagination is enabled, data is {count, next, previous, results:[...]}
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+}
 
 
 
