@@ -55,6 +55,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const LS_PAGE_SIZE  = "catalog.pageSize";
   const LS_PROD_ORDER = "catalog.productOrder";
   const LS_VAR_ORDER  = "catalog.variantOrder";
+  const LS_STORE      = "catalog.storeId";
 
   const PRODUCT_ORDERS = new Set([
     "name:asc","name:desc",
@@ -91,6 +92,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
       if (VARIANT_ORDERS.has(vo)) {
         setVariantOrder(vo as any);
       }
+      // hydrate selected store
+      const sid = localStorage.getItem(LS_STORE) || "";
+      setStoreId(sid);
     } catch {
       // ignore storage errors (e.g., private mode)
     } finally {
@@ -121,13 +125,11 @@ React.useEffect(() => {
 }, [bootstrapped, variantOrder]);
 
 
-// const LS_STORE = "catalog.storeId";
-// const sid = localStorage.getItem(LS_STORE) || "";
-// setStoreId(sid);
-// React.useEffect(() => {
-//   if (!bootstrapped) return;
-//   try { localStorage.setItem(LS_STORE, storeId); } catch {}
-// }, [bootstrapped, storeId]);
+// persist selected store
+React.useEffect(() => {
+  if (!bootstrapped) return;
+  try { localStorage.setItem(LS_STORE, storeId); } catch {}
+}, [bootstrapped, storeId]);
 
 
 
