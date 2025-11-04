@@ -272,11 +272,12 @@ class CatalogImportView(APIView):
         if not f:
             return Response({"detail": "No file uploaded (expected 'file')"}, status=status.HTTP_400_BAD_REQUEST)
 
+        raw = f.read()
         try:
-            text = f.read().decode("utf-8-sig")
+            text = raw.decode("utf-8-sig")
         except Exception:
             # fallback for other encodings
-            text = f.read().decode(errors="ignore")
+            text = raw.decode(errors="ignore")
 
         reader = csv.DictReader(io.StringIO(text))
         expected = PRODUCT_HEADERS if scope == "products" else VARIANT_HEADERS
@@ -299,6 +300,9 @@ class CatalogImportView(APIView):
         with transaction.atomic():
             sid = transaction.savepoint()
             for i, row in enumerate(reader, start=2):  # 1=header, 2=first data row
+                # Skip commented/example rows from our template
+                if any((str(v).strip().startswith("#") for v in row.values() if v is not None)):
+                    continue
                 results["total_rows"] += 1
                 try:
                     if scope == "products":

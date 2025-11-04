@@ -97,12 +97,10 @@ urlpatterns = [
     path("api/v1/tenant-admin/", include("tenant_admin.urls")),
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
-    path("api/v1/stores/stores-lite", StoreLiteViewSet.as_view({"get": "list"}), name="stores-lite",
+    path("api/v1/stores/stores-lite", StoreLiteViewSet.as_view({"get": "list"}), name="stores-lite",),
     path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export"),
     path("api/v1/catalog/import/template", CatalogImportTemplateView.as_view(), name="catalog-import-template"),
     path("api/v1/catalog/import", CatalogImportView.as_view(), name="catalog-import"),
-    ),
-
 
 ]
 
