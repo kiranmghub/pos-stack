@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, RetrieveUpdateAPIView
 from rest_framework import permissions, status, serializers, parsers
 from django.db import transaction
+from django.db.models import Q
 
 from tenants.models import Tenant
 from tenants.models import TenantUser
@@ -468,7 +469,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
 
     # include full variant objects (not IDs)
-    variants = VariantMiniSerializer(many=True, read_only=True)
+    # variants = VariantMiniSerializer(many=True, read_only=True)
+
+    # include full variant objects (not IDs), ordered by vsort/vdirection
+    variants = serializers.SerializerMethodField()
 
     # NEW: include price range + on-hand aggregates for drawer/header display
     price_min = serializers.SerializerMethodField()
@@ -501,6 +505,38 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "variant_count",
             "variants",
         )
+
+    def get_variants(self, obj):
+        """
+        Server-side variant sorting for the product detail payload.
+        Accepts ?vsort= name|price|on_hand|active  and ?vdirection= asc|desc.
+        Always serializes through VariantMiniSerializer (no extra fields leaked).
+        """
+        request = self.context.get("request")
+        vsort = (request.query_params.get("vsort") if request else None) or "name"
+        vdir  = (request.query_params.get("vdirection") if request else None) or "asc"
+        reverse = (vdir == "desc")
+
+        # Start from the related manager (scoped to this product)
+        qs = obj.variants.all()
+
+        # For DB-sortable keys, order in the DB; for 'on_hand' we sort after serialization
+        if vsort == "name":
+            qs = qs.order_by(("-" if reverse else "") + "name", "id")
+        elif vsort == "price":
+            qs = qs.order_by(("-" if reverse else "") + "price", "id")
+        elif vsort == "active":
+            qs = qs.order_by(("-" if reverse else "") + "is_active", "id")
+        # else: 'on_hand' → we’ll sort after serialization
+
+        # Serialize through the existing safe serializer (no extra exposure)
+        rows = VariantMiniSerializer(qs, many=True, context=self.context).data
+
+        if vsort == "on_hand":
+            # on_hand is computed; sort on the serialized numeric value
+            rows.sort(key=lambda r: int(r.get("on_hand") or 0), reverse=reverse)
+
+        return rows
 
     def get_image_file(self, obj):
         request = self.context.get("request")
@@ -601,6 +637,8 @@ class CatalogProductListCreateView(ListCreateAPIView):
             variants_count=Count("variants")
         )
 
+        store_id = self.request.GET.get("store_id")
+
         # ✅ add the same aggregates used by the router viewset
         qs = qs.annotate(
             price_min=Coalesce(
@@ -613,8 +651,12 @@ class CatalogProductListCreateView(ListCreateAPIView):
                 Value(0, output_field=DecimalField(max_digits=10, decimal_places=2)),
                 output_field=DecimalField(max_digits=10, decimal_places=2),
             ),
+            # ✅ per-store on-hand if store_id present, else tenant-wide
             on_hand_sum=Coalesce(
-                Sum("variants__inventoryitem__on_hand"),
+                Sum(
+                    "variants__inventoryitem__on_hand",
+                    filter=Q(variants__inventoryitem__store_id=store_id) if store_id else Q(),
+                    ),
                 Value(0, output_field=IntegerField()),
                 output_field=IntegerField(),
             ),

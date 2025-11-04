@@ -1,6 +1,6 @@
 // pos-frontend/src/features/catalog/components/ProductTable.tsx
 import React from "react";
-import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, updateProduct } from "../api";
+import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, updateProduct, listInventoryStores } from "../api";
 import type { ProductListItem, ProductDetail, Variant } from "../types";
 import { useNotify } from "@/lib/notify";
 
@@ -25,12 +25,17 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [totalCount, setTotalCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
-  // Product-level sort (sent to backend)
-  const [sortBy, setSortBy] = React.useState<"name" | "price" | "price_min" | "price_max" | "on_hand" | "active">("name");
-  const [sortDir, setSortDir] = React.useState<"asc" | "desc">("asc");
-  // Variant-level sort (toolbar choice for expanded rows; applied later)
-  const [variantSortBy, setVariantSortBy] = React.useState<"name" | "price" | "on_hand" | "active">("name");
-  const [variantSortDir, setVariantSortDir] = React.useState<"asc" | "desc">("asc");
+  const [bootstrapped, setBootstrapped] = React.useState(false);
+  // Product order for server-side sorting: "{field}:{direction}"
+  // field ∈ { name, price_min, price_max, on_hand, active }, direction ∈ { 'asc','desc' }
+  const [productOrder, setProductOrder] = React.useState<"name:asc" | "name:desc" | "price_min:asc" | "price_max:desc" | "on_hand:asc" | "on_hand:desc" | "active:asc" | "active:desc">("name:asc");
+  // Variant order for client-side sorting of expanded rows: "{field}:{direction}"
+  // field ∈ { name, price, on_hand, active }, direction ∈ { 'asc','desc' }
+  const [variantOrder, setVariantOrder] = React.useState<"name:asc" | "name:desc" | "price:asc" | "price:desc" | "on_hand:asc" | "on_hand:desc" | "active:asc" | "active:desc">("name:asc");
+
+  const [storeId, setStoreId] = React.useState<string>("");
+  const [stores, setStores] = React.useState<{id:number,name:string}[]>([]);
+
 
 
   // expand state & product detail cache (variants)
@@ -44,6 +49,85 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [menuDirection, setMenuDirection] = React.useState<"up" | "down">("down");
   const tableRef = React.useRef<HTMLDivElement>(null);
 
+
+  // ---- persistence keys ----
+  const LS_PAGE       = "catalog.page";
+  const LS_PAGE_SIZE  = "catalog.pageSize";
+  const LS_PROD_ORDER = "catalog.productOrder";
+  const LS_VAR_ORDER  = "catalog.variantOrder";
+
+  const PRODUCT_ORDERS = new Set([
+    "name:asc","name:desc",
+    "price_min:asc","price_max:desc",
+    "on_hand:asc","on_hand:desc",
+    "active:asc","active:desc",
+  ]);
+  const VARIANT_ORDERS = new Set([
+    "name:asc","name:desc",
+    "price:asc","price:desc",
+    "on_hand:asc","on_hand:desc",
+    "active:asc","active:desc",
+  ]);
+  
+  
+  // ---- hydrate pagination + sort from localStorage once, then mark ready ----
+  React.useEffect(() => {
+    try {
+      const psRaw = localStorage.getItem(LS_PAGE_SIZE);
+      const ps = psRaw != null ? Number(psRaw) : NaN;
+      if ([10, 20, 50, 100].includes(ps)) {
+        setPageSize(ps);
+      }
+      const pRaw = localStorage.getItem(LS_PAGE);
+      const p = pRaw != null ? Number(pRaw) : NaN;
+      if (Number.isFinite(p) && p >= 1) {
+        setPage(p);
+      }
+      const po = localStorage.getItem(LS_PROD_ORDER) || "";
+      if (PRODUCT_ORDERS.has(po)) {
+        setProductOrder(po as any);
+      }
+      const vo = localStorage.getItem(LS_VAR_ORDER) || "";
+      if (VARIANT_ORDERS.has(vo)) {
+        setVariantOrder(vo as any);
+      }
+    } catch {
+      // ignore storage errors (e.g., private mode)
+    } finally {
+      setTimeout(() => setBootstrapped(true), 0);
+    }
+  }, []);
+
+    // ---- persist on change ----
+// ---- persist on change ----
+React.useEffect(() => {
+  if (!bootstrapped) return;
+  try { localStorage.setItem(LS_PAGE, String(page)); } catch {}
+}, [bootstrapped, page]);
+
+React.useEffect(() => {
+  if (!bootstrapped) return;
+  try { localStorage.setItem(LS_PAGE_SIZE, String(pageSize)); } catch {}
+}, [bootstrapped, pageSize]);
+
+React.useEffect(() => {
+  if (!bootstrapped) return;
+  try { localStorage.setItem(LS_PROD_ORDER, productOrder); } catch {}
+}, [bootstrapped, productOrder]);
+
+React.useEffect(() => {
+  if (!bootstrapped) return;
+  try { localStorage.setItem(LS_VAR_ORDER, variantOrder); } catch {}
+}, [bootstrapped, variantOrder]);
+
+
+// const LS_STORE = "catalog.storeId";
+// const sid = localStorage.getItem(LS_STORE) || "";
+// setStoreId(sid);
+// React.useEffect(() => {
+//   if (!bootstrapped) return;
+//   try { localStorage.setItem(LS_STORE, storeId); } catch {}
+// }, [bootstrapped, storeId]);
 
 
 
@@ -59,17 +143,27 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
+  React.useEffect(() => {
+    (async () => {
+      try { setStores(await listInventoryStores()); }
+      catch (err) { console.error("Failed to load stores", err); }
+    })();
+  }, []);
+
+
 
   async function load() {
     setLoading(true);
     try {
+      const [sortKey, sortDirVal] = productOrder.split(":") as [string, "asc" | "desc"];
       const data = await listProducts({
         page_size: pageSize,
         page,
         search: query || undefined,
         category: category || undefined,
-        sort: sortBy,
-        direction: sortDir,
+        sort: sortKey as any,     // 'name' | 'price_min' | 'price_max' | 'on_hand' | 'active'
+        direction: sortDirVal,    // 'asc' | 'desc'
+        store_id: storeId || undefined,
       });
       setRows(data.results || []);
       setTotalCount(Number(data.count || 0));
@@ -99,7 +193,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     async function refreshProductDetail(productId: string | number) {
       try {
         setLoadingRow((s) => ({ ...s, [productId]: true }));
-        const d = await getProduct(productId);
+        // const d = await getProduct(productId);
+        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
+        const d = await getProduct(productId, { vsort: vk, vdirection: vdir });
         // update the detail cache so the variants list refreshes
         setDetails((s) => ({ ...s, [productId]: d }));
         // also patch the summary row (price range, on-hand, variant count) without reloading all rows
@@ -146,17 +242,36 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-fetch expanded rows when variant order changes
+  React.useEffect(() => {
+    // re-fetch detail for every expanded product using the new variant order
+    const ids = Object.keys(expanded).filter((k) => expanded[k as any]);
+    ids.forEach(async (id) => {
+      try {
+        setLoadingRow((s) => ({ ...s, [id]: true }));
+        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
+        const d = await getProduct(Number(id), { vsort: vk, vdirection: vdir });
+        setDetails((s) => ({ ...s, [id]: d }));
+      } finally {
+        setLoadingRow((s) => ({ ...s, [id]: false }));
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantOrder]);
 
   React.useEffect(() => {
+    if (!bootstrapped) return;
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, category, page, pageSize, sortBy, sortDir]);
+  }, [bootstrapped, query, category, page, pageSize, productOrder]);
 
   const filtered = React.useMemo(
     () => (onlyLow ? rows.filter((p) => p.on_hand_sum <= 5) : rows),
     [rows, onlyLow]
   );
+
+
 
   const lastPage = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -166,7 +281,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     if (next && !details[p.id] && !loadingRow[p.id]) {
       try {
         setLoadingRow((s) => ({ ...s, [p.id]: true }));
-        const d = await getProduct(p.id);
+        // const d = await getProduct(p.id);
+        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
+        const d = await getProduct(p.id, { vsort: vk, vdirection: vdir, store_id: storeId || undefined});
         setDetails((s) => ({ ...s, [p.id]: d }));
       } finally {
         setLoadingRow((s) => ({ ...s, [p.id]: false }));
@@ -362,52 +479,58 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
             Low / OOS
           </label>
 
-          {/* Product sort */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-300">Product sort</label>
-            <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-              value={sortBy}
-              onChange={(e) => { setSortBy(e.target.value as any); setPage(1); }}
-            >
-              <option value="name">Name</option>
-              <option value="price">Price (min)</option>
-              <option value="price_min">Price (min)</option>
-              <option value="price_max">Price (max)</option>
-              <option value="on_hand">On hand</option>
-              <option value="active">Active</option>
-            </select>
-            <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-              value={sortDir}
-              onChange={(e) => { setSortDir(e.target.value as "asc" | "desc"); setPage(1); }}
-            >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
-            </select>
-          </div>
-          {/* Variant sort (choice only; applied later to expanded rows) */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-300">Variant sort</label>
-            <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-              value={variantSortBy}
-              onChange={(e) => setVariantSortBy(e.target.value as any)}
-            >
-              <option value="name">Name</option>
-              <option value="price">Price</option>
-              <option value="on_hand">On hand</option>
-              <option value="active">Active</option>
-            </select>
-            <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-              value={variantSortDir}
-              onChange={(e) => setVariantSortDir(e.target.value as "asc" | "desc")}
-            >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
-            </select>
-          </div>
+            {/* Product order */}
+  <div className="flex items-center gap-2">
+    <label className="text-xs text-zinc-300">Product&nbsp;order</label>
+    <select
+      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+      value={productOrder}
+      onChange={(e) => { setProductOrder(e.target.value as any); setPage(1); }}
+    >
+      <option value="name:asc">Name ↑</option>
+      <option value="name:desc">Name ↓</option>
+      <option value="price_min:asc">Price ↑</option>
+      <option value="price_max:desc">Price ↓</option>
+      <option value="on_hand:asc">On&nbsp;hand ↑</option>
+      <option value="on_hand:desc">On&nbsp;hand ↓</option>
+      <option value="active:desc">Active ↑</option>
+      <option value="active:asc">Active ↓</option>
+    </select>
+  </div>
+  {/* Variant order */}
+  <div className="flex items-center gap-2">
+    <label className="text-xs text-zinc-300">Variant&nbsp;order</label>
+    <select
+      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+      value={variantOrder}
+      onChange={(e) => setVariantOrder(e.target.value as any)}
+    >
+      <option value="name:asc">Name ↑</option>
+      <option value="name:desc">Name ↓</option>
+      <option value="price:asc">Price ↑</option>
+      <option value="price:desc">Price ↓</option>
+      <option value="on_hand:asc">On&nbsp;hand ↑</option>
+      <option value="on_hand:desc">On&nbsp;hand ↓</option>
+      <option value="active:desc">Active ↑</option>
+      <option value="active:asc">Active ↓</option>
+    </select>
+  </div>
+
+  {/* Store selector */}
+  <div className="flex items-center gap-2">
+    <label className="text-xs text-zinc-300">Store</label>
+    <select
+      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+      value={storeId}
+      onChange={(e) => { setStoreId(e.target.value); setPage(1); }}
+    >
+      <option value="">All stores</option>
+      {stores.map((s) => (
+        <option key={s.id} value={s.id}>{s.name}</option>
+      ))}
+    </select>
+  </div>
+
 
         </div>
         <div className="flex gap-2">
@@ -602,28 +725,32 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
 
                       {d?.variants && (
                         <div className="grid gap-2">
-                        {d.variants.map((v) => (
-                          <div key={v.id}
-                            onClick={(e) => {
-                              // delegate clicks from the menu to correct action with product context
-                              const t = e.target as HTMLElement;
-                              const action = t?.closest("[data-action]")?.getAttribute("data-action");
-                              if (!action) return;
-                              if (action === "edit") {
-                                onEditVariant(d ?? (p as any), v);
-                              } else if (action === "view") {
-                                // open in read-only mode with correct signature (product, variant)
-                                onViewVariant(d ?? (p as any), v);
-                              } else if (action === "activate" || action === "deactivate") {
-                                toggleVariantActive(d ?? (p as any), v);
-                              } else if (action === "delete") {
-                                hardDeleteVariant(d ?? (p as any), v);
-                              }
-                            }}
-                          >
-                            <VariantRow v={v} />
-                          </div>
-                        ))}
+                          {d?.variants && (
+                            <div className="grid gap-2">
+                              {d.variants.map((v) => (
+                                <div key={v.id}
+                                  onClick={(e) => {
+                                    // delegate clicks from the menu to correct action with product context
+                                    const t = e.target as HTMLElement;
+                                    const action = t?.closest("[data-action]")?.getAttribute("data-action");
+                                    if (!action) return;
+                                    if (action === "edit") {
+                                      onEditVariant(d ?? (p as any), v);
+                                    } else if (action === "view") {
+                                      // open in read-only mode with correct signature (product, variant)
+                                      onViewVariant(d ?? (p as any), v);
+                                    } else if (action === "activate" || action === "deactivate") {
+                                      toggleVariantActive(d ?? (p as any), v);
+                                    } else if (action === "delete") {
+                                      hardDeleteVariant(d ?? (p as any), v);
+                                    }
+                                  }}
+                                >
+                                  <VariantRow v={v} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
                         </div>
                       )}

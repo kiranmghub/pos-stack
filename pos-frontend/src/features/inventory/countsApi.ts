@@ -1,4 +1,4 @@
-// src/features/inventory/countsApi.ts
+// pos-frontend/src/features/inventory/countsApi.ts
 import { ensureAuthedFetch } from "@/components/AppShell";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "";

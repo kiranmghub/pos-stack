@@ -1,4 +1,4 @@
-// src/features/inventory/CountsPage.tsx
+// pos-frontend/src/features/inventory/CountsPage.tsx
 import React, { useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import {

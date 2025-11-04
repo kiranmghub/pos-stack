@@ -1,4 +1,4 @@
-# inventory/api.py
+# pos-backend/inventory/api.py
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import (

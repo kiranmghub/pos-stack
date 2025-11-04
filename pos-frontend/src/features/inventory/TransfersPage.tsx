@@ -1,4 +1,4 @@
-// src/features/inventory/TransfersPage.tsx
+// pos-frontend/src/features/inventory/TransfersPage.tsx
 import React, { useEffect, useState } from "react";
 import { PackagePlus, Search, Send, CheckCircle2, Loader2 } from "lucide-react";
 import { ensureAuthedFetch } from "@/components/AppShell";

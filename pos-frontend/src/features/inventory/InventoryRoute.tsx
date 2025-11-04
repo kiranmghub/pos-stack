@@ -1,4 +1,4 @@
-// src/features/inventory/InventoryRoute.tsx
+// pos-frontend/src/features/inventory/InventoryRoute.tsx
 import React, { useEffect, useState } from "react";
 import AppShell, { PageHeading } from "@/components/AppShell";
 import { getMyStores, type StoreLite } from "@/features/pos/api";

@@ -1,4 +1,4 @@
-// src/features/inventory/transfersApi.ts
+// pos-frontend/src/features/inventory/transfersApi.ts
 import { ensureAuthedFetch } from "@/components/AppShell";
 
 const API = "/api/v1/inventory";

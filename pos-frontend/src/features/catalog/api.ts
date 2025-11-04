@@ -89,26 +89,70 @@ export async function uploadVariantImage(variantId: ID, file: File) {
 //   return apiFetchJSON(`/api/catalog/products/?${qs.toString()}`);
 // }
 
-export async function listProducts(params?: {
+// export async function listProducts(params?: {
+//   page?: number;
+//   page_size?: number;
+//   search?: string;
+//   category?: string;
+//   active?: boolean;
+// }): Promise<Paginated<ProductListItem>> {
+//   const qs = new URLSearchParams();
+//   if (params?.page) qs.set("page", String(params.page));
+//   if (params?.page_size) qs.set("page_size", String(params.page_size));
+//   if (params?.search) qs.set("query", params.search); // or keep "search"
+//   if (params?.category) qs.set("category", params.category);
+//   if (typeof params?.active === "boolean") qs.set("active", String(params.active));
+
+//   return apiFetchJSON(`/api/v1/catalog/products?${qs.toString()}`);
+// }
+
+// pos-frontend/src/features/catalog/api.ts
+export async function listProducts(params: {
   page?: number;
   page_size?: number;
   search?: string;
   category?: string;
-  active?: boolean;
-}): Promise<Paginated<ProductListItem>> {
+  sort?: "name" | "price_min" | "price_max" | "on_hand" | "active";
+  direction?: "asc" | "desc";
+}) {
+  const q = new URLSearchParams();
+  if (params.page) q.set("page", String(params.page));
+  if (params.page_size) q.set("page_size", String(params.page_size));
+  if (params.search) q.set("query", params.search);
+  if (params.category) q.set("category", params.category);
+  if (params.sort) q.set("sort", params.sort);
+  if (params.direction) q.set("direction", params.direction);
+  return apiFetchJSON(`/api/v1/catalog/products?${q.toString()}`);
+}
+
+
+// export async function getProduct(id: ID): Promise<ProductDetail> {
+//   return apiFetchJSON(`/api/catalog/products/${id}/`);
+// }
+
+// export async function getProduct(
+//   id: ID,
+//   opts?: { vsort?: "name"|"price"|"on_hand"|"active"; vdirection?: "asc"|"desc" }
+// ) {
+//   const qs = new URLSearchParams();
+//   if (opts?.vsort) qs.set("vsort", opts.vsort);
+//   if (opts?.vdirection) qs.set("vdirection", opts.vdirection);
+//   const suffix = qs.toString() ? `?${qs.toString()}` : "";
+//   return apiFetchJSON(`/api/catalog/products/${id}/${suffix}`);
+// }
+
+// keep the explicit result type
+export async function getProduct(
+  id: ID,
+  opts?: { vsort?: "name" | "price" | "on_hand" | "active"; vdirection?: "asc" | "desc" }
+): Promise<ProductDetail> {
   const qs = new URLSearchParams();
-  if (params?.page) qs.set("page", String(params.page));
-  if (params?.page_size) qs.set("page_size", String(params.page_size));
-  if (params?.search) qs.set("query", params.search); // or keep "search"
-  if (params?.category) qs.set("category", params.category);
-  if (typeof params?.active === "boolean") qs.set("active", String(params.active));
-
-  return apiFetchJSON(`/api/v1/catalog/products?${qs.toString()}`);
+  if (opts?.vsort) qs.set("vsort", opts.vsort);
+  if (opts?.vdirection) qs.set("vdirection", opts.vdirection);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetchJSON(`/api/catalog/products/${id}/${suffix}`) as Promise<ProductDetail>;
 }
 
-export async function getProduct(id: ID): Promise<ProductDetail> {
-  return apiFetchJSON(`/api/catalog/products/${id}/`);
-}
 
 export async function createProduct(data: CreateProductDto): Promise<ProductDetail> {
   const body = toFormData(data as any);
@@ -194,6 +238,17 @@ export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
     method: "POST",
     body: JSON.stringify(preferred ? { type: preferred } : {}),
   }); // -> { barcode, type }
+}
+
+
+export async function listInventoryStores() {
+  const data = await apiFetchJSON("/api/v1/inventory/stock?store_id=0");
+  // map to distinct store objects
+  const unique = new Map<number, string>();
+  for (const row of data.results || []) {
+    if (row.store && row.store.id) unique.set(row.store.id, row.store.name);
+  }
+  return Array.from(unique, ([id, name]) => ({ id, name }));
 }
 
 
