@@ -34,8 +34,19 @@ from catalog.api import (
     CatalogProductDetailView,
     VariantDetailView,
     TaxCategoryListView,
-    CategoryListView, ProductImageUploadView, VariantImageUploadView, CodeGenerateView, BarcodeGenerateView
+    CategoryListView,
+    ProductImageUploadView,
+    VariantImageUploadView,
+    CodeGenerateView,
+    BarcodeGenerateView,
 )
+
+from catalog.api_import_export import (
+    CatalogExportView,
+    CatalogImportTemplateView,
+    CatalogImportView,
+)
+
 # from inventory.api import AdjustStockView
 from rest_framework.routers import DefaultRouter
 from catalog.api import ProductViewSet, VariantViewSet
@@ -87,6 +98,9 @@ urlpatterns = [
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
     path("api/v1/stores/stores-lite", StoreLiteViewSet.as_view({"get": "list"}), name="stores-lite",
+    path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export"),
+    path("api/v1/catalog/import/template", CatalogImportTemplateView.as_view(), name="catalog-import-template"),
+    path("api/v1/catalog/import", CatalogImportView.as_view(), name="catalog-import"),
     ),
 
 
