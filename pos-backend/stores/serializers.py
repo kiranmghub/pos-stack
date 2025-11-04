@@ -13,9 +13,3 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Register
         fields = "__all__"
-
-# ✅ new: minimal payload for dropdowns
-class StoreLiteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Store
-        fields = ("id", "code", "name", "is_active")

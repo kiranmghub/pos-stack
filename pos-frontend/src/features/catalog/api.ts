@@ -241,9 +241,6 @@ export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
 }
 
 
-export async function listStoresLite() {
-  return apiFetchJSON("/api/v1/stores/storeslite"); // -> [{id, code, name, is_active}, ...]
-}
 
 
 

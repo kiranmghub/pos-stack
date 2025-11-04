@@ -86,7 +86,6 @@ urlpatterns = [
     path("api/v1/tenant-admin/", include("tenant_admin.urls")),
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
-    path("api/v1/stores/storeslite", StoreViewSet.as_view()),
 
 
 ]
