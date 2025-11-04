@@ -43,6 +43,5 @@ class StoreLiteViewSet(TenantScopedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     tenant_field = "tenant"
 
     def get_queryset(self) -> QuerySet:
-        qs = Store.objects.select_related("tenant").filter(is_active=True)
-        # TenantScopedViewSetMixin will filter by request.tenant using tenant_field
+        qs = Store.objects.select_related("tenant").filter(is_active=True).order_by("name")
         return qs.order_by("name")
