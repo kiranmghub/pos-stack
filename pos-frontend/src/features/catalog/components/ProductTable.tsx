@@ -3,6 +3,8 @@ import React from "react";
 import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, updateProduct, listInventoryStores } from "../api";
 import type { ProductListItem, ProductDetail, Variant } from "../types";
 import { useNotify } from "@/lib/notify";
+import ExportModal from "./ExportModal";
+
 
 const currency = (v: string | number) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(v));
@@ -34,7 +36,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [variantOrder, setVariantOrder] = React.useState<"name:asc" | "name:desc" | "price:asc" | "price:desc" | "on_hand:asc" | "on_hand:desc" | "active:asc" | "active:desc">("name:asc");
 
   const [storeId, setStoreId] = React.useState<string>("");
-  const [stores, setStores] = React.useState<{id:number,name:string}[]>([]);
+  const [stores, setStores] = React.useState<{ id: number, name: string }[]>([]);
+  const [showExport, setShowExport] = React.useState(false);
+  const [showImport, setShowImport] = React.useState(false); // placeholder for later
 
 
 
@@ -51,26 +55,26 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
 
   // ---- persistence keys ----
-  const LS_PAGE       = "catalog.page";
-  const LS_PAGE_SIZE  = "catalog.pageSize";
+  const LS_PAGE = "catalog.page";
+  const LS_PAGE_SIZE = "catalog.pageSize";
   const LS_PROD_ORDER = "catalog.productOrder";
-  const LS_VAR_ORDER  = "catalog.variantOrder";
-  const LS_STORE      = "catalog.storeId";
+  const LS_VAR_ORDER = "catalog.variantOrder";
+  const LS_STORE = "catalog.storeId";
 
   const PRODUCT_ORDERS = new Set([
-    "name:asc","name:desc",
-    "price_min:asc","price_max:desc",
-    "on_hand:asc","on_hand:desc",
-    "active:asc","active:desc",
+    "name:asc", "name:desc",
+    "price_min:asc", "price_max:desc",
+    "on_hand:asc", "on_hand:desc",
+    "active:asc", "active:desc",
   ]);
   const VARIANT_ORDERS = new Set([
-    "name:asc","name:desc",
-    "price:asc","price:desc",
-    "on_hand:asc","on_hand:desc",
-    "active:asc","active:desc",
+    "name:asc", "name:desc",
+    "price:asc", "price:desc",
+    "on_hand:asc", "on_hand:desc",
+    "active:asc", "active:desc",
   ]);
-  
-  
+
+
   // ---- hydrate pagination + sort from localStorage once, then mark ready ----
   React.useEffect(() => {
     try {
@@ -102,34 +106,34 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     }
   }, []);
 
-    // ---- persist on change ----
-// ---- persist on change ----
-React.useEffect(() => {
-  if (!bootstrapped) return;
-  try { localStorage.setItem(LS_PAGE, String(page)); } catch {}
-}, [bootstrapped, page]);
+  // ---- persist on change ----
+  // ---- persist on change ----
+  React.useEffect(() => {
+    if (!bootstrapped) return;
+    try { localStorage.setItem(LS_PAGE, String(page)); } catch { }
+  }, [bootstrapped, page]);
 
-React.useEffect(() => {
-  if (!bootstrapped) return;
-  try { localStorage.setItem(LS_PAGE_SIZE, String(pageSize)); } catch {}
-}, [bootstrapped, pageSize]);
+  React.useEffect(() => {
+    if (!bootstrapped) return;
+    try { localStorage.setItem(LS_PAGE_SIZE, String(pageSize)); } catch { }
+  }, [bootstrapped, pageSize]);
 
-React.useEffect(() => {
-  if (!bootstrapped) return;
-  try { localStorage.setItem(LS_PROD_ORDER, productOrder); } catch {}
-}, [bootstrapped, productOrder]);
+  React.useEffect(() => {
+    if (!bootstrapped) return;
+    try { localStorage.setItem(LS_PROD_ORDER, productOrder); } catch { }
+  }, [bootstrapped, productOrder]);
 
-React.useEffect(() => {
-  if (!bootstrapped) return;
-  try { localStorage.setItem(LS_VAR_ORDER, variantOrder); } catch {}
-}, [bootstrapped, variantOrder]);
+  React.useEffect(() => {
+    if (!bootstrapped) return;
+    try { localStorage.setItem(LS_VAR_ORDER, variantOrder); } catch { }
+  }, [bootstrapped, variantOrder]);
 
 
-// persist selected store
-React.useEffect(() => {
-  if (!bootstrapped) return;
-  try { localStorage.setItem(LS_STORE, storeId); } catch {}
-}, [bootstrapped, storeId]);
+  // persist selected store
+  React.useEffect(() => {
+    if (!bootstrapped) return;
+    try { localStorage.setItem(LS_STORE, storeId); } catch { }
+  }, [bootstrapped, storeId]);
 
 
 
@@ -196,8 +200,8 @@ React.useEffect(() => {
       try {
         setLoadingRow((s) => ({ ...s, [productId]: true }));
         // const d = await getProduct(productId);
-        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
-        const d = await getProduct(productId, { vsort: vk, vdirection: vdir, store_id: storeId || undefined});
+        const [vk, vdir] = variantOrder.split(":") as ["name" | "price" | "on_hand" | "active", "asc" | "desc"];
+        const d = await getProduct(productId, { vsort: vk, vdirection: vdir, store_id: storeId || undefined });
         // update the detail cache so the variants list refreshes
         setDetails((s) => ({ ...s, [productId]: d }));
         // also patch the summary row (price range, on-hand, variant count) without reloading all rows
@@ -205,12 +209,12 @@ React.useEffect(() => {
           rows.map((r) =>
             r.id === productId
               ? {
-                  ...r,
-                  price_min: (d as any).price_min ?? r.price_min,
-                  price_max: (d as any).price_max ?? r.price_max,
-                  on_hand_sum: (d as any).on_hand_sum ?? r.on_hand_sum,
-                  variant_count: (d as any).variants ? (d as any).variants.length : r.variant_count,
-                }
+                ...r,
+                price_min: (d as any).price_min ?? r.price_min,
+                price_max: (d as any).price_max ?? r.price_max,
+                on_hand_sum: (d as any).on_hand_sum ?? r.on_hand_sum,
+                variant_count: (d as any).variants ? (d as any).variants.length : r.variant_count,
+              }
               : r
           )
         );
@@ -251,7 +255,7 @@ React.useEffect(() => {
     ids.forEach(async (id) => {
       try {
         setLoadingRow((s) => ({ ...s, [id]: true }));
-        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
+        const [vk, vdir] = variantOrder.split(":") as ["name" | "price" | "on_hand" | "active", "asc" | "desc"];
         const d = await getProduct(Number(id), { vsort: vk, vdirection: vdir, store_id: storeId || undefined });
         setDetails((s) => ({ ...s, [id]: d }));
       } finally {
@@ -284,8 +288,8 @@ React.useEffect(() => {
       try {
         setLoadingRow((s) => ({ ...s, [p.id]: true }));
         // const d = await getProduct(p.id);
-        const [vk, vdir] = variantOrder.split(":") as ["name"|"price"|"on_hand"|"active","asc"|"desc"];
-        const d = await getProduct(p.id, { vsort: vk, vdirection: vdir, store_id: storeId || undefined});
+        const [vk, vdir] = variantOrder.split(":") as ["name" | "price" | "on_hand" | "active", "asc" | "desc"];
+        const d = await getProduct(p.id, { vsort: vk, vdirection: vdir, store_id: storeId || undefined });
         setDetails((s) => ({ ...s, [p.id]: d }));
       } finally {
         setLoadingRow((s) => ({ ...s, [p.id]: false }));
@@ -304,29 +308,29 @@ React.useEffect(() => {
     }
   }
 
-async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant) {
-  try {
-    await deleteVariant(v.id);
-    success("Variant deleted");
-    window.dispatchEvent(new CustomEvent("catalog:variant:deleted", { detail: { productId: p.id } }));
-  } catch (e) {
-    console.error(e);
-    const msg = e?.message || e?.detail || "Failed to delete variant.";
-    error(msg);
+  async function hardDeleteVariant(p: ProductListItem | ProductDetail, v: Variant) {
+    try {
+      await deleteVariant(v.id);
+      success("Variant deleted");
+      window.dispatchEvent(new CustomEvent("catalog:variant:deleted", { detail: { productId: p.id } }));
+    } catch (e) {
+      console.error(e);
+      const msg = e?.message || e?.detail || "Failed to delete variant.";
+      error(msg);
+    }
   }
-}
 
-async function toggleProductActive(p: ProductListItem | ProductDetail) {
-  try {
-    await updateProduct(p.id, { active: !(p as any).active });
-    success((p as any).active ? "Product deactivated" : "Product activated");
-    // let listeners reload list & badges
-    window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: p.id } }));
-  } catch (e) {
-    console.error(e);
-    error("Failed to update product status.");
+  async function toggleProductActive(p: ProductListItem | ProductDetail) {
+    try {
+      await updateProduct(p.id, { active: !(p as any).active });
+      success((p as any).active ? "Product deactivated" : "Product activated");
+      // let listeners reload list & badges
+      window.dispatchEvent(new CustomEvent("catalog:product:saved", { detail: { id: p.id } }));
+    } catch (e) {
+      console.error(e);
+      error("Failed to update product status.");
+    }
   }
-}
 
 
 
@@ -367,13 +371,12 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
 
         {/* On-hand count */}
         <div
-          className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${
-            v.on_hand === 0
+          className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${v.on_hand === 0
               ? "bg-red-500/15 text-red-300"
               : v.on_hand < 5
-              ? "bg-amber-500/15 text-amber-300"
-              : "bg-emerald-500/15 text-emerald-300"
-          }`}
+                ? "bg-amber-500/15 text-amber-300"
+                : "bg-emerald-500/15 text-emerald-300"
+            }`}
         >
           {v.on_hand}
         </div>
@@ -381,9 +384,8 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
         {/* Status */}
         <div className="justify-self-end">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs ${
-              (v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
-            }`}
+            className={`rounded-full px-2 py-0.5 text-xs ${(v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
+              }`}
           >
             {(v as any).active ? "Active" : "Inactive"}
           </span>
@@ -399,55 +401,55 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
           >
             ⋯
           </button>
-            {openMenu === v.id && (
-              <div
-                className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
-                role="menu"
+          {openMenu === v.id && (
+            <div
+              className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+              role="menu"
+            >
+              {/* View Details */}
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                onClick={() => { setOpenMenu(null); }}
+                data-action="view"
               >
-                {/* View Details */}
-                <button
-                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                  onClick={() => { setOpenMenu(null); }}
-                  data-action="view"
-                >
-                  View Details
-                </button>
+                View Details
+              </button>
 
-                <div className="my-1 h-px bg-zinc-800" />
+              <div className="my-1 h-px bg-zinc-800" />
 
-                {/* Edit */}
-                <button
-                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200"
-                  onClick={() => { setOpenMenu(null); }}
-                  data-action="edit"
-                >
-                  Edit
-                </button>
+              {/* Edit */}
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-zinc-200"
+                onClick={() => { setOpenMenu(null); }}
+                data-action="edit"
+              >
+                Edit
+              </button>
 
-                {/* Activate / Deactivate (variant) */}
-                <button
-                  className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
-                  onClick={() => { setOpenMenu(null); }}
-                  data-action={(v as any).active ? "deactivate" : "activate"}
-                >
-                  {(v as any).active ? "Deactivate" : "Activate"}
-                </button>
+              {/* Activate / Deactivate (variant) */}
+              <button
+                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                onClick={() => { setOpenMenu(null); }}
+                data-action={(v as any).active ? "deactivate" : "activate"}
+              >
+                {(v as any).active ? "Deactivate" : "Activate"}
+              </button>
 
-                {/* Show Delete ONLY when inactive (variant) */}
-                {!(v as any).active && (
-                  <>
-                    <div className="my-1 h-px bg-zinc-800" />
-                    <button
-                      className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
-                      onClick={() => { setOpenMenu(null); }}
-                      data-action="delete"
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+              {/* Show Delete ONLY when inactive (variant) */}
+              {!(v as any).active && (
+                <>
+                  <div className="my-1 h-px bg-zinc-800" />
+                  <button
+                    className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                    onClick={() => { setOpenMenu(null); }}
+                    data-action="delete"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
         </div>
       </div>
@@ -476,63 +478,80 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
           />
           <label className="flex items-center gap-2 text-sm text-zinc-300">
             <input type="checkbox" checked={onlyLow}
-            onChange={(e) => { setOnlyLow(e.target.checked); setPage(1); }}
+              onChange={(e) => { setOnlyLow(e.target.checked); setPage(1); }}
             />
             Low / OOS
           </label>
 
-            {/* Product order */}
-  <div className="flex items-center gap-2">
-    <label className="text-xs text-zinc-300">Product&nbsp;order</label>
-    <select
-      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-      value={productOrder}
-      onChange={(e) => { setProductOrder(e.target.value as any); setPage(1); }}
-    >
-      <option value="name:asc">Name ↑</option>
-      <option value="name:desc">Name ↓</option>
-      <option value="price_min:asc">Price ↑</option>
-      <option value="price_max:desc">Price ↓</option>
-      <option value="on_hand:asc">On&nbsp;hand ↑</option>
-      <option value="on_hand:desc">On&nbsp;hand ↓</option>
-      <option value="active:desc">Active ↑</option>
-      <option value="active:asc">Active ↓</option>
-    </select>
-  </div>
-  {/* Variant order */}
-  <div className="flex items-center gap-2">
-    <label className="text-xs text-zinc-300">Variant&nbsp;order</label>
-    <select
-      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-      value={variantOrder}
-      onChange={(e) => setVariantOrder(e.target.value as any)}
-    >
-      <option value="name:asc">Name ↑</option>
-      <option value="name:desc">Name ↓</option>
-      <option value="price:asc">Price ↑</option>
-      <option value="price:desc">Price ↓</option>
-      <option value="on_hand:asc">On&nbsp;hand ↑</option>
-      <option value="on_hand:desc">On&nbsp;hand ↓</option>
-      <option value="active:desc">Active ↑</option>
-      <option value="active:asc">Active ↓</option>
-    </select>
-  </div>
+          {/* Product order */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-300">Product&nbsp;order</label>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={productOrder}
+              onChange={(e) => { setProductOrder(e.target.value as any); setPage(1); }}
+            >
+              <option value="name:asc">Name ↑</option>
+              <option value="name:desc">Name ↓</option>
+              <option value="price_min:asc">Price ↑</option>
+              <option value="price_max:desc">Price ↓</option>
+              <option value="on_hand:asc">On&nbsp;hand ↑</option>
+              <option value="on_hand:desc">On&nbsp;hand ↓</option>
+              <option value="active:desc">Active ↑</option>
+              <option value="active:asc">Active ↓</option>
+            </select>
+          </div>
+          {/* Variant order */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-300">Variant&nbsp;order</label>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={variantOrder}
+              onChange={(e) => setVariantOrder(e.target.value as any)}
+            >
+              <option value="name:asc">Name ↑</option>
+              <option value="name:desc">Name ↓</option>
+              <option value="price:asc">Price ↑</option>
+              <option value="price:desc">Price ↓</option>
+              <option value="on_hand:asc">On&nbsp;hand ↑</option>
+              <option value="on_hand:desc">On&nbsp;hand ↓</option>
+              <option value="active:desc">Active ↑</option>
+              <option value="active:asc">Active ↓</option>
+            </select>
+          </div>
 
-  {/* Store selector */}
-  
-  <div className="flex items-center gap-2">
-    <label className="text-xs text-zinc-300">Store</label>
-    <select
-      className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
-      value={storeId}
-      onChange={(e) => { setStoreId(e.target.value); setPage(1); }}
-    >
-      <option value="">All stores</option>
-      {stores.map((s) => (
-        <option key={s.id} value={s.id}>{s.name}</option>
-      ))}
-    </select>
-  </div>
+          {/* Store selector */}
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-zinc-300">Store</label>
+            <select
+              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              value={storeId}
+              onChange={(e) => { setStoreId(e.target.value); setPage(1); }}
+            >
+              <option value="">All stores</option>
+              {stores.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-xl border border-zinc-700 px-2 py-1 text-sm text-zinc-100 hover:bg-white/5"
+              onClick={() => setShowExport(true)}
+            >
+              Export
+            </button>
+            <button
+              className="rounded-xl border border-zinc-700 px-2 py-1 text-sm text-zinc-100 opacity-60 cursor-not-allowed"
+              title="Coming soon"
+              onClick={() => setShowImport(true)}
+              disabled
+            >
+              Import
+            </button>
+          </div>
 
 
         </div>
@@ -605,21 +624,19 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
                       {currency(p.price_min)} – {currency(p.price_max)}
                     </div>
                     <div
-                      className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${
-                        p.on_hand_sum === 0
+                      className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${p.on_hand_sum === 0
                           ? "bg-red-500/15 text-red-300"
                           : p.on_hand_sum < 5
-                          ? "bg-amber-500/15 text-amber-300"
-                          : "bg-emerald-500/15 text-emerald-300"
-                      }`}
+                            ? "bg-amber-500/15 text-amber-300"
+                            : "bg-emerald-500/15 text-emerald-300"
+                        }`}
                     >
                       {p.on_hand_sum}
                     </div>
                     <div className="justify-self-end flex items-center gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          p.active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
-                        }`}
+                        className={`rounded-full px-2 py-0.5 text-xs ${p.active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
+                          }`}
                       >
                         {p.active ? "Active" : "Inactive"}
                       </span>
@@ -643,9 +660,8 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
                         </button>
                         {openProdMenu === p.id && (
                           <div
-                            className={`absolute right-0 z-30 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl ${
-                              menuDirection === "up" ? "-translate-y-2 bottom-full" : "translate-y-2 top-full"
-                            }`}
+                            className={`absolute right-0 z-30 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl ${menuDirection === "up" ? "-translate-y-2 bottom-full" : "translate-y-2 top-full"
+                              }`}
                             role="menu"
                           >
                             {/* View Details */}
@@ -814,6 +830,14 @@ async function toggleProductActive(p: ProductListItem | ProductDetail) {
         </div>
 
       </div>
+      {/* Export modal */}
+      <ExportModal
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        initialQuery={query}
+        initialStoreId={storeId}
+      />
+
     </div>
   );
 }

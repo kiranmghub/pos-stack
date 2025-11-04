@@ -12,6 +12,7 @@ import type {
   ID,
 } from "./types";
 
+
 const API_BASE = import.meta.env.VITE_API_BASE || ""; // your auth.ts handles prefixing with "/api" when empty
 
 function toFormData(obj: Record<string, any>): FormData {
@@ -101,6 +102,86 @@ export async function getProduct(
   return apiFetchJSON(`/api/catalog/products/${id}/${suffix}`) as Promise<ProductDetail>;
 }
 
+// // 🚀 NEW: Export catalog (downloads a file to the user's machine)
+// export async function exportCatalog(params: {
+//   scope: "products" | "variants" | "combined";
+//   format: "csv" | "json";
+//   q?: string;                  // search filter (optional)
+//   // store_id?: string|number; // backend currently ignores; keep for future
+// }) {
+//   const url = new URL("/api/v1/catalog/export", window.location.origin);
+//   const qs = url.searchParams;
+//   qs.set("scope", params.scope);
+//   qs.set("format", params.format);
+//   if (params.q) qs.set("q", params.q);
+//   // if (params.store_id) qs.set("store_id", String(params.store_id));
+
+//   const headers = await authHeaders();
+//   const resp = await fetch(url.toString(), { headers });
+//   if (!resp.ok) {
+//     const txt = await resp.text().catch(() => "");
+//     throw new Error(txt || `Export failed (${resp.status})`);
+//   }
+//   // Try to read filename from Content-Disposition
+//   const cd = resp.headers.get("Content-Disposition") || "";
+//   const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+//   const suggested = m?.[1] || `catalog-${params.scope}.${params.format}`;
+//   const blob = await resp.blob();
+//   const blobUrl = URL.createObjectURL(blob);
+//   const a = document.createElement("a");
+//   a.href = blobUrl;
+//   a.download = suggested;
+//   document.body.appendChild(a);
+//   a.click();
+//   a.remove();
+//   URL.revokeObjectURL(blobUrl);
+// }
+
+// 🚀 NEW: Export catalog (downloads a file to the user's machine)
+export async function exportCatalog(params: {
+  scope: "products" | "variants" | "combined";
+  format: "csv" | "json";
+  q?: string;                  // search filter (optional)
+  // store_id?: string|number; // backend currently ignores; keep for future
+}) {
+  const qs = new URLSearchParams();
+  qs.set("scope", params.scope);
+  qs.set("format", params.format);
+  if (params.q) qs.set("q", params.q);
+  // if (params.store_id) qs.set("store_id", String(params.store_id));
+
+  const headers = await authHeaders();
+  const resp = await fetch(`/api/v1/catalog/export?${qs.toString()}`, { 
+    headers 
+
+  });
+
+    // 🔍 ADD DEBUGGING HERE
+  console.log("Response status:", resp.status);
+  console.log("Response headers:", resp.headers);
+  
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => "");
+    console.log("Error response body:", txt);  // 👈 Add this
+    console.log("Response body length:", txt.length);  // 👈 And this
+    throw new Error(txt || `Export failed (${resp.status})`);
+  }
+  
+  // Try to read filename from Content-Disposition
+  const cd = resp.headers.get("Content-Disposition") || "";
+  const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+  const suggested = m?.[1] || `catalog-${params.scope}.${params.format}`;
+  
+  const blob = await resp.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = suggested;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
 
 export async function createProduct(data: CreateProductDto): Promise<ProductDetail> {
   const body = toFormData(data as any);
