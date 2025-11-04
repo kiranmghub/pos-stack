@@ -241,14 +241,9 @@ export async function generateBarcode(preferred?: "EAN13" | "CODE128") {
 }
 
 
-export async function listInventoryStores() {
-  const data = await apiFetchJSON("/api/v1/inventory/stock?store_id=0");
-  // map to distinct store objects
-  const unique = new Map<number, string>();
-  for (const row of data.results || []) {
-    if (row.store && row.store.id) unique.set(row.store.id, row.store.name);
-  }
-  return Array.from(unique, ([id, name]) => ({ id, name }));
+export async function listStoresLite() {
+  return apiFetchJSON("/api/v1/stores/storeslite"); // -> [{id, code, name, is_active}, ...]
 }
+
 
 

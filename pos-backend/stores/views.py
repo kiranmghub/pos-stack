@@ -5,7 +5,11 @@ from rest_framework import viewsets
 from common.api_mixins import TenantScopedViewSetMixin, IsInTenant, RoleRequired
 from common.roles import TenantRole
 from .models import Store, Register
-from .serializers import StoreSerializer, RegisterSerializer
+from .serializers import StoreSerializer, RegisterSerializer, StoreLiteSerializer
+from rest_framework.response import Response
+from rest_framework.decorators import action
+
+
 
 
 class StoreViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
@@ -18,6 +22,17 @@ class StoreViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
     permission_roles = { "POST": [TenantRole.MANAGER, TenantRole.ADMIN],
                          "DELETE": [TenantRole.ADMIN, TenantRole.OWNER] }
     tenant_field = "tenant"   # auto-filters by request.tenant; sets on create
+
+    @action(detail=False, methods=["get"])
+    def storeLite(self, request):
+        """
+        GET /api/v1/stores/storeLite
+        Returns active stores for the current tenant: id, code, name, is_active.
+        """
+        qs = self.get_queryset().only("id", "code", "name", "is_active").order_by("code", "id")
+        qs = qs.filter(is_active=True)
+        data = StoreLiteSerializer(qs, many=True).data
+        return Response(data)
 
 
 class RegisterViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):

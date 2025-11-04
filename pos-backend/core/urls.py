@@ -39,6 +39,7 @@ from catalog.api import (
 # from inventory.api import AdjustStockView
 from rest_framework.routers import DefaultRouter
 from catalog.api import ProductViewSet, VariantViewSet
+from stores.views import StoreViewSet
 
 
 router = DefaultRouter()
@@ -85,6 +86,7 @@ urlpatterns = [
     path("api/v1/tenant-admin/", include("tenant_admin.urls")),
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
+    path("api/v1/stores/storeslite", StoreViewSet.as_view()),
 
 
 ]
