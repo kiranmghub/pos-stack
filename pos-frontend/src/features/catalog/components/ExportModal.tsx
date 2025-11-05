@@ -4,7 +4,7 @@ import { exportCatalog } from "../api";
 import { X } from "lucide-react";
 
 type Scope = "products" | "variants" | "combined";
-type Format = "csv" | "json";
+type Format = "csv" | "json" | "pdf";
 
 export default function ExportModal({
   open,
@@ -32,7 +32,7 @@ export default function ExportModal({
     setBusy(false);
   }, [open, initialQuery]);
 
-  // Combined is JSON-only in v1
+  // Combined is JSON-only in v1; products/variants can be csv/json/pdf
   const effectiveFormat = scope === "combined" ? "json" : format;
 
   async function onExport() {
@@ -94,10 +94,14 @@ export default function ExportModal({
               >
                 <option value="csv">CSV</option>
                 <option value="json">JSON</option>
+                <option value="pdf">PDF</option>
               </select>
-              {scope === "combined" && (
-                <span className="text-xs text-zinc-500">Combined export is JSON-only.</span>
-              )}
+              <span className="text-xs text-zinc-500">
+                {scope === "combined"
+                  ? "Combined export is JSON-only."
+                  : "PDF omits image URLs for compact output."}
+              </span>
+
             </label>
           </div>
 

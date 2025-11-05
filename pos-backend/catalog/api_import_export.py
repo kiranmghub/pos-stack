@@ -8,6 +8,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import StreamingHttpResponse, HttpResponse
 from django.utils.encoding import smart_str
+from django.utils import timezone
+from django.utils.text import slugify
+
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -50,6 +53,7 @@ PRODUCT_HEADERS: List[str] = [
 ]
 
 VARIANT_HEADERS: List[str] = [
+    "product_name",
     "product_code",   # required to link to Product
     "sku",            # required for upsert
     "name",
@@ -68,7 +72,7 @@ VARIANT_HEADERS: List[str] = [
 # =========================
 class CatalogExportView(APIView):
     """
-    GET /api/v1/catalog/export?scope=products|variants|combined&format=csv|json
+    GET /api/v1/catalog/export?scope=products|variants|combined&output_format=csv|json
          [&store_id=... (ignored for now; computed fields omitted in v1)]
          [&q=... (search by code/name)]
     - products: flat rows of product data (no aggregates in v1 export)
@@ -77,9 +81,18 @@ class CatalogExportView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    def _tenant_label(self, tenant) -> str:
+        code = getattr(tenant, "code", None)
+        name = getattr(tenant, "name", None)
+        if code and name:
+            # return f"{code} / {name}"
+            return f"{name} ({code})"
+        return code or name or "Tenant"
+
     def get(self, request):
         scope = request.query_params.get("scope", "products").lower()
-        fmt = request.query_params.get("format", "csv").lower()
+        # fmt = request.query_params.get("format", "csv").lower()
+        fmt = request.query_params.get("output_format", "csv").lower()
         q = (request.query_params.get("q") or "").strip()
         tenant = _resolve_request_tenant(request)
         if not tenant:
@@ -87,7 +100,7 @@ class CatalogExportView(APIView):
 
         if scope not in {"products", "variants", "combined"}:
             return Response({"detail": "Invalid scope"}, status=status.HTTP_400_BAD_REQUEST)
-        if fmt not in {"csv", "json"}:
+        if fmt not in {"csv", "json", "pdf"}:
             return Response({"detail": "Invalid format"}, status=status.HTTP_400_BAD_REQUEST)
 
         if scope == "products":
@@ -107,8 +120,20 @@ class CatalogExportView(APIView):
                     "image_url": (p.image_url or ""),
                 })
             if fmt == "json":
-                return Response(rows)
-            return self._csv_response("products.csv", PRODUCT_HEADERS, rows)
+                resp = Response(rows)
+                fname = self._build_filename(tenant, "products", "json")
+                resp["Content-Disposition"] = f'attachment; filename="{fname}"'
+                return resp
+            if fmt == "pdf":
+                fname = self._build_filename(tenant, "products", "pdf")
+                # omit image_url column for PDF
+                headers = [h for h in PRODUCT_HEADERS if h != "image_url"]
+                title = f"{self._tenant_label(tenant)}: Products"
+                return self._pdf_response(fname, headers, rows, title)
+            
+            fname = self._build_filename(tenant, "products", "csv")
+            return self._csv_response(fname, PRODUCT_HEADERS, rows)
+
 
         if scope == "variants":
             qs = Variant.objects.filter(tenant=tenant).select_related("product", "tax_category")
@@ -122,6 +147,7 @@ class CatalogExportView(APIView):
             rows = []
             for v in qs.order_by("product__code", "sku", "id"):
                 rows.append({
+                    "product_name": v.product.name or "", 
                     "product_code": v.product.code or "",
                     "sku": v.sku or "",
                     "name": v.name or "",
@@ -134,8 +160,20 @@ class CatalogExportView(APIView):
                     "image_url": (v.image_url or ""),
                 })
             if fmt == "json":
-                return Response(rows)
-            return self._csv_response("variants.csv", VARIANT_HEADERS, rows)
+                resp = Response(rows)
+                fname = self._build_filename(tenant, "variants", "json")
+                resp["Content-Disposition"] = f'attachment; filename="{fname}"'
+                return resp
+            if fmt == "pdf":
+                fname = self._build_filename(tenant, "variants", "pdf")
+                # omit image_url column for PDF
+                headers = [h for h in VARIANT_HEADERS if h != "image_url"]
+                title = f"{self._tenant_label(tenant)}: Variants"
+                return self._pdf_response(fname, headers, rows, title)
+            
+            fname = self._build_filename(tenant, "variants", "csv")
+            return self._csv_response(fname, VARIANT_HEADERS, rows)
+
 
         # combined JSON: each product with embedded variants (good round-trip)
         # (No CSV for combined to avoid confusing multi-line representations)
@@ -169,7 +207,114 @@ class CatalogExportView(APIView):
                 "image_url": (p.image_url or ""),
                 "variants": variants_by_product.get(p.id, []),
             })
-        return Response(data)
+        # combined is JSON-only in v1; still set filename for download UX
+        resp = Response(data)
+        fname = self._build_filename(tenant, "combined", "json")
+        resp["Content-Disposition"] = f'attachment; filename="{fname}"'
+        return resp
+    
+    def _pdf_response(self, filename: str, headers: List[str], rows: List[Dict[str, Any]], title: str) -> HttpResponse:
+        """
+        Render a simple tabular PDF using reportlab (no images; compact; landscape).
+        """
+        try:
+            from reportlab.lib.pagesizes import landscape, letter
+            from reportlab.platypus import SimpleDocTemplate, LongTable, TableStyle, Paragraph, Spacer
+            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        except Exception:
+            return Response(
+                {"detail": "PDF export requires reportlab. Please install it on the server."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+        
+        # --- macOS / certain Python builds: hashlib.md5 doesn't accept 'usedforsecurity' kwarg.
+        # ReportLab calls md5(usedforsecurity=False). If that's unsupported, monkey-patch
+        # reportlab.pdfbase.pdfdoc.md5 to drop unknown kwargs. This is safe and scoped.
+        try:
+            import hashlib as _hashlib
+            _hashlib.md5(usedforsecurity=False)  # probe support
+        except TypeError:
+            from reportlab.pdfbase import pdfdoc as _pdfdoc
+            def _md5_no_kw(*args, **kwargs):
+                # ignore any unexpected kwargs and call the standard md5
+                return _hashlib.md5(*args)
+            _pdfdoc.md5 = _md5_no_kw
+
+        buf = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buf, pagesize=landscape(letter),
+            leftMargin=24, rightMargin=24, topMargin=24, bottomMargin=24
+        )
+        styles = getSampleStyleSheet()
+        cell_style = ParagraphStyle(
+            "Cell",
+            parent=styles["BodyText"],
+            fontSize=8, leading=10,
+            spaceBefore=0, spaceAfter=0,
+            wordWrap="LTR"
+        )
+        header_style = ParagraphStyle(
+            "Header",
+            parent=styles["Title"],
+            fontSize=14, leading=18
+        )
+        sub_style = ParagraphStyle(
+            "Sub",
+            parent=styles["BodyText"],
+            fontSize=9, textColor=colors.HexColor("#9CA3AF")  # zinc-400-ish
+        )
+        head_cell_style = ParagraphStyle(
+            "HeadCell",
+            parent=styles["BodyText"],
+            fontSize=9, leading=11,
+            textColor=colors.white,           # ensure visible over dark background
+            fontName="Helvetica-Bold",        # bold headers
+            spaceBefore=0, spaceAfter=0
+        )
+        story: List[Any] = []
+
+        # Title + "As of" timestamp (local time)
+        story.append(Paragraph(title, header_style))
+        from django.utils import timezone as _tz
+        asof = _tz.localtime(_tz.now()).strftime("%Y-%m-%d %H:%M:%S %Z")
+        story.append(Paragraph(f"As of: {asof}", sub_style))
+        story.append(Spacer(1, 10))
+
+        # Build table data (omit image_url already handled by caller); wrap each cell
+        # Header cells: Title Case + explicit white/bold style
+        data = [[Paragraph(h.replace("_", " ").title(), head_cell_style) for h in headers]]
+        for r in rows:
+            data.append([Paragraph(("" if r.get(h) is None else str(r.get(h))), cell_style) for h in headers])
+
+        # Equal column widths across page width; Paragraph wraps to fit
+        col_count = len(headers)
+        col_widths = [doc.width / col_count] * col_count
+
+        table = LongTable(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
+        table.setStyle(TableStyle([
+            # Header
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),  # zinc-900
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),  # harmless now that head cells are white too
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, 0), 9),
+            ("TOPPADDING", (0, 0), (-1, 0), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+            # Body
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#374151")),  # zinc-700-ish
+            ("FONTSIZE", (0, 1), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F9FAFB")]),
+        ]))
+        story.append(table)
+
+        doc.build(story)
+        pdf = buf.getvalue()
+        buf.close()
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return resp
 
     def _csv_response(self, filename: str, headers: List[str], rows: List[Dict[str, Any]]) -> HttpResponse:
         buf = io.StringIO(newline="")
@@ -177,9 +322,25 @@ class CatalogExportView(APIView):
         writer.writeheader()
         for r in rows:
             writer.writerow({k: "" if r.get(k) is None else smart_str(r.get(k)) for k in headers})
+
         resp = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp
+    
+    def _build_filename(self, tenant, scope: str, ext: str) -> str:
+        """
+        Build filenames like:
+          <tenant-code-or-name>_<scope>_YYYYMMDD_HHMMSS.<ext>
+        """
+        # Prefer code if present; else slugify name; else 'tenant'
+        code = getattr(tenant, "code", None)
+        if code:
+            prefix = slugify(str(code))
+        else:
+            name = getattr(tenant, "name", "") or "tenant"
+            prefix = slugify(str(name))
+        ts = timezone.now().strftime("%Y%m%d_%H%M%S")
+        return f"{prefix}_{scope}_{ts}.{ext}"
 
 
 # =========================
@@ -194,7 +355,7 @@ class CatalogImportTemplateView(APIView):
 
     def get(self, request):
         scope = request.query_params.get("scope", "products").lower()
-        fmt = request.query_params.get("format", "csv").lower()
+        fmt = request.query_params.get("output_format", "csv").lower()
         if scope not in {"products", "variants"}:
             return Response({"detail": "Invalid scope"}, status=status.HTTP_400_BAD_REQUEST)
         if fmt != "csv":

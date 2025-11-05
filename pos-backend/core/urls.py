@@ -71,7 +71,7 @@ urlpatterns = [
     # API & docs
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/v1/docs/", SpectacularSwaggerView.as_view(url_name="schema")),
-    path("api/v1/", include(router.urls)),
+    # path("api/v1/", include(router.urls)),
     path("api/v1/analytics/", include("analytics.urls")),
     # path("api/v1/inventory/", include("inventory.urls")),
     path("api/v1/orders/", include("orders.urls", namespace="orders")),
@@ -98,8 +98,8 @@ urlpatterns = [
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
     path("api/v1/stores/stores-lite", StoreLiteViewSet.as_view({"get": "list"}), name="stores-lite",),
-    path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export"),
-    path("api/v1/catalog/export/", CatalogExportView.as_view(), name="catalog-export-slash"),
+    # path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export"),
+    path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export-slash"),
     path("api/v1/catalog/import/template", CatalogImportTemplateView.as_view(), name="catalog-import-template"),
     path("api/v1/catalog/import", CatalogImportView.as_view(), name="catalog-import"),
 
