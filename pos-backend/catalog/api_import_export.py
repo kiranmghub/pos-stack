@@ -668,7 +668,9 @@ class CatalogImportTemplateView(APIView):
         writer = csv.writer(buf)
         writer.writerow(headers)
         # comment the sample row (helpful in editors; ignored by our parser)
-        writer.writerow([f"# example: {sample.get(h, '')}" for h in headers])
+        # writer.writerow([f"# example: {sample.get(h, '')}" for h in headers])
+        # Add a docs hint for commas/quotes
+        writer.writerow([ "# tip: wrap any field that contains commas in double quotes" ] + [""] * (len(headers)-1))
 
         resp = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
         resp["Content-Disposition"] = f'attachment; filename="{scope}-template.csv"'
@@ -740,11 +742,13 @@ class CatalogImportView(APIView):
             # fallback for other encodings
             text = raw.decode(errors="ignore")
 
-        reader = csv.DictReader(io.StringIO(text))
+        sio = io.StringIO(text, newline="")
+        reader = csv.DictReader(sio)
         expected = PRODUCT_HEADERS if scope == "products" else VARIANT_HEADERS
         missing = [h for h in expected if h not in reader.fieldnames]
         if missing:
             return Response({"detail": f"Missing columns: {', '.join(missing)}"}, status=status.HTTP_400_BAD_REQUEST)
+        header_len = len(reader.fieldnames or [])
 
         results = {
             "scope": scope,
@@ -764,6 +768,20 @@ class CatalogImportView(APIView):
                 # Skip commented/example rows from our template
                 if any((str(v).strip().startswith("#") for v in row.values() if v is not None)):
                     continue
+                # Strict field count check: extra commas without quotes cause misalignment.
+                raw_line = None
+                try:
+                    # Extract the raw line for better error messages
+                    raw_line = reader.reader.line_num  # current line index in underlying reader
+                except Exception:
+                    pass
+                if len(row.keys()) != header_len:
+                    results["errors"].append({
+                        "row": i,
+                        "message": "Column count mismatch. If a field contains commas, wrap it in quotes. "
+                                   f"Expected {header_len} columns, got {len(row.keys())}."
+                    })
+                    continue
                 results["total_rows"] += 1
                 try:
                     if scope == "products":
@@ -782,7 +800,12 @@ class CatalogImportView(APIView):
 
     # --- helpers ---
     def _parse_bool(self, val: Any) -> bool:
-        return str(val).strip().lower() in {"1", "true", "yes", "y"}
+        s = str(val).strip().lower()
+        if s in {"1", "true", "yes", "y"}:
+            return True
+        if s in {"0", "false", "no", "n", ""}:  # empty means leave default False
+            return False
+        raise ValueError(f"Invalid boolean value: {val!r} (use true/false or yes/no)")
 
     def _resolve_tax_category(self, tenant, val: str) -> Optional[TaxCategory]:
         if not val:
@@ -800,6 +823,7 @@ class CatalogImportView(APIView):
             "name": (row.get("name") or "").strip() or None,
             "category": (row.get("category") or "").strip(),
             "description": (row.get("description") or "").strip(),
+            # validate boolean strictly; bubble error if invalid
             "is_active": self._parse_bool(row.get("active", "true")),
             "image_url": (row.get("image_url") or "").strip() or None,
         }
@@ -860,6 +884,20 @@ class CatalogImportView(APIView):
             "is_active": self._parse_bool(row.get("active", "true")),
             "image_url": (row.get("image_url") or "").strip() or None,
         }
+        # Simple hard validations (before serializer):
+        try:
+            p = payload["price"]
+            c = payload["cost"]
+            if p is not None and c is not None:
+                # compare strings as decimals by letting serializer parse, but we can do a quick float check first
+                if float(p) < 0 or float(c) < 0:
+                    raise ValueError("price/cost cannot be negative")
+                if float(c) > float(p):
+                    raise ValueError("cost cannot exceed price")
+        except ValueError as ve:
+            # bubble cleanly to caller
+            raise ve
+        
         tc = self._resolve_tax_category(tenant, (row.get("tax_category") or "").strip())
         if tc:
             payload["tax_category"] = tc.id
