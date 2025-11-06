@@ -105,13 +105,23 @@ export async function getProduct(
 
 export async function exportCatalog(params: {
   scope: "products" | "variants" | "combined";
-  format: "csv" | "json";
+  format: "csv" | "json" | "pdf";
   q?: string;
+  include_on_hand?: boolean;
+  on_hand_mode?: "aggregate" | "store" | "breakdown_columns" | "breakdown_rows";
+  store_id?: string | number;
+  store_ids?: (string | number)[];
 }) {
   const qs = new URLSearchParams();
   qs.set("scope", params.scope);
   qs.set("output_format", params.format);
   if (params.q) qs.set("q", params.q);
+    if (params.include_on_hand) qs.set("include_on_hand", "true");
+  if (params.on_hand_mode) qs.set("on_hand_mode", params.on_hand_mode);
+  if (params.store_id != null) qs.set("store_id", String(params.store_id));
+  if (params.store_ids && params.store_ids.length) {
+    params.store_ids.forEach((id) => qs.append("store_ids[]", String(id)));
+  }
 
   const url = `/api/v1/catalog/export?${qs.toString()}`;
   const headers = await authHeaders();
@@ -136,6 +146,68 @@ export async function exportCatalog(params: {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(blobUrl);
+}
+
+// NEW: Download CSV template for import
+export async function downloadImportTemplate(scope: "products" | "variants") {
+  const url = new URL("/api/v1/catalog/import/template", window.location.origin);
+  url.searchParams.set("scope", scope);
+  url.searchParams.set("output_format", "csv");
+  const headers = await authHeaders();
+  const resp = await fetch(url.toString(), { headers });
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => "");
+    throw new Error(txt || `Template download failed (${resp.status})`);
+  }
+  const cd = resp.headers.get("Content-Disposition") || "";
+  const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+  const suggested = m?.[1] || `${scope}-template.csv`;
+  const blob = await resp.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  a.download = suggested;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+// NEW: Upload CSV for import (dry-run or apply)
+export async function importCatalog(params: {
+  scope: "products" | "variants";
+  mode: "create" | "upsert";
+  dry_run: boolean;
+  file: File;
+}) {
+  const url = new URL("/api/v1/catalog/import", window.location.origin);
+  const qs = url.searchParams;
+  qs.set("scope", params.scope);
+  qs.set("mode", params.mode);
+  qs.set("dry_run", params.dry_run ? "1" : "0");
+  const headers = await authHeaders();
+  // **Do not** set Content-Type manually for FormData
+  const fd = new FormData();
+  fd.append("file", params.file);
+  const resp = await fetch(url.toString(), {
+    method: "POST",
+    headers, // includes Authorization only
+    body: fd,
+  });
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => "");
+    throw new Error(txt || `Import failed (${resp.status})`);
+  }
+  return resp.json() as Promise<{
+    scope: string;
+    mode: string;
+    dry_run: boolean;
+    created: number;
+    updated: number;
+    skipped: number;
+    errors: { row: number; message: any }[];
+    total_rows: number;
+  }>;
 }
 
 export async function createProduct(data: CreateProductDto): Promise<ProductDetail> {

@@ -5,12 +5,13 @@ import io
 from typing import Dict, List, Tuple, Any, Optional
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum, F
 from django.http import StreamingHttpResponse, HttpResponse
 from django.utils.encoding import smart_str
 from django.utils import timezone
 from django.utils.text import slugify
-
+from django.utils.functional import cached_property
+from inventory.models import InventoryItem
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -97,11 +98,24 @@ class CatalogExportView(APIView):
         tenant = _resolve_request_tenant(request)
         if not tenant:
             return Response({"detail": "Tenant not resolved"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # ---- On-hand controls ----
+        include_on_hand = str(request.query_params.get("include_on_hand", "false")).lower() in {"1", "true", "yes"}
+        on_hand_mode = (request.query_params.get("on_hand_mode") or "aggregate").lower()
+        # store_id for single-store mode
+        store_id = request.query_params.get("store_id")
+        # multiple store ids for breakdown modes: accept both store_ids and store_ids[]
+        store_ids = request.query_params.getlist("store_ids[]") or request.query_params.getlist("store_ids")
+        store_ids = [int(s) for s in store_ids if str(s).isdigit()]
 
         if scope not in {"products", "variants", "combined"}:
             return Response({"detail": "Invalid scope"}, status=status.HTTP_400_BAD_REQUEST)
         if fmt not in {"csv", "json", "pdf"}:
             return Response({"detail": "Invalid format"}, status=status.HTTP_400_BAD_REQUEST)
+        # PDF supports only aggregate or single-store
+        if fmt == "pdf" and include_on_hand and on_hand_mode not in {"aggregate", "store"}:
+            return Response({"detail": "PDF supports on-hand only for 'aggregate' or 'store' modes."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         if scope == "products":
             qs = Product.objects.filter(tenant=tenant)
@@ -119,20 +133,52 @@ class CatalogExportView(APIView):
                     "tax_category": (p.tax_category.code if getattr(p, "tax_category", None) else ""),
                     "image_url": (p.image_url or ""),
                 })
+            # ---- augment rows with on-hand if requested ----
+            if include_on_hand:
+                rows = self._attach_on_hand_products(tenant, rows, on_hand_mode, store_id, store_ids)
             if fmt == "json":
                 resp = Response(rows)
-                fname = self._build_filename(tenant, "products", "json")
+                fname = self._build_filename(
+                    tenant, "products", "json",
+                    include_on_hand=include_on_hand,
+                    on_hand_mode=on_hand_mode,
+                    store_id=store_id,
+                    store_ids=store_ids,
+                )
                 resp["Content-Disposition"] = f'attachment; filename="{fname}"'
                 return resp
-            if fmt == "pdf":
-                fname = self._build_filename(tenant, "products", "pdf")
+            if fmt == "pdf":    
+                fname = self._build_filename(
+                tenant, "products", "pdf",
+                include_on_hand=include_on_hand,
+                on_hand_mode=on_hand_mode,
+                store_id=store_id,
+                store_ids=store_ids,
+                )
                 # omit image_url column for PDF
                 headers = [h for h in PRODUCT_HEADERS if h != "image_url"]
+                # include on_hand column in headers for pdf when present
+                if include_on_hand and on_hand_mode in {"aggregate", "store"}:
+                    if "on_hand" not in headers:
+                        headers = headers + ["on_hand"]
                 title = f"{self._tenant_label(tenant)}: Products"
-                return self._pdf_response(fname, headers, rows, title)
+                subtitle = self._subtitle_for_on_hand(on_hand_mode, store_id, store_ids, tenant)
+                return self._pdf_response(fname, headers, rows, title, subtitle)
+ 
             
-            fname = self._build_filename(tenant, "products", "csv")
-            return self._csv_response(fname, PRODUCT_HEADERS, rows)
+            fname = self._build_filename(
+            tenant, "products", "csv",
+            include_on_hand=include_on_hand,
+            on_hand_mode=on_hand_mode,
+            store_id=store_id,
+            store_ids=store_ids,
+            )
+            # widen headers for CSV if we added on-hand columns dynamically
+            headers = PRODUCT_HEADERS[:]
+            if include_on_hand:
+                dyn = self._dynamic_headers(rows, base=headers)
+                headers = dyn
+            return self._csv_response(fname, headers, rows)
 
 
         if scope == "variants":
@@ -159,20 +205,50 @@ class CatalogExportView(APIView):
                     "tax_category": (v.tax_category.code if getattr(v, "tax_category", None) else ""),
                     "image_url": (v.image_url or ""),
                 })
+            if include_on_hand:
+                rows = self._attach_on_hand_variants(tenant, rows, on_hand_mode, store_id, store_ids)
+
             if fmt == "json":
                 resp = Response(rows)
-                fname = self._build_filename(tenant, "variants", "json")
+                fname = self._build_filename(
+                    tenant, "variants", "json",
+                    include_on_hand=include_on_hand,
+                    on_hand_mode=on_hand_mode,
+                    store_id=store_id,
+                    store_ids=store_ids,
+                )
                 resp["Content-Disposition"] = f'attachment; filename="{fname}"'
                 return resp
             if fmt == "pdf":
-                fname = self._build_filename(tenant, "variants", "pdf")
+                fname = self._build_filename(
+                tenant, "variants", "pdf",
+                include_on_hand=include_on_hand,
+                on_hand_mode=on_hand_mode,
+                store_id=store_id,
+                store_ids=store_ids,
+                )
+                
                 # omit image_url column for PDF
                 headers = [h for h in VARIANT_HEADERS if h != "image_url"]
+                if include_on_hand and on_hand_mode in {"aggregate", "store"}:
+                    if "on_hand" not in headers:
+                        headers = headers + ["on_hand"]
                 title = f"{self._tenant_label(tenant)}: Variants"
-                return self._pdf_response(fname, headers, rows, title)
+                subtitle = self._subtitle_for_on_hand(on_hand_mode, store_id, store_ids, tenant)
+                return self._pdf_response(fname, headers, rows, title, subtitle)
             
-            fname = self._build_filename(tenant, "variants", "csv")
-            return self._csv_response(fname, VARIANT_HEADERS, rows)
+            fname = self._build_filename(
+            tenant, "variants", "csv",
+            include_on_hand=include_on_hand,
+            on_hand_mode=on_hand_mode,
+            store_id=store_id,
+            store_ids=store_ids,
+            )
+            headers = VARIANT_HEADERS[:]
+            if include_on_hand:
+                headers = self._dynamic_headers(rows, base=headers)
+            return self._csv_response(fname, headers, rows)
+
 
 
         # combined JSON: each product with embedded variants (good round-trip)
@@ -209,11 +285,179 @@ class CatalogExportView(APIView):
             })
         # combined is JSON-only in v1; still set filename for download UX
         resp = Response(data)
-        fname = self._build_filename(tenant, "combined", "json")
+        fname = self._build_filename(
+        tenant, "combined", "json",
+        include_on_hand=include_on_hand,
+        on_hand_mode=on_hand_mode,
+        store_id=store_id,
+        store_ids=store_ids,
+        )
         resp["Content-Disposition"] = f'attachment; filename="{fname}"'
         return resp
     
-    def _pdf_response(self, filename: str, headers: List[str], rows: List[Dict[str, Any]], title: str) -> HttpResponse:
+
+    # ---------- helpers for on-hand ----------
+    def _subtitle_for_on_hand(self, mode: str, store_id: Optional[str], store_ids: List[int], tenant) -> Optional[str]:
+        if not mode:
+            return None
+        if mode == "aggregate":
+            return "On-Hand: Aggregate across all stores"
+        if mode == "store":
+            if not store_id:
+                return "On-Hand: Store = (not specified)"
+            try:
+                from stores.models import Store
+                s = Store.objects.filter(tenant=tenant, id=int(store_id)).first()
+                if s:
+                    label = f"{getattr(s,'code', '')} {f'({s.name})' if getattr(s,'name',None) else ''}".strip()
+                    return f"On-Hand: Store = {label}"
+            except Exception:
+                pass
+            return f"On-Hand: Store = {store_id}"
+        if mode.startswith("breakdown"):
+            return "On-Hand: Breakdown by store"
+        return None
+
+    def _dynamic_headers(self, rows: List[Dict[str, Any]], base: List[str]) -> List[str]:
+        """Return base headers + any new keys encountered in rows, preserving order."""
+        seen = set(base)
+        out = list(base)
+        for r in rows:
+            for k in r.keys():
+                if k not in seen:
+                    seen.add(k)
+                    out.append(k)
+        return out
+
+    def _attach_on_hand_products(self, tenant, rows, mode, store_id, store_ids):
+        # Build a map of product_code -> on-hand numbers
+        by_code = {r["code"]: r for r in rows}
+        prod_codes = [c for c in by_code.keys() if c]
+        if not prod_codes:
+            return rows
+        prod_ids = dict(Product.objects.filter(tenant=tenant, code__in=prod_codes).values_list("code", "id"))
+
+        q = InventoryItem.objects.filter(tenant=tenant, variant__product_id__in=prod_ids.values())
+        if mode == "store" and store_id:
+            q = q.filter(store_id=int(store_id))
+
+        if mode in {"aggregate", "store"}:
+            # product-level sums
+            for row in q.values("variant__product_id").annotate(on_hand=Sum("on_hand")):
+                # map back by product code
+                code = next((c for c, pid in prod_ids.items() if pid == row["variant__product_id"]), None)
+                if code and code in by_code:
+                    by_code[code]["on_hand"] = int(row["on_hand"] or 0)
+            # ensure missing ones get 0
+            for code in by_code:
+                by_code[code].setdefault("on_hand", 0)
+            return rows
+
+        # breakdown modes require selected stores
+        if mode in {"breakdown_columns", "breakdown_rows"}:
+            if not store_ids:
+                return rows
+            q = q.filter(store_id__in=store_ids)
+            # sum per product + store
+            sums = q.values("variant__product_id", "store__code", "store_id").annotate(on_hand=Sum("on_hand"))
+            if mode == "breakdown_columns":
+                for rec in sums:
+                    code = next((c for c, pid in prod_ids.items() if pid == rec["variant__product_id"]), None)
+                    if code and code in by_code:
+                        col = f'on_hand_{(rec["store__code"] or str(rec["store_id"])).replace(" ", "_")}'
+                        by_code[code][col] = int(rec["on_hand"] or 0)
+                return rows
+            else:  # breakdown_rows
+                expanded = []
+                # prepare a lookup: prod_id -> code
+                prod_id_to_code = {pid: code for code, pid in prod_ids.items()}
+                # build a temp structure: (code -> store_code -> sum)
+                tmp = {}
+                for rec in sums:
+                    pcode = prod_id_to_code.get(rec["variant__product_id"])
+                    if not pcode: 
+                        continue
+                    scode = rec["store__code"] or str(rec["store_id"])
+                    tmp.setdefault(pcode, {})[scode] = int(rec["on_hand"] or 0)
+                # for each base row, emit one row per selected store
+                for r in rows:
+                    code = r.get("code")
+                    if not code:
+                        continue
+                    for sid in store_ids:
+                        # fetch store code once
+                        from stores.models import Store
+                        s = Store.objects.filter(tenant=tenant, id=int(sid)).only("code").first()
+                        scode = getattr(s, "code", str(sid))
+                        rr = dict(r)
+                        rr["store_code"] = scode
+                        rr["on_hand"] = tmp.get(code, {}).get(scode, 0)
+                        expanded.append(rr)
+                return expanded
+
+        return rows
+
+    def _attach_on_hand_variants(self, tenant, rows, mode, store_id, store_ids):
+        # Build a map of sku -> row
+        by_sku = {r["sku"]: r for r in rows if r.get("sku")}
+        if not by_sku:
+            return rows
+        var_ids = dict(Variant.objects.filter(tenant=tenant, sku__in=by_sku.keys()).values_list("sku", "id"))
+        q = InventoryItem.objects.filter(tenant=tenant, variant_id__in=var_ids.values())
+        if mode == "store" and store_id:
+            q = q.filter(store_id=int(store_id))
+
+        if mode in {"aggregate", "store"}:
+            for row in q.values("variant_id").annotate(on_hand=Sum("on_hand")):
+                sku = next((s for s, vid in var_ids.items() if vid == row["variant_id"]), None)
+                if sku and sku in by_sku:
+                    by_sku[sku]["on_hand"] = int(row["on_hand"] or 0)
+            for sku in by_sku:
+                by_sku[sku].setdefault("on_hand", 0)
+            return rows
+
+        if mode in {"breakdown_columns", "breakdown_rows"}:
+            if not store_ids:
+                return rows
+            q = q.filter(store_id__in=store_ids)
+            sums = q.values("variant_id", "store__code", "store_id").annotate(on_hand=Sum("on_hand"))
+            if mode == "breakdown_columns":
+                for rec in sums:
+                    sku = next((s for s, vid in var_ids.items() if vid == rec["variant_id"]), None)
+                    if sku and sku in by_sku:
+                        col = f'on_hand_{(rec["store__code"] or str(rec["store_id"])).replace(" ", "_")}'
+                        by_sku[sku][col] = int(rec["on_hand"] or 0)
+                return rows
+            else:
+                expanded = []
+                from stores.models import Store
+                for r in rows:
+                    sku = r.get("sku")
+                    if not sku:
+                        continue
+                    vid = var_ids.get(sku)
+                    for sid in store_ids:
+                        s = Store.objects.filter(tenant=tenant, id=int(sid)).only("code").first()
+                        scode = getattr(s, "code", str(sid))
+                        rr = dict(r)
+                        rr["store_code"] = scode
+                        # find sum for this variant+store
+                        # we can pre-index sums but list is small; leave readable
+                        total = 0
+                        for rec in sums:
+                            if rec["variant_id"] == vid and (rec["store__code"] or str(rec["store_id"])) == scode:
+                                total = int(rec["on_hand"] or 0)
+                                break
+                        rr["on_hand"] = total
+                        expanded.append(rr)
+                return expanded
+
+        return rows
+    
+
+    
+    def _pdf_response(self, filename: str, headers: List[str], rows: List[Dict[str, Any]], title: str, subtitle: Optional[str]) -> HttpResponse:
+
         """
         Render a simple tabular PDF using reportlab (no images; compact; landscape).
         """
@@ -274,10 +518,12 @@ class CatalogExportView(APIView):
         )
         story: List[Any] = []
 
-        # Title + "As of" timestamp (local time)
+        # Title + subtitle + "As of" timestamp (local time)
         story.append(Paragraph(title, header_style))
         from django.utils import timezone as _tz
         asof = _tz.localtime(_tz.now()).strftime("%Y-%m-%d %H:%M:%S %Z")
+        if subtitle:
+            story.append(Paragraph(subtitle, sub_style))
         story.append(Paragraph(f"As of: {asof}", sub_style))
         story.append(Spacer(1, 10))
 
@@ -327,10 +573,24 @@ class CatalogExportView(APIView):
         resp["Content-Disposition"] = f'attachment; filename="{filename}"'
         return resp
     
-    def _build_filename(self, tenant, scope: str, ext: str) -> str:
+    def _build_filename(
+        self,
+        tenant,
+        scope: str,
+        ext: str,
+        *,
+        include_on_hand: bool = False,
+        on_hand_mode: Optional[str] = None,
+        store_id: Optional[str] = None,
+        store_ids: Optional[List[int]] = None,
+    ) -> str:
         """
         Build filenames like:
-          <tenant-code-or-name>_<scope>_YYYYMMDD_HHMMSS.<ext>
+          <tenant-code-or-name>_<scope>[_include_on_hand_<context>]_<timestamp>.<ext>
+        context:
+          - aggregate
+          - store_<STORECODE or NAME>
+          - stores_<CODE1>-<CODE2>-<CODE3>  (<=3 stores), else 'multiple-stores'
         """
         # Prefer code if present; else slugify name; else 'tenant'
         code = getattr(tenant, "code", None)
@@ -340,7 +600,47 @@ class CatalogExportView(APIView):
             name = getattr(tenant, "name", "") or "tenant"
             prefix = slugify(str(name))
         ts = timezone.now().strftime("%Y%m%d_%H%M%S")
-        return f"{prefix}_{scope}_{ts}.{ext}"
+        parts = [prefix, scope]
+
+        if include_on_hand:
+            ctx = None
+            mode = (on_hand_mode or "").lower()
+            if mode == "aggregate" or mode == "":
+                ctx = "aggregate"
+            elif mode == "store":
+                label = None
+                try:
+                    if store_id:
+                        from stores.models import Store
+                        s = Store.objects.filter(tenant=tenant, id=int(store_id)).only("code", "name").first()
+                        if s:
+                            label = slugify(s.code or s.name or str(store_id))
+                except Exception:
+                    label = slugify(str(store_id))
+                ctx = f"store_{label or 'unknown'}"
+            elif mode.startswith("breakdown"):
+                labels: List[str] = []
+                try:
+                    ids = list(store_ids or [])
+                    if ids:
+                        from stores.models import Store
+                        qs = Store.objects.filter(tenant=tenant, id__in=ids).only("code", "name")
+                        # keep incoming order
+                        code_by_id = {s.id: (s.code or s.name or str(s.id)) for s in qs}
+                        for sid in ids:
+                            if sid in code_by_id:
+                                labels.append(slugify(code_by_id[sid]))
+                except Exception:
+                    pass
+                if labels and len(labels) <= 3:
+                    ctx = "stores_" + "-".join(labels)
+                else:
+                    ctx = "multiple-stores"
+            if ctx:
+                parts.extend(["include_on_hand", ctx])
+
+        parts.append(ts)
+        return f"{'_'.join(parts)}.{ext}"
 
 
 # =========================
@@ -517,7 +817,7 @@ class CatalogImportView(APIView):
                 return
             serializer = ProductWriteSerializer(instance=instance, data=payload, context={"tenant": tenant}, partial=True)
             if serializer.is_valid():
-                serializer.save(tenant=tenant)
+                serializer.save()
                 results["updated"] += 1
             else:
                 results["errors"].append({"row": results["total_rows"] + 1, "message": serializer.errors})
@@ -525,7 +825,7 @@ class CatalogImportView(APIView):
             if mode == "create" or mode == "upsert":
                 serializer = ProductWriteSerializer(data=payload, context={"tenant": tenant})
                 if serializer.is_valid():
-                    serializer.save(tenant=tenant)
+                    serializer.save()
                     results["created"] += 1
                 else:
                     results["errors"].append({"row": results["total_rows"] + 1, "message": serializer.errors})
@@ -572,7 +872,7 @@ class CatalogImportView(APIView):
                 return
             serializer = VariantWriteSerializer(instance=instance, data=payload, context={"tenant": tenant}, partial=True)
             if serializer.is_valid():
-                serializer.save(tenant=tenant)
+                serializer.save()
                 results["updated"] += 1
             else:
                 results["errors"].append({"row": results["total_rows"] + 1, "message": serializer.errors})
@@ -580,7 +880,7 @@ class CatalogImportView(APIView):
             if mode == "create" or mode == "upsert":
                 serializer = VariantWriteSerializer(data=payload, context={"tenant": tenant})
                 if serializer.is_valid():
-                    serializer.save(tenant=tenant)
+                    serializer.save()
                     results["created"] += 1
                 else:
                     results["errors"].append({"row": results["total_rows"] + 1, "message": serializer.errors})

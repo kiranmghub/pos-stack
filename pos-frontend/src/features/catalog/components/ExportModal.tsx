@@ -1,6 +1,6 @@
 // src/features/catalog/components/ExportModal.tsx
 import * as React from "react";
-import { exportCatalog } from "../api";
+import { exportCatalog, listInventoryStores } from "../api";
 import { X } from "lucide-react";
 
 type Scope = "products" | "variants" | "combined";
@@ -22,6 +22,11 @@ export default function ExportModal({
   const [q, setQ] = React.useState<string>(initialQuery);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string>("");
+  const [includeOnHand, setIncludeOnHand] = React.useState(false);
+  const [mode, setMode] = React.useState<"aggregate"|"store"|"breakdown_columns"|"breakdown_rows">("aggregate");
+  const [stores, setStores] = React.useState<{id:number; name:string; code?:string}[]>([]);
+  const [storeId, setStoreId] = React.useState<string>("");
+  const [storeIds, setStoreIds] = React.useState<string[]>([]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -30,10 +35,23 @@ export default function ExportModal({
     setQ(initialQuery || "");
     setError("");
     setBusy(false);
-  }, [open, initialQuery]);
+    setIncludeOnHand(false);
+    setMode("aggregate");
+    setStoreId(String(initialStoreId || ""));
+    setStoreIds([]);
+  }, [open, initialQuery, initialStoreId]);
 
   // Combined is JSON-only in v1; products/variants can be csv/json/pdf
   const effectiveFormat = scope === "combined" ? "json" : format;
+  const breakdownDisabled = scope === "combined" || effectiveFormat === "pdf";
+
+// load stores once when modal opens
+  React.useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try { setStores(await listInventoryStores()); } catch {}
+    })();
+  }, [open]);
 
   async function onExport() {
     try {
@@ -43,7 +61,10 @@ export default function ExportModal({
         scope,
         format: effectiveFormat,
         q: q || undefined,
-        // store_id: initialStoreId || undefined, // keep for future enablement
+        include_on_hand: includeOnHand || undefined,
+        on_hand_mode: includeOnHand ? mode : undefined,
+        store_id: includeOnHand && mode === "store" ? (storeId || undefined) : undefined,
+        store_ids: includeOnHand && (mode === "breakdown_columns" || mode === "breakdown_rows") ? storeIds : undefined,
       });
       onClose();
     } catch (e: any) {
@@ -103,6 +124,93 @@ export default function ExportModal({
               </span>
 
             </label>
+          </div>
+
+          {/* On-Hand controls */}
+          <div className="space-y-3">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={includeOnHand}
+                onChange={(e) => setIncludeOnHand(e.target.checked)}
+                disabled={busy}
+              />
+              <span className="text-sm text-zinc-200">Include On-Hand</span>
+            </label>
+
+            {includeOnHand && (
+              <div className="space-y-2 pl-1">
+                <div className="text-xs text-zinc-400">On-Hand Mode</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" name="oh" checked={mode==="aggregate"} onChange={()=>setMode("aggregate")} />
+                    <span className="text-sm">Aggregate (all stores)</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input type="radio" name="oh" checked={mode==="store"} onChange={()=>setMode("store")} />
+                    <span className="text-sm">Specific store</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2 opacity-100">
+                    <input
+                      type="radio"
+                      name="oh"
+                      checked={mode==="breakdown_columns"}
+                      onChange={()=>setMode("breakdown_columns")}
+                      disabled={breakdownDisabled}
+                    />
+                    <span className={breakdownDisabled ? "text-sm text-zinc-500" : "text-sm"}>
+                      Breakdown by store — columns
+                    </span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="oh"
+                      checked={mode==="breakdown_rows"}
+                      onChange={()=>setMode("breakdown_rows")}
+                      disabled={breakdownDisabled}
+                    />
+                    <span className={breakdownDisabled ? "text-sm text-zinc-500" : "text-sm"}>
+                      Breakdown by store — rows
+                    </span>
+                  </label>
+                </div>
+
+                {/* Store pickers */}
+                {mode === "store" && (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm text-zinc-400">Store</span>
+                    <select
+                      className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                      value={storeId}
+                      onChange={(e)=>setStoreId(e.target.value)}
+                    >
+                      <option value="">Choose a store…</option>
+                      {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </label>
+                )}
+
+                {(mode === "breakdown_columns" || mode === "breakdown_rows") && !breakdownDisabled && (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm text-zinc-400">Stores (multi-select)</span>
+                    <select
+                      multiple
+                      className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100 h-28"
+                      value={storeIds}
+                      onChange={(e) => {
+                        const vals = Array.from(e.target.selectedOptions).map(o => o.value);
+                        setStoreIds(vals);
+                      }}
+                    >
+                      {stores.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                    </select>
+                    <span className="text-xs text-zinc-500">Tip: many stores → consider “rows” layout.</span>
+                  </label>
+                )}
+              </div>
+            )}
           </div>
 
           <label className="flex flex-col gap-1">

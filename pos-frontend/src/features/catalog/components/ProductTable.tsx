@@ -4,6 +4,7 @@ import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, 
 import type { ProductListItem, ProductDetail, Variant } from "../types";
 import { useNotify } from "@/lib/notify";
 import ExportModal from "./ExportModal";
+import ImportModal from "./ImportModal";
 
 
 const currency = (v: string | number) =>
@@ -38,7 +39,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [storeId, setStoreId] = React.useState<string>("");
   const [stores, setStores] = React.useState<{ id: number, name: string }[]>([]);
   const [showExport, setShowExport] = React.useState(false);
-  const [showImport, setShowImport] = React.useState(false); // placeholder for later
+  const [showImport, setShowImport] = React.useState(false);
 
 
 
@@ -271,6 +272,18 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrapped, query, category, page, pageSize, productOrder, storeId]);
+
+  // Refresh after a successful import apply
+  React.useEffect(() => {
+    function onApplied() {
+      // reset to first page to make results obvious
+      setPage(1);
+      load();
+    }
+    window.addEventListener("catalog:import:applied", onApplied);
+    return () => window.removeEventListener("catalog:import:applied", onApplied);
+  }, []);
+
 
   const filtered = React.useMemo(
     () => (onlyLow ? rows.filter((p) => p.on_hand_sum <= 5) : rows),
@@ -544,10 +557,8 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
               Export
             </button>
             <button
-              className="rounded-xl border border-zinc-700 px-2 py-1 text-sm text-zinc-100 opacity-60 cursor-not-allowed"
-              title="Coming soon"
+              className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-100 hover:bg-white/5"
               onClick={() => setShowImport(true)}
-              disabled
             >
               Import
             </button>
@@ -836,6 +847,10 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         onClose={() => setShowExport(false)}
         initialQuery={query}
         initialStoreId={storeId}
+      />
+      <ImportModal
+        open={showImport}
+        onClose={() => setShowImport(false)}
       />
 
     </div>
