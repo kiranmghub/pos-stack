@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Boxes,
   Building2,
+  TrendingUp,
 } from "lucide-react";
 
 function Card({
@@ -61,6 +62,7 @@ export default function HomePage() {
   const canSeeInventory = role === "owner" || role === "manager";
   const canSeeOwnerDash = role === "owner";
   const canSeeTenantAdmin = role === "owner"; // only owners see this
+  const canSeeSales = role === "owner" || role === "manager";
 
 
   return (
@@ -133,6 +135,16 @@ export default function HomePage() {
               accent="from-pink-500 to-rose-500"
             />
         )}
+
+        {canSeeSales && (
+            <Card
+              to="/sales"
+              title="Sales"
+              desc="View reports, analyze trends, and track revenue across all stores."
+              icon={<TrendingUp className="h-6 w-6 text-cyan-300" />}
+              accent="from-cyan-500 to-blue-500"
+            />
+          )}
 
 
 

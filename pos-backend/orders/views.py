@@ -78,7 +78,7 @@ class SalesListView(generics.ListAPIView):
 
         # filters
         store_id = self.request.query_params.get("store_id")
-        status = (self.request.query_params.get("status") or "").strip()  # pending/completed/void
+        status = (self.request.query_params.get("status") or "").strip()
         date_from = self.request.query_params.get("date_from")
         date_to = self.request.query_params.get("date_to")
         query = (self.request.query_params.get("query") or "").strip()
@@ -92,21 +92,21 @@ class SalesListView(generics.ListAPIView):
         if date_to:
             qs = qs.filter(created_at__lte=date_to)
         if query:
-            # receipt_no, cashier name/username, product/sku inside line snapshot (best-effort)
+            # align with real columns/relations used by admin:
+            # SaleLine has `qty`, `variant`; Variant has `sku`, and `product.name`
             qs = qs.filter(
-                Q(receipt_no__icontains=query) |
-                Q(cashier__username__icontains=query) |
-                Q(cashier__first_name__icontains=query) |
-                Q(cashier__last_name__icontains=query) |
-                Q(lines__sku__icontains=query) |
-                Q(lines__product_name__icontains=query)
+                Q(receipt_no__icontains=query)
+                | Q(cashier__username__icontains=query)
+                | Q(cashier__first_name__icontains=query)
+                | Q(cashier__last_name__icontains=query)
+                | Q(lines__variant__sku__icontains=query)
+                | Q(lines__variant__product__name__icontains=query)
             ).distinct()
 
-        # lightweight annotations (derive from lines)
+        # safe annotations
         zero = Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
         qs = qs.annotate(
             lines_count=Coalesce(Count("lines"), 0),
-            # Safe subtotal: sum(line_total + discount - tax - fee)
             subtotal=Coalesce(
                 Sum(
                     F("lines__line_total")
@@ -120,9 +120,10 @@ class SalesListView(generics.ListAPIView):
             discount_total=Coalesce(Sum("lines__discount"), zero),
             tax_total=Coalesce(Sum("lines__tax"), zero),
             fee_total=Coalesce(Sum("lines__fee"), zero),
-            total=Coalesce(F("total"), zero),
         ).order_by("-created_at", "-id")
+
         return qs
+
 
 class SaleDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -131,7 +132,17 @@ class SaleDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         tenant = _resolve_request_tenant(self.request)
-        qs = Sale.objects.select_related("store", "cashier").prefetch_related("lines", "pos_payments")
+        # Prefetch deep relations so serializer can access variant/product without N+1
+        qs = (
+            Sale.objects
+            .select_related("store", "cashier")
+            .prefetch_related(
+                "pos_payments",
+                "lines",
+                "lines__variant",
+                "lines__variant__product",
+            )
+        )
         if tenant:
             qs = qs.filter(tenant=tenant)
         return qs
