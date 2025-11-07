@@ -10,6 +10,8 @@ import OwnerRoute from "@/features/owner/OwnerRoute";
 import PosRoute from "@/features/pos/PosRoute";
 import CatalogRoute from "@/features/catalog/CatalogRoute";
 import AdminRoute from "@/features/admin/AdminRoute";
+import SalesRoute from "@/features/sales/SalesRoute";
+
 
 
 import "@/index.css";
@@ -137,6 +139,19 @@ const router = createBrowserRouter([
         </ProtectedRoute>
       ),
     },
+
+
+    {
+      path: "/sales",
+      element: (
+        <ProtectedRoute>
+          <OwnerOnly>
+            <SalesRoute />
+          </OwnerOnly>
+        </ProtectedRoute>
+      ),
+    },
+
 
 
 

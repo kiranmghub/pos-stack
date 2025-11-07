@@ -9,7 +9,7 @@ from rest_framework.generics import ListAPIView
 from .serializers import RecentSaleSerializer
 from django.shortcuts import get_object_or_404
 from tenants.models import Tenant
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
 from .serializers import SaleListSerializer, SaleDetailSerializer
@@ -102,14 +102,25 @@ class SalesListView(generics.ListAPIView):
                 Q(lines__product_name__icontains=query)
             ).distinct()
 
-        # lightweight annotations
+        # lightweight annotations (derive from lines)
+        zero = Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
         qs = qs.annotate(
             lines_count=Coalesce(Count("lines"), 0),
-            subtotal=Coalesce(F("subtotal"), 0.0),
-            discount_total=Coalesce(F("discount_total"), 0.0),
-            tax_total=Coalesce(F("tax_total"), 0.0),
-            fee_total=Coalesce(F("fee_total"), 0.0),
-            total=Coalesce(F("total"), 0.0),
+            # Safe subtotal: sum(line_total + discount - tax - fee)
+            subtotal=Coalesce(
+                Sum(
+                    F("lines__line_total")
+                    + F("lines__discount")
+                    - F("lines__tax")
+                    - F("lines__fee"),
+                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                ),
+                zero,
+            ),
+            discount_total=Coalesce(Sum("lines__discount"), zero),
+            tax_total=Coalesce(Sum("lines__tax"), zero),
+            fee_total=Coalesce(Sum("lines__fee"), zero),
+            total=Coalesce(F("total"), zero),
         ).order_by("-created_at", "-id")
         return qs
 
