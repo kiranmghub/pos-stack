@@ -1,17 +1,5 @@
+# pos-backend/orders/views.py
 from django.shortcuts import render
-
-# Create your views here.
-# orders/views.py
-
-# class SaleViewSet(TenantScopedViewSetMixin, viewsets.ModelViewSet):
-#     queryset = Sale.objects.select_related("store", "register", "customer")
-#     serializer_class = SaleSerializer
-#     permission_classes = [IsInTenant, RoleRequired]
-#     permission_roles = { "POST": [TenantRole.CASHIER, TenantRole.MANAGER, TenantRole.ADMIN] }
-#     tenant_field = None
-#     tenant_path  = "store__tenant"
-
-# orders/views.py (add)
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -21,25 +9,10 @@ from rest_framework.generics import ListAPIView
 from .serializers import RecentSaleSerializer
 from django.shortcuts import get_object_or_404
 from tenants.models import Tenant
-
-
-# class RecentSalesView(APIView):
-#     permission_classes = [IsAuthenticated, IsInTenant]
-#
-#     def get(self, request):
-#         limit = int(request.GET.get("limit", 8))
-#         qs = (Sale.objects
-#               .filter(store__tenant=request.tenant)
-#               .select_related("store")
-#               .order_by("-created_at")[:limit])
-#         out = [{
-#             "id": s.id,
-#             "store": s.store.name,
-#             "total": float(s.total),
-#             "created_at": s.created_at.isoformat(),
-#             "cashier": getattr(s, "created_by", None) and getattr(s.created_by, "username", None),
-#         } for s in qs]
-#         return Response(out)
+from django.db.models import Count, Q, F
+from django.db.models.functions import Coalesce
+from rest_framework import generics, permissions
+from .serializers import SaleListSerializer, SaleDetailSerializer
 
 
 def _resolve_request_tenant(request):
@@ -91,3 +64,63 @@ class RecentSalesView(ListAPIView):
                 .select_related("store", "cashier")   # avoids N+1 queries
                 .order_by("-created_at")[:limit]
         )
+    
+
+class SalesListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SaleListSerializer
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = Sale.objects.select_related("store", "cashier")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+
+        # filters
+        store_id = self.request.query_params.get("store_id")
+        status = (self.request.query_params.get("status") or "").strip()  # pending/completed/void
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+        query = (self.request.query_params.get("query") or "").strip()
+
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        if status:
+            qs = qs.filter(status__iexact=status)
+        if date_from:
+            qs = qs.filter(created_at__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__lte=date_to)
+        if query:
+            # receipt_no, cashier name/username, product/sku inside line snapshot (best-effort)
+            qs = qs.filter(
+                Q(receipt_no__icontains=query) |
+                Q(cashier__username__icontains=query) |
+                Q(cashier__first_name__icontains=query) |
+                Q(cashier__last_name__icontains=query) |
+                Q(lines__sku__icontains=query) |
+                Q(lines__product_name__icontains=query)
+            ).distinct()
+
+        # lightweight annotations
+        qs = qs.annotate(
+            lines_count=Coalesce(Count("lines"), 0),
+            subtotal=Coalesce(F("subtotal"), 0.0),
+            discount_total=Coalesce(F("discount_total"), 0.0),
+            tax_total=Coalesce(F("tax_total"), 0.0),
+            fee_total=Coalesce(F("fee_total"), 0.0),
+            total=Coalesce(F("total"), 0.0),
+        ).order_by("-created_at", "-id")
+        return qs
+
+class SaleDetailView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SaleDetailSerializer
+    lookup_url_kwarg = "pk"
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = Sale.objects.select_related("store", "cashier").prefetch_related("lines", "pos_payments")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        return qs

@@ -1,7 +1,5 @@
+# pos-backend/pos/views.py
 from django.shortcuts import render
-
-# Create your views here.
-# pos/views.py
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q, OuterRef, Subquery, Value, IntegerField, DecimalField, Sum, CharField, F, Q

@@ -1,4 +1,4 @@
-# pos/services/totals.py
+# pos-backend/pos/services/totals.py
 from decimal import Decimal, ROUND_HALF_UP
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
