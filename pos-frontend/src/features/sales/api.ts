@@ -77,3 +77,14 @@ export async function listSales(params: {
 export async function getSale(id: number): Promise<SaleDetail> {
   return apiFetchJSON(`/api/v1/orders/${id}`);
 }
+
+
+export async function listInventoryStores(): Promise<{
+    id:number;
+    name:string;
+    code?:string;
+    is_active?: boolean}[]> {
+  const url = new URL("/api/v1/stores/stores-lite", window.location.origin);
+  const res = await apiFetchJSON(url.toString());
+  return Array.isArray(res) ? res : (res?.results ?? []);
+}

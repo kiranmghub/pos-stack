@@ -13,6 +13,10 @@ from django.db.models import Count, Q, F, Sum, DecimalField, Value, ExpressionWr
 from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
 from .serializers import SaleListSerializer, SaleDetailSerializer
+from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_datetime
+from datetime import datetime, time
+from typing import Optional
 
 
 def _resolve_request_tenant(request):
@@ -87,10 +91,31 @@ class SalesListView(generics.ListAPIView):
             qs = qs.filter(store_id=store_id)
         if status:
             qs = qs.filter(status__iexact=status)
-        if date_from:
-            qs = qs.filter(created_at__gte=date_from)
-        if date_to:
-            qs = qs.filter(created_at__lte=date_to)
+
+        # ---- robust, TZ-aware date filtering ----
+        def _to_aware_dt(val: Optional[str], end_of_day: bool) -> Optional[datetime]:
+            """Parse ISO datetime or YYYY-MM-DD; make timezone-aware in current TZ."""
+            if not val:
+                return None
+            dt = parse_datetime(val)
+            if dt is None:
+                d = parse_date(val)
+                if not d:
+                    return None
+                # Expand bare date to local day bounds
+                naive = datetime.combine(d, time.max if end_of_day else time.min)
+                return timezone.make_aware(naive, timezone.get_current_timezone())
+            # If a datetime was provided but is naive, localize it; otherwise keep its tzinfo
+            return timezone.make_aware(dt, timezone.get_current_timezone()) if timezone.is_naive(dt) else dt
+
+        df = _to_aware_dt(date_from, end_of_day=False)
+        dt_ = _to_aware_dt(date_to,   end_of_day=True)
+
+        if df:
+            qs = qs.filter(created_at__gte=df)
+        if dt_:
+            qs = qs.filter(created_at__lte=dt_)
+
         if query:
             # align with real columns/relations used by admin:
             # SaleLine has `qty`, `variant`; Variant has `sku`, and `product.name`
