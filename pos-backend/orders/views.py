@@ -12,11 +12,15 @@ from tenants.models import Tenant
 from django.db.models import Count, Q, F, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
-from .serializers import SaleListSerializer, SaleDetailSerializer
+from .serializers import (
+    SaleListSerializer, SaleDetailSerializer, ReturnSerializer, ReturnStartSerializer, ReturnAddItemsSerializer, ReturnFinalizeSerializer,
+)
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from datetime import datetime, time
 from typing import Optional
+from django.db import transaction
+from .models import Return, ReturnItem, Refund, SaleLine, SalePayment
 
 
 def _resolve_request_tenant(request):
@@ -171,3 +175,132 @@ class SaleDetailView(generics.RetrieveAPIView):
         if tenant:
             qs = qs.filter(tenant=tenant)
         return qs
+    
+
+# ---------- Returns API ----------
+
+class SaleReturnsListCreate(generics.ListCreateAPIView):
+    """
+    GET  /api/v1/orders/{pk}/returns
+    POST /api/v1/orders/{pk}/returns  (create draft return)
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReturnSerializer
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        sale = get_object_or_404(Sale, pk=self.kwargs["pk"])
+        qs = Return.objects.filter(sale=sale).select_related("sale", "store", "processed_by")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        tenant = _resolve_request_tenant(request)
+        sale = get_object_or_404(Sale, pk=kwargs["pk"])
+        if tenant and sale.tenant_id != tenant.id:
+            return Response({"detail": "Forbidden"}, status=403)
+        payload = {
+            "sale": sale.id,
+            "store": sale.store_id,
+            "processed_by": request.user.id,
+            "reason_code": request.data.get("reason_code"),
+            "notes": request.data.get("notes"),
+        }
+        ser = ReturnStartSerializer(data=payload)
+        ser.is_valid(raise_exception=True)
+        ret = ser.save(tenant=sale.tenant, status="draft")
+        # assign return number
+        ret.assign_return_no()
+        ret.save(update_fields=["return_no"])
+        return Response(ReturnSerializer(ret).data, status=201)
+
+
+class ReturnAddItemsView(generics.CreateAPIView):
+    """
+    POST /api/v1/returns/{pk}/items
+    Body: { items: [{ sale_line, qty_returned, restock, condition }] }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReturnAddItemsSerializer
+
+    def create(self, request, *args, **kwargs):
+        ret = get_object_or_404(Return, pk=kwargs["pk"], status="draft")
+        tenant = _resolve_request_tenant(request)
+        if tenant and ret.tenant_id != tenant.id:
+            return Response({"detail": "Forbidden"}, status=403)
+        ser = self.get_serializer(data=request.data, context={"return": ret})
+        ser.is_valid(raise_exception=True)
+        # replace current selections
+        with transaction.atomic():
+            ret.items.all().delete()
+            refund_total = 0
+            for item in ser.validated_data["items"]:
+                ln = get_object_or_404(SaleLine, pk=item["sale_line"], sale_id=ret.sale_id)
+                comp = Refund.compute_line_refund(ln, item["qty_returned"])
+                ri = ReturnItem.objects.create(
+                    return_ref=ret,
+                    sale_line=ln,
+                    qty_returned=item["qty_returned"],
+                    restock=bool(item.get("restock", True)),
+                    condition=item.get("condition") or "RESALEABLE",
+                    refund_subtotal=comp["subtotal"],
+                    refund_tax=comp["tax"],
+                    refund_total=comp["total"],
+                )
+                refund_total += comp["total"]
+            ret.refund_total = refund_total
+            ret.save(update_fields=["refund_total"])
+        return Response(ReturnSerializer(ret).data, status=200)
+
+
+class ReturnFinalizeView(generics.CreateAPIView):
+    """
+    POST /api/v1/returns/{pk}/finalize
+    Body: { refunds: [{ method, amount, external_ref? }, ...] }
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReturnFinalizeSerializer
+
+    def create(self, request, *args, **kwargs):
+        ret = get_object_or_404(Return, pk=kwargs["pk"], status="draft")
+        tenant = _resolve_request_tenant(request)
+        if tenant and ret.tenant_id != tenant.id:
+            return Response({"detail": "Forbidden"}, status=403)
+        if not ret.items.exists():
+            return Response({"detail": "No items selected"}, status=400)
+
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            # write refunds
+            total_methods = 0
+            for rf in ser.validated_data["refunds"]:
+                r = Refund.objects.create(return_ref=ret, **rf)
+                total_methods += r.amount
+            # sanity check
+            if round(total_methods, 2) != round(ret.refund_total, 2):
+                return Response({"detail": "Refund breakdown must equal refund_total"}, status=400)
+
+            # inventory restock ledger
+            from inventory.models import InventoryItem, StockLedgerEntry
+            for ri in ret.items.select_related("sale_line__variant"):
+                if not ri.restock:
+                    continue
+                ii, _ = InventoryItem.objects.get_or_create(
+                    tenant=ret.tenant, store=ret.store, variant=ri.sale_line.variant,
+                    defaults={"on_hand": 0, "reserved": 0}
+                )
+                ii.on_hand = ii.on_hand + ri.qty_returned
+                ii.save(update_fields=["on_hand"])
+                StockLedgerEntry.objects.create(
+                    store=ret.store, variant=ri.sale_line.variant, delta=ri.qty_returned,
+                    reason="return", ref_type="return", ref_id=str(ret.id)
+                )
+            # mark finalized and assign code if needed
+            if not ret.return_no:
+                ret.assign_return_no()
+            ret.status = "finalized"
+            ret.save(update_fields=["status", "return_no"])
+        return Response(ReturnSerializer(ret).data, status=200)

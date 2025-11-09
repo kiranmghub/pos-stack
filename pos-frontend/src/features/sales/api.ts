@@ -1,5 +1,6 @@
 // src/features/sales/api.ts
 import { apiFetchJSON } from "@/lib/auth";
+import { ensureAuthedFetch } from "@/components/AppShell";
 
 export type SaleRow = {
   id: number;
@@ -87,4 +88,30 @@ export async function listInventoryStores(): Promise<{
   const url = new URL("/api/v1/stores/stores-lite", window.location.origin);
   const res = await apiFetchJSON(url.toString());
   return Array.isArray(res) ? res : (res?.results ?? []);
+}
+
+// ---- Returns API ----
+export async function listReturnsForSale(saleId: number) {
+  return apiFetchJSON(`/api/v1/orders/${saleId}/returns`, { method: "GET" });
+}
+
+export async function startReturnForSale(saleId: number, reason_code?: string, notes?: string) {
+  return apiFetchJSON(`/api/v1/orders/${saleId}/returns`, {
+    method: "POST",
+    body: JSON.stringify({ reason_code, notes }),
+  });
+}
+
+export async function putReturnItems(returnId: number, items: Array<{ sale_line: number; qty_returned: number; restock?: boolean; condition?: string }>) {
+  return apiFetchJSON(`/api/v1/returns/${returnId}/items`, {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
+export async function finalizeReturn(returnId: number, refunds: Array<{ method: string; amount: number; external_ref?: string }>) {
+  return apiFetchJSON(`/api/v1/returns/${returnId}/finalize`, {
+    method: "POST",
+    body: JSON.stringify({ refunds }),
+  });
 }

@@ -2,6 +2,7 @@
 from django.contrib import admin
 from django.contrib import admin
 from .models import Sale, SaleLine, SalePayment
+from .models import Sale, SaleLine, SalePayment, Return, ReturnItem, Refund
 
 
 class SaleLineInline(admin.TabularInline):
@@ -36,3 +37,21 @@ class SalePaymentAdmin(admin.ModelAdmin):
     list_display = ("sale", "type", "amount", "received", "change", "created_at")
     list_filter = ("type", "sale__tenant", "sale__store", "created_at")
     search_fields = ("sale__id", "txn_ref")
+
+
+@admin.register(Return)
+class ReturnAdmin(admin.ModelAdmin):
+    list_display = ("id", "tenant", "store", "sale", "status", "refund_total", "return_no", "created_at")
+    list_filter = ("tenant", "store", "status", "created_at")
+    search_fields = ("id", "return_no", "sale__receipt_no")
+    date_hierarchy = "created_at"
+
+@admin.register(ReturnItem)
+class ReturnItemAdmin(admin.ModelAdmin):
+    list_display = ("return_ref", "sale_line", "qty_returned", "restock", "condition", "refund_total", "created_at")
+    list_filter = ("return_ref__tenant", "return_ref__store", "condition", "created_at")
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display = ("return_ref", "method", "amount", "external_ref", "created_at")
+    list_filter = ("method", "return_ref__tenant", "return_ref__store", "created_at")

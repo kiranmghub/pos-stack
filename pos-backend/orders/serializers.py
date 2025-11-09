@@ -1,7 +1,9 @@
 # pos-backend/orders/serializers.py
 
 from rest_framework import serializers
-from .models import Sale, SaleLine, SalePayment
+from .models import Sale, SaleLine, SalePayment, Return, ReturnItem, Refund
+from decimal import Decimal
+from django.db.models import Sum
 
 class SaleLineSerializer(serializers.ModelSerializer):
     class Meta: model = SaleLine; fields = "__all__"
@@ -142,6 +144,9 @@ class SaleDetailSerializer(serializers.ModelSerializer):
     discount_total = serializers.SerializerMethodField()
     tax_total = serializers.SerializerMethodField()
     fee_total = serializers.SerializerMethodField()
+    refunded_total = serializers.SerializerMethodField()
+    total_returns = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Sale
@@ -150,6 +155,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
             "store_name", "cashier_name",
             "status",
             "subtotal", "discount_total", "tax_total", "fee_total", "total",
+            "refunded_total", "total_returns",
             "receipt_data",     # JSON; used for printable receipt/tax breakdown
             "lines",
             "payments",
@@ -200,3 +206,91 @@ class SaleDetailSerializer(serializers.ModelSerializer):
 
     def get_fee_total(self, obj):
         return sum((ln.fee or 0) for ln in self._lines_qs(obj))
+    
+    # def get_refunded_total(self, obj):
+    #     # Sum of finalized returns' refund_total to date
+    #     total = Return.objects.filter(sale=obj, status="finalized").aggregate(
+    #         s=serializers.DecimalField(max_digits=12, decimal_places=2).to_internal_value(
+    #             sum((r.refund_total or Decimal("0")) for r in Return.objects.filter(sale=obj, status="finalized"))
+    #         )
+    #     )
+    #     return total.get("s", Decimal("0"))
+    def get_refunded_total(self, obj):
+        # Sum of finalized returns' refund_total to date (pure ORM expression)
+        val = Return.objects.filter(sale=obj, status="finalized").aggregate(s=Sum("refund_total"))["s"]
+        return val or Decimal("0")
+
+    def get_total_returns(self, obj):
+        return Return.objects.filter(sale=obj).count()
+
+
+# ---- Returns API ----
+
+class ReturnItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReturnItem
+        fields = [
+            "id", "sale_line", "qty_returned", "restock", "condition",
+            "refund_subtotal", "refund_tax", "refund_total", "created_at",
+        ]
+        read_only_fields = ("refund_subtotal", "refund_tax", "refund_total", "created_at")
+
+
+class RefundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Refund
+        fields = ["id", "method", "amount", "external_ref", "created_at"]
+
+
+class ReturnSerializer(serializers.ModelSerializer):
+    items = ReturnItemSerializer(many=True, read_only=True)
+    refunds = RefundSerializer(many=True, read_only=True)
+    sale_receipt_no = serializers.CharField(source="sale.receipt_no", read_only=True)
+
+    class Meta:
+        model = Return
+        fields = [
+            "id", "return_no", "status", "sale", "sale_receipt_no",
+            "store", "processed_by", "reason_code", "notes",
+            "refund_total", "items", "refunds",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ("return_no", "refund_total", "created_at", "updated_at")
+
+
+class ReturnStartSerializer(serializers.ModelSerializer):
+    """
+    For POST /orders/{sale_id}/returns — create a draft Return
+    """
+    class Meta:
+        model = Return
+        fields = ["id", "sale", "store", "processed_by", "reason_code", "notes", "status"]
+        read_only_fields = ("status",)
+
+
+class ReturnAddItemsSerializer(serializers.Serializer):
+    """
+    For POST /returns/{id}/items — add or replace line selections
+    """
+    items = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+
+    def validate(self, data):
+        # Validate quantities don’t exceed refundable (sold minus returned)
+        ret: Return = self.context["return"]
+        sale = ret.sale
+        refundable = {}
+        for ln in sale.lines.all():
+            already = sum(ri.qty_returned for ri in ln.return_items.select_related("return_ref").filter(return_ref__status="finalized"))
+            refundable[ln.id] = max(0, ln.qty - already)
+        for idx, item in enumerate(data["items"]):
+            line_id = int(item.get("sale_line"))
+            qty = int(item.get("qty_returned"))
+            if qty <= 0:
+                raise serializers.ValidationError({idx: "qty_returned must be > 0"})
+            if qty > refundable.get(line_id, 0):
+                raise serializers.ValidationError({idx: "qty exceeds refundable quantity"})
+        return data
+
+
+class ReturnFinalizeSerializer(serializers.Serializer):
+    refunds = RefundSerializer(many=True)

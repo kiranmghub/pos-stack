@@ -1,6 +1,6 @@
 // src/features/sales/SalesPage.tsx
 import * as React from "react";
-import { listSales, getSale, listInventoryStores, type SaleRow, type SaleDetail } from "./api";
+import { startReturnForSale, listReturnsForSale, listSales, getSale, listInventoryStores, type SaleRow, type SaleDetail } from "./api";
 
 export default function SalesPage() {
     const [query, setQuery] = React.useState("");
@@ -203,6 +203,26 @@ export default function SalesPage() {
                                         <div><span className="text-zinc-400">Status:</span> {detail.status}</div>
                                     </div>
 
+                                    {/* Start Return */}
+                                    <div className="mt-3">
+                                        <button
+                                            className="rounded-md bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-sm font-medium text-white"
+                                            onClick={async () => {
+                                                try {
+                                                    const ret = await startReturnForSale(detail.id);
+                                                    console.log("Return created:", ret);
+                                                    // TODO: navigate to or open Return Builder UI with ret.id
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    alert("Unable to start return");
+                                                }
+                                            }}
+                                        >
+                                            Start return
+                                        </button>
+                                    </div>
+
+
                                     {/* Lines (prefer receipt_data.lines; fallback to detail.lines) */}
                                     <div className="rounded-xl border border-zinc-800">
                                         <div className="px-3 py-2 border-b border-zinc-800 flex items-center justify-between">
@@ -229,7 +249,7 @@ export default function SalesPage() {
                                                 ? (detail as any).receipt_data.lines.map((ln: any, idx: number) => (
                                                     <div key={`${ln.sku ?? idx}`} className="rounded-lg border border-zinc-800 p-2.5 bg-zinc-900/40">
                                                         <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-start text-[13px]">
-                                                        {/* <div className="grid grid-cols-[1fr_minmax(4rem,auto)_minmax(4rem,auto)_minmax(4rem,auto)_minmax(5rem,auto)] gap-4 items-start text-[13px]">     */}
+                                                            {/* <div className="grid grid-cols-[1fr_minmax(4rem,auto)_minmax(4rem,auto)_minmax(4rem,auto)_minmax(5rem,auto)] gap-4 items-start text-[13px]">     */}
                                                             <div className="min-w-0">
                                                                 <div className="text-zinc-100 truncate">{ln.name ?? "Product"}</div>
                                                                 <div className="text-xs text-zinc-400 truncate">
@@ -243,24 +263,24 @@ export default function SalesPage() {
                                                         </div>
                                                         {showBreakdown && (
                                                             <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-zinc-400">
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Subtotal: <span className="text-zinc-200 tabular-nums">{safeMoney(ln.line_subtotal ?? 0)}</span>
-                                                            </div>
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Discount: <span className="text-amber-300 tabular-nums">-{safeMoney(ln.line_discount ?? 0)}</span>
-                                                            </div>
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Tax: <span className="text-blue-300 tabular-nums">{safeMoney(ln.tax ?? 0)}</span>
-                                                            </div>
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Fee: <span className="text-zinc-200 tabular-nums">{safeMoney(ln.fee ?? 0)}</span>
-                                                            </div>
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Net (pre-tax): <span className="text-zinc-200 tabular-nums">{safeMoney(ln.line_net ?? 0)}</span>
-                                                            </div>
-                                                            <div className="whitespace-nowrap leading-5">
-                                                                Gross after tax: <span className="text-zinc-100 tabular-nums">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</span>
-                                                            </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Subtotal: <span className="text-zinc-200 tabular-nums">{safeMoney(ln.line_subtotal ?? 0)}</span>
+                                                                </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Discount: <span className="text-amber-300 tabular-nums">-{safeMoney(ln.line_discount ?? 0)}</span>
+                                                                </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Tax: <span className="text-blue-300 tabular-nums">{safeMoney(ln.tax ?? 0)}</span>
+                                                                </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Fee: <span className="text-zinc-200 tabular-nums">{safeMoney(ln.fee ?? 0)}</span>
+                                                                </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Net (pre-tax): <span className="text-zinc-200 tabular-nums">{safeMoney(ln.line_net ?? 0)}</span>
+                                                                </div>
+                                                                <div className="whitespace-nowrap leading-5">
+                                                                    Gross after tax: <span className="text-zinc-100 tabular-nums">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</span>
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>

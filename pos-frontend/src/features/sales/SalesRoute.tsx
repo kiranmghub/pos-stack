@@ -6,7 +6,7 @@ import SalesPage from "./SalesPage";
 
 export default function SalesRoute() {
   return (
-    <AppShell title="Catalog" contained>
+    <AppShell title="Sales" contained>
       <SalesPage />
     </AppShell>
   );
