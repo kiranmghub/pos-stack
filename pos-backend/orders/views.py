@@ -244,6 +244,8 @@ class ReturnAddItemsView(generics.CreateAPIView):
                     qty_returned=item["qty_returned"],
                     restock=bool(item.get("restock", True)),
                     condition=item.get("condition") or "RESALEABLE",
+                    reason_code=(item.get("reason_code") or "").strip() or None,
+                    notes=(item.get("notes") or "").strip() or None,
                     refund_subtotal=comp["subtotal"],
                     refund_tax=comp["tax"],
                     refund_total=comp["total"],
@@ -304,3 +306,76 @@ class ReturnFinalizeView(generics.CreateAPIView):
             ret.status = "finalized"
             ret.save(update_fields=["status", "return_no"])
         return Response(ReturnSerializer(ret).data, status=200)
+    
+
+class ReturnDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/v1/orders/returns/{pk}
+    Returns a single return with items and refunds.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ReturnSerializer
+    lookup_url_kwarg = "pk"
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = (Return.objects
+              .select_related("sale", "store", "processed_by")
+              .prefetch_related(
+                  "items",
+                  "items__sale_line",
+                  "items__sale_line__variant",
+                  "items__sale_line__variant__product",
+                  "refunds",
+              ))
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        return qs
+    
+class ReturnItemDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/v1/orders/return-items/{pk}
+    Only allowed when the parent return is in 'draft' status.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_url_kwarg = "pk"
+
+    def get_object(self):
+        tenant = _resolve_request_tenant(self.request)
+        ri = get_object_or_404(ReturnItem.objects.select_related("return_ref"), pk=self.kwargs["pk"])
+        if tenant and ri.return_ref.tenant_id != tenant.id:
+            raise PermissionDenied("Forbidden")
+        if ri.return_ref.status != "draft":
+            raise ValidationError("Can only delete items on a draft return")
+        return ri
+
+    @transaction.atomic
+    def delete(self, request, *args, **kwargs):
+        ri = self.get_object()
+        ret = ri.return_ref
+        ri.delete()
+        # Recompute refund_total from remaining items
+        total = sum((it.refund_total or 0) for it in ret.items.all())
+        ret.refund_total = total
+        ret.save(update_fields=["refund_total"])
+        return Response(status=204)
+
+
+class ReturnVoidView(generics.CreateAPIView):
+    """
+    POST /api/v1/orders/returns/{pk}/void
+    Transition draft → void (no inventory changes; nothing to undo).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, *args, **kwargs):
+        tenant = _resolve_request_tenant(request)
+        ret = get_object_or_404(Return.objects.select_for_update(), pk=kwargs["pk"])
+        if tenant and ret.tenant_id != tenant.id:
+            return Response({"detail": "Forbidden"}, status=403)
+        if ret.status != "draft":
+            return Response({"detail": "Only draft returns can be voided"}, status=400)
+        ret.status = "void"
+        ret.save(update_fields=["status"])
+        return Response({"id": ret.id, "status": ret.status})

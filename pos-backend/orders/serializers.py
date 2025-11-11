@@ -227,13 +227,52 @@ class SaleDetailSerializer(serializers.ModelSerializer):
 # ---- Returns API ----
 
 class ReturnItemSerializer(serializers.ModelSerializer):
+    # Enrich each returned line with names and sku from the original sale_line → variant → product
+    product_name = serializers.SerializerMethodField()
+    variant_name = serializers.SerializerMethodField()
+    sku = serializers.SerializerMethodField()
+
     class Meta:
         model = ReturnItem
         fields = [
             "id", "sale_line", "qty_returned", "restock", "condition",
             "refund_subtotal", "refund_tax", "refund_total", "created_at",
+            "reason_code", "notes",   # NEW (writeable in draft; read-only in finalized)
+            "product_name", "variant_name", "sku",
         ]
         read_only_fields = ("refund_subtotal", "refund_tax", "refund_total", "created_at")
+
+    def get_product_name(self, obj):
+        # prefer snapshots on sale_line if present; else traverse variant → product
+        sl = getattr(obj, "sale_line", None)
+        if sl is None:
+            return None
+        snap = getattr(sl, "product_name", None)
+        if snap:
+            return snap
+        v = getattr(sl, "variant", None)
+        p = getattr(v, "product", None) if v is not None else None
+        return getattr(p, "name", None)
+
+    def get_variant_name(self, obj):
+        sl = getattr(obj, "sale_line", None)
+        if sl is None:
+            return None
+        snap = getattr(sl, "variant_name", None)
+        if snap:
+            return snap
+        v = getattr(sl, "variant", None)
+        return getattr(v, "name", None)
+
+    def get_sku(self, obj):
+        sl = getattr(obj, "sale_line", None)
+        if sl is None:
+            return None
+        snap = getattr(sl, "sku", None)
+        if snap:
+            return snap
+        v = getattr(sl, "variant", None)
+        return getattr(v, "sku", None)
 
 
 class RefundSerializer(serializers.ModelSerializer):
@@ -289,6 +328,14 @@ class ReturnAddItemsSerializer(serializers.Serializer):
                 raise serializers.ValidationError({idx: "qty_returned must be > 0"})
             if qty > refundable.get(line_id, 0):
                 raise serializers.ValidationError({idx: "qty exceeds refundable quantity"})
+            # NEW: per-line reason/notes validation
+            reason = (item.get("reason_code") or "").strip()
+            notes = (item.get("notes") or "").strip()
+            if not reason:
+                raise serializers.ValidationError({idx: "reason_code is required when returning an item"})
+            if len(notes) > 250:
+                raise serializers.ValidationError({idx: "notes must be ≤ 250 characters"})
+
         return data
 
 

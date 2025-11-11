@@ -143,6 +143,8 @@ class ReturnItem(models.Model):
     refund_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     refund_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(default=timezone.now)
+    reason_code = models.CharField(max_length=64, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"ReturnItem sale_line={self.sale_line_id} x{self.qty_returned}"

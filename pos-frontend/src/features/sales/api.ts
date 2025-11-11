@@ -1,4 +1,4 @@
-// src/features/sales/api.ts
+// pos-frontend/src/features/sales/api.ts
 import { apiFetchJSON } from "@/lib/auth";
 import { ensureAuthedFetch } from "@/components/AppShell";
 
@@ -103,15 +103,27 @@ export async function startReturnForSale(saleId: number, reason_code?: string, n
 }
 
 export async function putReturnItems(returnId: number, items: Array<{ sale_line: number; qty_returned: number; restock?: boolean; condition?: string }>) {
-  return apiFetchJSON(`/api/v1/returns/${returnId}/items`, {
+  return apiFetchJSON(`/api/v1/orders/returns/${returnId}/items`, {
     method: "POST",
     body: JSON.stringify({ items }),
   });
 }
 
 export async function finalizeReturn(returnId: number, refunds: Array<{ method: string; amount: number; external_ref?: string }>) {
-  return apiFetchJSON(`/api/v1/returns/${returnId}/finalize`, {
+  return apiFetchJSON(`/api/v1/orders/returns/${returnId}/finalize`, {
     method: "POST",
     body: JSON.stringify({ refunds }),
   });
+}
+
+export async function getReturnById(id: number) {
+  return apiFetchJSON(`/api/v1/orders/returns/${id}`, { method: "GET" });
+}
+
+export async function deleteReturnItem(returnItemId: number) {
+  return apiFetchJSON(`/api/v1/orders/return-items/${returnItemId}`, { method: "DELETE" });
+}
+
+export async function voidReturn(returnId: number) {
+  return apiFetchJSON(`/api/v1/orders/returns/${returnId}/void`, { method: "POST" });
 }
