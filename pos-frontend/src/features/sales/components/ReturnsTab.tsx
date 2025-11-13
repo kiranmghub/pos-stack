@@ -11,8 +11,10 @@ export function ReturnsTab(props: {
   safeMoney: (v:any)=>string;
   onDeleteReturnItem: (returnItemId: number) => Promise<void> | void;
   onVoidDraftReturn: (returnId: number) => Promise<void> | void;
+  onDeleteDraftReturn: (returnId: number) => Promise<void> | void;
 }) {
-  const { returns, loadingReturns, expandedReturnId, onToggleExpand, expandedReturn, loadingExpanded, safeMoney, onDeleteReturnItem, onVoidDraftReturn } = props;
+  const { returns, loadingReturns, expandedReturnId, onToggleExpand, expandedReturn, loadingExpanded, safeMoney, onDeleteReturnItem, onVoidDraftReturn, onDeleteDraftReturn } = props;
+  const [confirmDeleteId, setConfirmDeleteId] = React.useState<number | null>(null);
 
   return (
     <div className="space-y-4">
@@ -30,8 +32,9 @@ export function ReturnsTab(props: {
             {returns.map((r: any) => (
               // <div key={r.id} className="border-b border-zinc-800">
               <div key={r.id}>
+              <div className="w-full grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 px-3 py-2 text-sm hover:bg-white/5">
                 <button
-                  className="w-full grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 px-3 py-2 text-sm text-left hover:bg-white/5"
+                  className="col-span-3 grid grid-cols-[auto_auto_1fr] items-center gap-3 text-left"
                   onClick={() => onToggleExpand(r.id)}
                   aria-expanded={expandedReturnId === r.id}
                 >
@@ -43,8 +46,44 @@ export function ReturnsTab(props: {
                     </span>
                     <span className="text-zinc-400">{r.reason_code || "—"}</span>
                   </div>
-                  <div className="justify-self-end text-zinc-100">{safeMoney(r.refund_total || 0)}</div>
-                </button>
+                  </button>
+                  <div className="justify-self-end flex items-center gap-2">
+                    <div className="text-zinc-100">{safeMoney(r.refund_total || 0)}</div>
+                    {(r?.status?.toLowerCase?.() === "draft") && (
+                      <>
+                        {confirmDeleteId === r.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              className="rounded-md bg-red-700 hover:bg-red-600 px-2 py-0.5 text-[11px] font-medium text-white"
+                              onClick={async (e) => { e.stopPropagation?.(); await onDeleteDraftReturn(r.id); setConfirmDeleteId(null); }}
+                            >
+                              Delete
+                            </button>
+                            <button
+                              className="rounded-md px-2 py-0.5 text-[11px] text-zinc-300 hover:bg-white/5"
+                              onClick={(e) => { e.stopPropagation?.(); setConfirmDeleteId(null); }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            title="Delete draft return"
+                            className="rounded-md p-1.5 text-red-300 hover:bg-red-900/40"
+                            onClick={(e) => { e.stopPropagation?.(); setConfirmDeleteId(r.id); }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
 
                 {expandedReturnId === r.id && (
                   <div className="px-3 pb-3">

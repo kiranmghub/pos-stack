@@ -11,6 +11,8 @@ import PosRoute from "@/features/pos/PosRoute";
 import CatalogRoute from "@/features/catalog/CatalogRoute";
 import AdminRoute from "@/features/admin/AdminRoute";
 import SalesRoute from "@/features/sales/SalesRoute";
+import LandingPage from "@/features/landing/LandingPage";
+
 
 
 
@@ -73,11 +75,13 @@ function OwnerOrAdmin({ children }: { children: JSX.Element }) {
 }
 
 
+
 const router = createBrowserRouter([
+  { path: "/", element: <LandingPage /> }, 
   { path: "/login", element: <LoginPage /> },
 
   // ⬇️ CHANGED: everyone lands on HomePage (inherits AppShell), still protected
-  { path: "/", element: <ProtectedRoute><HomePage /></ProtectedRoute> },
+  { path: "/home", element: <ProtectedRoute><HomePage /></ProtectedRoute> },
 
   // Owner dashboard (wrapped in AppShell via OwnerRoute)
   {

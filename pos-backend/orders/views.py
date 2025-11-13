@@ -12,6 +12,7 @@ from tenants.models import Tenant
 from django.db.models import Count, Q, F, Sum, DecimalField, Value, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from rest_framework import generics, permissions
+from rest_framework.exceptions import ValidationError, PermissionDenied, NotFound
 from .serializers import (
     SaleListSerializer, SaleDetailSerializer, ReturnSerializer, ReturnStartSerializer, ReturnAddItemsSerializer, ReturnFinalizeSerializer,
 )
@@ -308,10 +309,10 @@ class ReturnFinalizeView(generics.CreateAPIView):
         return Response(ReturnSerializer(ret).data, status=200)
     
 
-class ReturnDetailView(generics.RetrieveAPIView):
+class ReturnDetailView(generics.RetrieveDestroyAPIView):
     """
-    GET /api/v1/orders/returns/{pk}
-    Returns a single return with items and refunds.
+    GET    /api/v1/orders/returns/{pk}     → return detail
+    DELETE /api/v1/orders/returns/{pk}     → delete draft return
     """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ReturnSerializer
@@ -331,6 +332,20 @@ class ReturnDetailView(generics.RetrieveAPIView):
         if tenant:
             qs = qs.filter(tenant=tenant)
         return qs
+    
+    def destroy(self, request, *args, **kwargs):
+        tenant = _resolve_request_tenant(request)
+        ret = get_object_or_404(Return.objects.select_related("sale", "store"), pk=kwargs["pk"])
+        try:
+            ret = Return.objects.get(pk=kwargs["pk"])
+        except Return.DoesNotExist:
+            raise NotFound("Return not found or already deleted")
+        if tenant and ret.tenant_id != tenant.id:
+            raise PermissionDenied("Forbidden")
+        if ret.status != "draft":
+            raise ValidationError("Only draft returns can be deleted")
+        ret.delete()
+        return Response(status=204)
     
 class ReturnItemDeleteView(generics.DestroyAPIView):
     """

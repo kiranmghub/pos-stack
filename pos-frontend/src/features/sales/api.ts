@@ -121,9 +121,43 @@ export async function getReturnById(id: number) {
 }
 
 export async function deleteReturnItem(returnItemId: number) {
-  return apiFetchJSON(`/api/v1/orders/return-items/${returnItemId}`, { method: "DELETE" });
+  const res = await ensureAuthedFetch(`/api/v1/orders/return-items/${returnItemId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok && res.status !== 204) {
+    // try to surface a nice error
+    try {
+      const data = await res.json();
+      throw new Error(data?.detail || "Failed to delete return item.");
+    } catch {
+      throw new Error("Failed to delete return item.");
+    }
+  }
+
+  // no JSON body on success
+  return null;
 }
+
 
 export async function voidReturn(returnId: number) {
   return apiFetchJSON(`/api/v1/orders/returns/${returnId}/void`, { method: "POST" });
+}
+
+
+export async function deleteReturn(returnId: number) {
+  const res = await ensureAuthedFetch(`/api/v1/orders/returns/${returnId}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok && res.status !== 204) {
+    try {
+      const data = await res.json();
+      throw new Error(data?.detail || "Failed to delete return.");
+    } catch {
+      throw new Error("Failed to delete return.");
+    }
+  }
+
+  return null; // nothing to parse
 }

@@ -4,7 +4,7 @@ import {
   listReturnsForSale,
   getReturnById,      // NOTE: your api.ts should hit /api/v1/orders/returns/${id}
   listSales, getSale, listInventoryStores,
-  deleteReturnItem, voidReturn,
+  deleteReturnItem, voidReturn, deleteReturn,
   type SaleRow, type SaleDetail
 } from "./api";
 
@@ -148,19 +148,52 @@ export default function SalesPage() {
     }
   };
 
-const handleVoidReturn = async (returnId: number) => {
-  if (!confirm("Void this draft return? This cannot be undone.")) return;
-  await voidReturn(returnId);
-  // refresh list; collapse expanded if it was this one
+  const handleVoidReturn = async (returnId: number) => {
+    if (!confirm("Void this draft return? This cannot be undone.")) return;
+    await voidReturn(returnId);
+    // refresh list; collapse expanded if it was this one
+    if (expandedReturnId === returnId) {
+      setExpandedReturnId(null);
+      setExpandedReturn(null);
+    }
+    if (openId && activeTab === "returns") {
+      const data = await listReturnsForSale(openId);
+      setReturns(Array.isArray(data) ? data : (data?.results ?? []));
+    }
+  };
+
+const handleDeleteDraftReturn = async (returnId: number) => {
+  // Optimistic update: remove from UI immediately
+  setReturns(prev => prev.filter(r => r.id !== returnId));
+
+  // Collapse expanded panel if this was the open one
   if (expandedReturnId === returnId) {
     setExpandedReturnId(null);
     setExpandedReturn(null);
   }
+
+  try {
+    await deleteReturn(returnId);
+    success("Draft return deleted.");
+  } catch (e: any) {
+    const msg = e?.message || e?.detail || "Unable to delete draft return.";
+    error(msg);
+    // On error, re-fetch to restore accurate state
+    if (openId && activeTab === "returns") {
+      const data = await listReturnsForSale(openId);
+      setReturns(Array.isArray(data) ? data : (data?.results ?? []));
+    }
+    return;
+  }
+
+  // Background refresh to stay in sync with backend
   if (openId && activeTab === "returns") {
     const data = await listReturnsForSale(openId);
     setReturns(Array.isArray(data) ? data : (data?.results ?? []));
   }
 };
+
+
 
   const lastPage = Math.max(1, Math.ceil(count / pageSize));
 
@@ -202,16 +235,9 @@ const handleVoidReturn = async (returnId: number) => {
             detail={detail}
             safeMoney={safeMoney}
             onStartReturn={async () => {
-                if (!detail) return;
-                  try {
-                    const ret = await startReturnForSale(detail.id);
-                    success("Draft return created.");
-                    setWizardDraft({ id: ret.id, refund_total: Number(ret.refund_total || 0) });
-                    setWizardOpen(true);
-                  } catch (e: any) {
-                    const msg = e?.message || e?.detail || "Unable to start return.";
-                    error(msg);
-                  }
+              if (!detail) return;
+              setWizardDraft(null); // no draft yet
+              setWizardOpen(true);  // wizard will create draft on Save & Continue
             }}
           />
         )}
@@ -227,24 +253,25 @@ const handleVoidReturn = async (returnId: number) => {
             safeMoney={safeMoney}
             onDeleteReturnItem={handleDeleteReturnItem}
             onVoidDraftReturn={handleVoidReturn}
+            onDeleteDraftReturn={handleDeleteDraftReturn}
           />
         )}
       </SaleDrawer>
 
-        <StartReturnWizardModal
-          open={wizardOpen && !!detail && !!wizardDraft}
-          onClose={() => { setWizardOpen(false); setWizardDraft(null); }}
-          saleDetail={detail}
-          draft={wizardDraft}
-          onFinalized={async () => {
-            // refresh sale detail and returns list after finalize
-            if (openId) setDetail(await getSale(openId));
-            if (openId && activeTab === "returns") {
-              const data = await listReturnsForSale(openId);
-              setReturns(Array.isArray(data) ? data : (data?.results ?? []));
-            }
-          }}
-        />
+      <StartReturnWizardModal
+        open={wizardOpen && !!detail}
+        onClose={() => { setWizardOpen(false); setWizardDraft(null); }}
+        saleDetail={detail}
+        draft={wizardDraft}
+        onFinalized={async () => {
+          // refresh sale detail and returns list after finalize
+          if (openId) setDetail(await getSale(openId));
+          if (openId && activeTab === "returns") {
+            const data = await listReturnsForSale(openId);
+            setReturns(Array.isArray(data) ? data : (data?.results ?? []));
+          }
+        }}
+      />
 
     </div>
   );

@@ -78,6 +78,9 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
     variant_name = serializers.SerializerMethodField()
     sku = serializers.SerializerMethodField()
     quantity = serializers.IntegerField(source="qty", read_only=True)
+    returned_qty = serializers.SerializerMethodField()
+    refundable_qty = serializers.SerializerMethodField()
+
 
     class Meta:
         model = SaleLine
@@ -87,6 +90,8 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
             "variant_name",
             "sku",
             "quantity",
+            "returned_qty",
+            "refundable_qty",
             "unit_price",
             "discount",
             "tax",
@@ -116,6 +121,21 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
             return val
         v = getattr(obj, "variant", None)
         return getattr(v, "sku", None)
+    
+    def get_returned_qty(self, obj):
+        # sum of all finalized returns for this sale line
+        from .models import ReturnItem  # local import to avoid cycles
+        return int(
+            ReturnItem.objects.filter(
+                sale_line=obj, return_ref__status="finalized"
+            ).aggregate(s=Sum("qty_returned"))["s"] or 0
+        )
+
+    def get_refundable_qty(self, obj):
+        returned = self.get_returned_qty(obj)
+        qty = int(getattr(obj, "qty", 0) or 0)
+        rem = qty - returned
+        return rem if rem > 0 else 0
 
 class SalePaymentPublicSerializer(serializers.ModelSerializer):
     # Keep frontend contract: expose `tender_type` mapped from model field `type`

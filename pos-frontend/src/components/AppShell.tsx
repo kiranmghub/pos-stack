@@ -34,7 +34,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
       <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur border-b border-slate-800">
         <div className="h-12 px-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Link to="/" className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-2 py-1 hover:bg-slate-700">
+            <Link to="/home" className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-2 py-1 hover:bg-slate-700">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Home</span>
             </Link>

@@ -67,7 +67,7 @@ export default function LoginPage() {
         localStorage.setItem("role", data?.role || "");
 
         // Redirect only after tokens are saved
-        window.location.href = "/";
+        window.location.href = "/home";
     } catch (err: any) {
       setError(err?.message || "Unexpected error");
     } finally {
