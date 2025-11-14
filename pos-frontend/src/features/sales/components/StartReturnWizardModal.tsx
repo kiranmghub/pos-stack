@@ -32,6 +32,8 @@ export default function StartReturnWizardModal({
     const [lineQty, setLineQty] = React.useState<Record<number, number>>({});
     const [lineReason, setLineReason] = React.useState<Record<number, string>>({});
     const [lineNotes, setLineNotes] = React.useState<Record<number, string>>({});
+    const [lineRestock, setLineRestock] = React.useState<Record<number, boolean>>({});
+    const [lineCondition, setLineCondition] = React.useState<Record<number, string>>({});
     const [refunds, setRefunds] = React.useState<RefundLine[]>([]);
     const [refundTotal, setRefundTotal] = React.useState<number>(Number(draft?.refund_total || 0));
     const [reviewItems, setReviewItems] = React.useState<any[]>([]);
@@ -39,6 +41,8 @@ export default function StartReturnWizardModal({
     const [activeLineId, setActiveLineId] = React.useState<number | null>(null);
     // bulk apply reason to all lines with qty > 0
     const [bulkReason, setBulkReason] = React.useState<string>("");
+    // bulk restock toggle (default ON)
+    const [restockAll, setRestockAll] = React.useState<boolean>(true);
 
 
 
@@ -129,10 +133,18 @@ export default function StartReturnWizardModal({
     React.useEffect(() => {
         if (open && saleDetail) {
             const seed: Record<number, number> = {};
-            (saleDetail.lines || []).forEach((ln: any) => { seed[ln.id] = 0; });
+            const restockSeed: Record<number, boolean> = {};
+            const condSeed: Record<number, string> = {};
+            (saleDetail.lines || []).forEach((ln: any) => {
+                seed[ln.id] = 0;
+                restockSeed[ln.id] = true;              // default restock ON
+                condSeed[ln.id] = "RESALEABLE";         // default condition
+            });
             setLineQty(seed);
             setLineReason({});
             setLineNotes({});
+            setLineRestock(restockSeed);
+            setLineCondition(condSeed);
             setRefunds([]);
             setRefundTotal(Number(draft?.refund_total || 0));
             setStep(1);
@@ -177,6 +189,8 @@ export default function StartReturnWizardModal({
                     sale_line: ln.id,
                     qty_returned: Number(lineQty[ln.id] || 0),
                     restock: true,
+                    restock: lineRestock[ln.id] !== false,               // default true
+                    condition: lineCondition[ln.id] || "RESALEABLE",
                     reason_code: (lineReason[ln.id] || "").trim(),
                     notes: (lineNotes[ln.id] || "").trim() || undefined,
                 }))
@@ -360,83 +374,116 @@ export default function StartReturnWizardModal({
 
                                                     {/* Expand reason/notes when active */}
                                                     {isActive && (
-                                                        <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                                            <label className="text-xs block">
-                                                                <span className="mb-1 block text-zinc-300">
-                                                                    Reason<span className="text-red-400">*</span>
-                                                                </span>
-                                                                <select
-                                                                    value={lineReason[ln.id] || ""}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        setLineReason((prev) => ({ ...prev, [ln.id]: val }));
-                                                                        // no auto-advance; stay on this row
-                                                                        setActiveLineId(ln.id);
-                                                                    }}
-                                                                    onKeyDown={(e) => {
-                                                                        // Tab (no Shift) moves focus to Notes on the same row
-                                                                        if (e.key === "Tab" && !e.shiftKey) {
-                                                                            e.preventDefault();
-                                                                            const n = notesRefs.current[ln.id];
-                                                                            if (n) n.focus();
-                                                                        }
-                                                                    }}
-                                                                    ref={(el) => { reasonRefs.current[ln.id] = el; }}
-                                                                    className={`w-full rounded-md border bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 ${qty > 0 && !(lineReason[ln.id]?.trim())
-                                                                        ? "border-red-600"
-                                                                        : "border-zinc-700"
-                                                                        }`}
-                                                                >
-                                                                    <option value="">Select a reason…</option>
-                                                                    <option value="DEFECTIVE">Defective / Damaged</option>
-                                                                    <option value="WRONG_ITEM">Wrong item</option>
-                                                                    <option value="CHANGED_MIND">Customer changed mind</option>
-                                                                    <option value="OTHER">Other</option>
-                                                                </select>
-                                                            </label>
-                                                            <label className="text-xs block">
-                                                                <span className="mb-1 block text-zinc-300">
-                                                                    Notes (optional)
-                                                                </span>
-                                                                <input
-                                                                    ref={(el) => { notesRefs.current[ln.id] = el; }}
-                                                                    value={lineNotes[ln.id] || ""}
-                                                                    onChange={(e) =>
-                                                                        setLineNotes((prev) => ({
-                                                                            ...prev,
-                                                                            [ln.id]: e.target.value,
-                                                                        }))
+                                                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                                        {/* Reason */}
+                                                        <label className="text-xs block">
+                                                        <span className="mb-1 block text-zinc-300">
+                                                            Reason<span className="text-red-400">*</span>
+                                                        </span>
+                                                        <select
+                                                            value={lineReason[ln.id] || ""}
+                                                            onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setLineReason((prev) => ({ ...prev, [ln.id]: val }));
+                                                            setActiveLineId(ln.id);
+                                                            }}
+                                                            onKeyDown={(e) => {
+                                                            if (e.key === "Tab" && !e.shiftKey) {
+                                                                e.preventDefault();
+                                                                const n = notesRefs.current[ln.id];
+                                                                if (n) n.focus();
+                                                            }
+                                                            }}
+                                                            ref={(el) => {
+                                                            reasonRefs.current[ln.id] = el;
+                                                            }}
+                                                            className={`w-full rounded-md border bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 ${
+                                                            qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-zinc-700"
+                                                            }`}
+                                                        >
+                                                            <option value="">Select a reason…</option>
+                                                            <option value="DEFECTIVE">Defective / Damaged</option>
+                                                            <option value="WRONG_ITEM">Wrong item</option>
+                                                            <option value="CHANGED_MIND">Customer changed mind</option>
+                                                            <option value="OTHER">Other</option>
+                                                        </select>
+                                                        </label>
+
+                                                        {/* Notes */}
+                                                        <label className="text-xs block">
+                                                        <span className="mb-1 block text-zinc-300">
+                                                            Notes (optional)
+                                                        </span>
+                                                        <input
+                                                            ref={(el) => { notesRefs.current[ln.id] = el; }}
+                                                            value={lineNotes[ln.id] || ""}
+                                                            onChange={(e) =>
+                                                            setLineNotes((prev) => ({
+                                                                ...prev,
+                                                                [ln.id]: e.target.value,
+                                                            }))
+                                                            }
+                                                            onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                const idx = lineIds.indexOf(ln.id);
+                                                                for (let i = idx + 1; i < lineIds.length; i++) {
+                                                                const nextId = lineIds[i];
+                                                                const nxt = (saleDetail.lines as any[]).find((l) => l.id === nextId);
+                                                                if (!nxt) continue;
+                                                                const returned = Number(nxt.returned_qty || 0);
+                                                                const remaining = Number(
+                                                                    nxt.refundable_qty ?? Math.max(0, (nxt.quantity || 0) - returned)
+                                                                );
+                                                                if (remaining > 0) {
+                                                                    setActiveLineId(nextId);
+                                                                    const el = qtyRefs.current[nextId];
+                                                                    if (el) {
+                                                                    el.focus();
+                                                                    el.scrollIntoView({ block: "center" });
                                                                     }
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") {
-                                                                            e.preventDefault();
-                                                                            // go to the next refundable line's Qty
-                                                                            const idx = lineIds.indexOf(ln.id);
-                                                                            for (let i = idx + 1; i < lineIds.length; i++) {
-                                                                                const nextId = lineIds[i];
-                                                                                const nxt = (saleDetail.lines as any[]).find((l) => l.id === nextId);
-                                                                                if (!nxt) continue;
-                                                                                const returned = Number(nxt.returned_qty || 0);
-                                                                                const remaining = Number(nxt.refundable_qty ?? Math.max(0, (nxt.quantity || 0) - returned));
-                                                                                if (remaining > 0) {
-                                                                                    setActiveLineId(nextId);
-                                                                                    const el = qtyRefs.current[nextId];
-                                                                                    if (el) {
-                                                                                        el.focus();
-                                                                                        el.scrollIntoView({ block: "center" });
-                                                                                    }
-                                                                                    break;
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }}
-                                                                    maxLength={250}
-                                                                    placeholder="Short note…"
-                                                                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                                                                />
-                                                            </label>
-                                                        </div>
+                                                                    break;
+                                                                }
+                                                                }
+                                                            }
+                                                            }}
+                                                            maxLength={250}
+                                                            placeholder="Short note…"
+                                                            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                        />
+                                                        </label>
+
+                                                        {/* Restock */}
+                                                        <label className="text-xs flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={lineRestock[ln.id] !== false}
+                                                            onChange={(e) =>
+                                                            setLineRestock((prev) => ({ ...prev, [ln.id]: e.target.checked }))
+                                                            }
+                                                            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900"
+                                                        />
+                                                        <span className="text-zinc-300">Restock to inventory</span>
+                                                        </label>
+
+                                                        {/* Condition */}
+                                                        <label className="text-xs block">
+                                                        <span className="mb-1 block text-zinc-300">Condition</span>
+                                                        <select
+                                                            value={lineCondition[ln.id] || "RESALEABLE"}
+                                                            onChange={(e) =>
+                                                            setLineCondition((prev) => ({ ...prev, [ln.id]: e.target.value }))
+                                                            }
+                                                            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                        >
+                                                            <option value="RESALEABLE">Resaleable</option>
+                                                            <option value="DAMAGED">Damaged</option>
+                                                            <option value="OPEN_BOX">Open box</option>
+                                                        </select>
+                                                        </label>
+                                                    </div>
                                                     )}
+
                                                 </div>
                                             );
                                         })}
@@ -479,54 +526,84 @@ export default function StartReturnWizardModal({
 
                                     {/* Quick action: copy reason / clear reasons */}
                                     <div className="rounded-lg border border-zinc-800 p-3">
-                                        <div className="text-xs text-zinc-400 mb-1">Quick actions</div>
-                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2">
-                                            <select
-                                                value={bulkReason}
-                                                onChange={(e) => setBulkReason(e.target.value)}
-                                                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                                            >
-                                                <option value="">Select a reason…</option>
-                                                <option value="DEFECTIVE">Defective / Damaged</option>
-                                                <option value="WRONG_ITEM">Wrong item</option>
-                                                <option value="CHANGED_MIND">Customer changed mind</option>
-                                                <option value="OTHER">Other</option>
-                                            </select>
-                                            <button
-                                                type="button"
-                                                disabled={!bulkReason || totalSelected === 0}
-                                                onClick={() => {
-                                                    if (!bulkReason) return;
-                                                    setLineReason((prev) => {
-                                                        const next = { ...prev };
-                                                        (saleDetail.lines || []).forEach((l: any) => {
-                                                            if (Number(lineQty[l.id] || 0) > 0) next[l.id] = bulkReason;
-                                                        });
-                                                        return next;
-                                                    });
-                                                }}
-                                                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-                                            >
-                                                Copy reason to selected
-                                            </button>
-                                            <button
-                                                type="button"
-                                                disabled={totalSelected === 0}
-                                                onClick={() =>
-                                                    setLineReason((prev) => {
-                                                        const next = { ...prev };
-                                                        (saleDetail.lines || []).forEach((l: any) => {
-                                                            if (Number(lineQty[l.id] || 0) > 0) next[l.id] = "";
-                                                        });
-                                                        return next;
-                                                    })
-                                                }
-                                                className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
-                                            >
-                                                Clear reasons
-                                            </button>
-                                        </div>
+                                    <div className="text-xs text-zinc-400 mb-1">Quick actions</div>
+                                    <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                        <select
+                                        value={bulkReason}
+                                        onChange={(e) => setBulkReason(e.target.value)}
+                                        className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                        >
+                                        <option value="">Select a reason…</option>
+                                        <option value="DEFECTIVE">Defective / Damaged</option>
+                                        <option value="WRONG_ITEM">Wrong item</option>
+                                        <option value="CHANGED_MIND">Customer changed mind</option>
+                                        <option value="OTHER">Other</option>
+                                        </select>
+                                        <button
+                                        type="button"
+                                        disabled={!bulkReason || totalSelected === 0}
+                                        onClick={() => {
+                                            if (!bulkReason) return;
+                                            setLineReason((prev) => {
+                                            const next = { ...prev };
+                                            (saleDetail.lines || []).forEach((l: any) => {
+                                                if (Number(lineQty[l.id] || 0) > 0) next[l.id] = bulkReason;
+                                            });
+                                            return next;
+                                            });
+                                        }}
+                                        className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                                        >
+                                        Copy reason to selected
+                                        </button>
+                                        <button
+                                        type="button"
+                                        disabled={totalSelected === 0}
+                                        onClick={() =>
+                                            setLineReason((prev) => {
+                                            const next = { ...prev };
+                                            (saleDetail.lines || []).forEach((l: any) => {
+                                                if (Number(lineQty[l.id] || 0) > 0) next[l.id] = "";
+                                            });
+                                            return next;
+                                            })
+                                        }
+                                        className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+                                        >
+                                        Clear reasons
+                                        </button>
                                     </div>
+
+                                    {/* NEW: bulk restock toggle */}
+                                    <div className="mt-3 flex items-center justify-between">
+                                        <span className="text-xs text-zinc-400">Restock selected items</span>
+                                        <button
+                                        type="button"
+                                        disabled={totalSelected === 0}
+                                        onClick={() => {
+                                            const next = !restockAll;
+                                            setRestockAll(next);
+                                            setLineRestock((prev) => {
+                                            const copy = { ...prev };
+                                            (saleDetail.lines || []).forEach((l: any) => {
+                                                if (Number(lineQty[l.id] || 0) > 0) {
+                                                copy[l.id] = next;
+                                                }
+                                            });
+                                            return copy;
+                                            });
+                                        }}
+                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                            restockAll
+                                            ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40"
+                                            : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                        } disabled:opacity-50`}
+                                        >
+                                        {restockAll ? "On" : "Off"}
+                                        </button>
+                                    </div>
+                                    </div>
+
 
                                     <div className="rounded-lg border border-zinc-800 px-3 py-2 text-sm text-zinc-300">
                                         Total items selected:&nbsp;

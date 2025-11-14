@@ -27,6 +27,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
 
   const user = getUser();
   const tenantCode = getTenantCode();
+  const displayName = user?.username || user?.email || "User";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -53,7 +54,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-300">{user?.username || "User"}</span>
+            <span className="text-sm text-slate-300">{displayName}</span>
             <button
               onClick={logout}
               className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 hover:bg-red-500"

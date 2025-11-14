@@ -9,6 +9,7 @@ const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 const TENANT_CODE_KEY = "tenant_code";
 const TENANT_ID_KEY = "tenant_id";
+const USER_META_KEY = "user_meta";
 
 export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_KEY);
@@ -29,6 +30,30 @@ export function setAuthTokens(access: string, refresh?: string | null) {
 export function setTenantMeta({ code, id }: { code?: string | null; id?: string | number | null }) {
   if (code != null) localStorage.setItem(TENANT_CODE_KEY, String(code));
   if (id != null) localStorage.setItem(TENANT_ID_KEY, String(id));
+}
+type StoredUserMeta = {
+  username?: string | null;
+  email?: string | null;
+  display_name?: string | null;
+  role?: string | null;
+};
+
+export function setStoredUserMeta(meta: StoredUserMeta | null) {
+  if (!meta) {
+    localStorage.removeItem(USER_META_KEY);
+    return;
+  }
+  localStorage.setItem(USER_META_KEY, JSON.stringify(meta));
+}
+
+export function getStoredUserMeta(): StoredUserMeta | null {
+  try {
+    const raw = localStorage.getItem(USER_META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredUserMeta;
+  } catch {
+    return null;
+  }
 }
 
 export function logout() {
@@ -159,13 +184,15 @@ export function getUser(): AuthUser | null {
   if (!payload) return null;
 
   const id = payload.user_id ?? payload.id ?? payload.uid ?? payload.sub ?? null;
-  const username =
+  const storedMeta = getStoredUserMeta();
+
+  const decodedUsername =
     payload.username ??
     payload.user_name ??
     payload.preferred_username ??
     (typeof payload.sub === "string" ? payload.sub : undefined);
-  const email = payload.email ?? payload.user_email ?? undefined;
-  const role =
+  const decodedEmail = payload.email ?? payload.user_email ?? undefined;
+  const decodedRole =
     payload.role ??
     payload.user_role ??
     payload["https://example.com/role"] ??
@@ -174,11 +201,15 @@ export function getUser(): AuthUser | null {
      payload.is_cashier ? "cashier" :
      payload.is_manager ? "manager" : null);
 
+  const username = storedMeta?.display_name ?? storedMeta?.username ?? decodedUsername;
+  const email = storedMeta?.email ?? decodedEmail;
+  const role = storedMeta?.role ?? decodedRole ?? null;
+
   return {
     id: id ?? undefined,
     username: username ?? undefined,
     email,
-    role: role ?? null,
+    role,
     tenant_code: getTenantCode(),
     tenant_id: getTenantId(),
   };

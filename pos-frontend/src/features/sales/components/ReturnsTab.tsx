@@ -8,7 +8,7 @@ export function ReturnsTab(props: {
   onToggleExpand: (id: number) => void;
   expandedReturn: any | null;
   loadingExpanded: boolean;
-  safeMoney: (v:any)=>string;
+  safeMoney: (v: any) => string;
   onDeleteReturnItem: (returnItemId: number) => Promise<void> | void;
   onVoidDraftReturn: (returnId: number) => Promise<void> | void;
   onDeleteDraftReturn: (returnId: number) => Promise<void> | void;
@@ -32,20 +32,20 @@ export function ReturnsTab(props: {
             {returns.map((r: any) => (
               // <div key={r.id} className="border-b border-zinc-800">
               <div key={r.id}>
-              <div className="w-full grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 px-3 py-2 text-sm hover:bg-white/5">
-                <button
-                  className="col-span-3 grid grid-cols-[auto_auto_1fr] items-center gap-3 text-left"
-                  onClick={() => onToggleExpand(r.id)}
-                  aria-expanded={expandedReturnId === r.id}
-                >
-                  <div className="text-zinc-100">{r.return_no || r.id}</div>
-                  <div className="text-zinc-400">{new Date(r.created_at).toLocaleString()}</div>
-                  <div className="truncate text-zinc-300">
-                    <span className={`mr-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs ${r.status === "finalized" ? "bg-emerald-600/20 text-emerald-300" : "bg-zinc-700/40 text-zinc-300"}`}>
-                      {r.status}
-                    </span>
-                    <span className="text-zinc-400">{r.reason_code || "—"}</span>
-                  </div>
+                <div className="w-full grid grid-cols-[auto_auto_1fr_auto] items-center gap-3 px-3 py-2 text-sm hover:bg-white/5">
+                  <button
+                    className="col-span-3 grid grid-cols-[auto_auto_1fr] items-center gap-3 text-left"
+                    onClick={() => onToggleExpand(r.id)}
+                    aria-expanded={expandedReturnId === r.id}
+                  >
+                    <div className="text-zinc-100">{r.return_no || r.id}</div>
+                    <div className="text-zinc-400">{new Date(r.created_at).toLocaleString()}</div>
+                    <div className="truncate text-zinc-300">
+                      <span className={`mr-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs ${r.status === "finalized" ? "bg-emerald-600/20 text-emerald-300" : "bg-zinc-700/40 text-zinc-300"}`}>
+                        {r.status}
+                      </span>
+                      <span className="text-zinc-400">{r.reason_code || "—"}</span>
+                    </div>
                   </button>
                   <div className="justify-self-end flex items-center gap-2">
                     <div className="text-zinc-100">{safeMoney(r.refund_total || 0)}</div>
@@ -73,10 +73,10 @@ export function ReturnsTab(props: {
                             onClick={(e) => { e.stopPropagation?.(); setConfirmDeleteId(r.id); }}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              <path d="M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                             </svg>
                           </button>
                         )}
@@ -130,10 +130,10 @@ export function ReturnsTab(props: {
                                             onClick={() => onDeleteReturnItem(it.id)}
                                           >
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                              <path d="M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                              <path d="M8 6V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                              <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                             </svg>
                                           </button>
                                         )}
@@ -143,6 +143,10 @@ export function ReturnsTab(props: {
                                       <div>Subtotal: <span className="text-zinc-200">{safeMoney(it.refund_subtotal || 0)}</span></div>
                                       <div>Tax: <span className="text-blue-300">{safeMoney(it.refund_tax || 0)}</span></div>
                                       <div>Total: <span className="text-zinc-100">{safeMoney(it.refund_total || 0)}</span></div>
+                                    </div>
+                                    <div className="mt-1 text-xs text-zinc-400">
+                                      Reason: <span className="text-zinc-200">{it.reason_code || "—"}</span>
+                                      {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
                                     </div>
                                     <div className="mt-1 text-xs text-zinc-400">
                                       Restock: <span className="text-zinc-200">{it.restock ? "Yes" : "No"}</span> • Condition: <span className="text-zinc-200">{it.condition}</span>

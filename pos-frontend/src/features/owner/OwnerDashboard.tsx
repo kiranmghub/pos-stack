@@ -98,7 +98,22 @@ interface TrendPoint { date: string; revenue: number; orders: number; }
 interface StoreRevenue { store_code: string; store_name: string; revenue: number; orders: number; }
 interface TopProduct { sku: string; name: string; revenue: number; qty: number; }
 interface LowStock { store: string; sku: string; variant: string; on_hand: number; min_stock: number; }
-interface RecentSale { id: number; store: string; total: number; created_at: string; cashier?: string; }
+interface RecentSale {
+  id: number;
+  store?: string;
+  store_name?: string;
+  total: number;
+  created_at: string;
+  cashier?: string;
+  cashier_name?: string;
+}
+
+function asArray<T>(payload: any): T[] {
+  if (Array.isArray(payload)) return payload;
+  if (payload?.results && Array.isArray(payload.results)) return payload.results;
+  if (payload?.data && Array.isArray(payload.data)) return payload.data;
+  return [];
+}
 
 // -----------------------------
 // main component
@@ -144,19 +159,24 @@ export default function OwnerDashboard() {
 
         // For Live vs Mock Data
         const summaryData = await readOrMock(s, () => ({ revenue_today: 5820.45, orders_today: 87, aov_today: 66.9, active_stores: 3, delta_revenue_pct: 8.2 }));
-        const trendData   = await readOrMock(t, () => sampleTrend());
-        const byStoreData = await readOrMock(b, () => sampleByStore());
-        const topData     = await readOrMock(p, () => sampleTopProducts());
-        const lowData     = await readOrMock(l, () => sampleLowStock());
-        const recentData  = await readOrMock(r, () => sampleRecentSales());
-
+        const trendPayload   = await readOrMock(t, () => sampleTrend());
+        const byStorePayload = await readOrMock(b, () => sampleByStore());
+        const topPayload     = await readOrMock(p, () => sampleTopProducts());
+        const lowPayload     = await readOrMock(l, () => sampleLowStock());
+        const recentPayload  = await readOrMock(r, () => sampleRecentSales());
 
         setSummary(summaryData);
-        setTrend(trendData);
-        setByStore(byStoreData);
-        setTopProducts(topData);
-        setLowStock(lowData);
-        setRecentSales(recentData);
+        setTrend(asArray<TrendPoint>(trendPayload));
+        setByStore(asArray<StoreRevenue>(byStorePayload));
+        setTopProducts(asArray<TopProduct>(topPayload));
+        setLowStock(asArray<LowStock>(lowPayload));
+        setRecentSales(
+          asArray<RecentSale>(recentPayload).map((sale) => ({
+            ...sale,
+            store_name: sale.store_name ?? sale.store ?? "—",
+            cashier_name: sale.cashier_name ?? sale.cashier ?? "",
+          }))
+        );
         setError(null);
       } catch (e: any) {
         setError(e?.message || "Failed to load dashboard");
@@ -356,8 +376,8 @@ export default function OwnerDashboard() {
                 {recentSales.map((s) => (
                   <tr key={s.id} className="hover:bg-white/5">
                     <td className="py-2 pr-3">#{s.id}</td>
-                    <td className="py-2 pr-3">{s.store_name}</td>
-                    <td className="py-2 pr-3 text-slate-400">{s.cashier_name || "—"}</td>
+                    <td className="py-2 pr-3">{s.store_name || s.store || "—"}</td>
+                    <td className="py-2 pr-3 text-slate-400">{s.cashier_name || s.cashier || "—"}</td>
                     <td className="py-2 pr-3">{new Date(s.created_at).toLocaleString()}</td>
                     <td className="py-2 text-right">{currency(s.total)}</td>
                   </tr>
@@ -467,11 +487,17 @@ function sampleLowStock(): LowStock[] {
 
 function sampleRecentSales(): RecentSale[] {
   const now = new Date();
-  return Array.from({ length: 8 }).map((_, i) => ({
-    id: 1000 + i,
-    store: i % 2 ? "Dallas Uptown" : "Chicago Loop",
-    total: 30 + Math.random() * 120,
-    created_at: new Date(now.getTime() - i * 3600_000).toISOString(),
-    cashier: i % 2 ? "alex" : "jordan",
-  }));
+  return Array.from({ length: 8 }).map((_, i) => {
+    const store = i % 2 ? "Dallas Uptown" : "Chicago Loop";
+    const cashier = i % 2 ? "alex" : "jordan";
+    return {
+      id: 1000 + i,
+      store,
+      store_name: store,
+      total: 30 + Math.random() * 120,
+      created_at: new Date(now.getTime() - i * 3600_000).toISOString(),
+      cashier,
+      cashier_name: cashier,
+    };
+  });
 }

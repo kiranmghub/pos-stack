@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, Eye, EyeOff, Lock, Mail, Sparkles } from "lucide-react";
+import { setStoredUserMeta } from "@/lib/auth";
 
 /**
  * Beautiful tenant‑aware Login Page for your POS PWA.
@@ -65,6 +66,12 @@ export default function LoginPage() {
         localStorage.setItem("refresh_token", data.refresh);
         localStorage.setItem("tenant_code", data?.tenant?.code || tenantCode);
         localStorage.setItem("role", data?.role || "");
+        setStoredUserMeta({
+          username,
+          email: data?.user?.email ?? data?.email ?? null,
+          display_name: data?.user?.name ?? data?.user?.full_name ?? null,
+          role: data?.role ?? null,
+        });
 
         // Redirect only after tokens are saved
         window.location.href = "/home";
@@ -241,4 +248,3 @@ async function safeMessage(res: Response): Promise<string | null> {
     return null;
   }
 }
-
