@@ -112,9 +112,22 @@ export function ReturnsTab(props: {
                                   <div key={it.id} className="px-3 py-2 text-sm">
                                     <div className="flex items-center justify-between gap-3">
                                       <div className="min-w-0">
-                                        <div className="truncate text-zinc-100">{it.product_name || `Line #${it.sale_line}`}</div>
+                                        <div className="truncate text-zinc-100">
+                                          {it.product_name || `Line #${it.sale_line}`}
+                                        </div>
                                         <div className="truncate text-xs text-zinc-400">
                                           {(it.variant_name || "").trim() || "—"}{it.sku ? ` • SKU: ${it.sku}` : ""}
+                                        </div>
+                                        <div className="mt-1 text-xs text-zinc-400">
+                                          Reason: <span className="text-zinc-200">{it.reason_code || "—"}</span>
+                                          {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
+                                        </div>
+                                        <div className="mt-1 text-[11px] text-zinc-500">
+                                          Original: Subtotal {safeMoney(it.original_subtotal)}
+                                          {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
+                                          {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
+                                          {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
+                                          {" • "}Qty {it.original_quantity}
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-3">
@@ -140,16 +153,13 @@ export function ReturnsTab(props: {
                                       </div>
                                     </div>
                                     <div className="mt-1 grid grid-cols-3 gap-2 text-xs text-zinc-400">
-                                      <div>Subtotal: <span className="text-zinc-200">{safeMoney(it.refund_subtotal || 0)}</span></div>
+                                      <div>Return subtotal: <span className="text-zinc-200">{safeMoney(it.refund_subtotal || 0)}</span></div>
                                       <div>Tax: <span className="text-blue-300">{safeMoney(it.refund_tax || 0)}</span></div>
                                       <div>Total: <span className="text-zinc-100">{safeMoney(it.refund_total || 0)}</span></div>
                                     </div>
                                     <div className="mt-1 text-xs text-zinc-400">
-                                      Reason: <span className="text-zinc-200">{it.reason_code || "—"}</span>
-                                      {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
-                                    </div>
-                                    <div className="mt-1 text-xs text-zinc-400">
-                                      Restock: <span className="text-zinc-200">{it.restock ? "Yes" : "No"}</span> • Condition: <span className="text-zinc-200">{it.condition}</span>
+                                      Restock: <span className="text-zinc-200">{it.restock ? "Yes" : "No"}</span>
+                                      {" • "}Condition: <span className="text-zinc-200">{it.condition}</span>
                                     </div>
                                   </div>
                                 ))
@@ -183,6 +193,27 @@ export function ReturnsTab(props: {
                             </div>
                           </div>
                         </div>
+                        <div className="mt-3 rounded-xl border border-zinc-800 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="text-zinc-400">Return subtotal</div>
+                            <div className="tabular-nums text-zinc-100">
+                              {safeMoney(expandedReturn.refund_subtotal_total || 0)}
+                            </div>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between">
+                            <div className="text-zinc-400">Tax</div>
+                            <div className="tabular-nums text-blue-300">
+                              {safeMoney(expandedReturn.refund_tax_total || 0)}
+                            </div>
+                          </div>
+                          <div className="mt-1 flex items-center justify-between">
+                            <div className="text-zinc-400">Total refunded</div>
+                            <div className="tabular-nums text-white font-semibold">
+                              {safeMoney(expandedReturn.refund_total || 0)}
+                            </div>
+                          </div>
+                        </div>
+
                       </>
                     )}
 

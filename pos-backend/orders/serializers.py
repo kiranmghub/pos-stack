@@ -78,6 +78,7 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
     variant_name = serializers.SerializerMethodField()
     sku = serializers.SerializerMethodField()
     quantity = serializers.IntegerField(source="qty", read_only=True)
+    line_subtotal = serializers.SerializerMethodField()
     returned_qty = serializers.SerializerMethodField()
     refundable_qty = serializers.SerializerMethodField()
 
@@ -90,6 +91,7 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
             "variant_name",
             "sku",
             "quantity",
+            "line_subtotal",
             "returned_qty",
             "refundable_qty",
             "unit_price",
@@ -121,6 +123,17 @@ class SaleLinePublicSerializer(serializers.ModelSerializer):
             return val
         v = getattr(obj, "variant", None)
         return getattr(v, "sku", None)
+    
+    def get_line_subtotal(self, obj):
+        """
+        Original line subtotal, pre-tax & pre-fee, post-discount.
+        Mirrors SaleDetail subtotal logic, but per line.
+        """
+        line_total = obj.line_total or Decimal("0")
+        discount = obj.discount or Decimal("0")
+        tax = obj.tax or Decimal("0")
+        fee = obj.fee or Decimal("0")
+        return line_total + discount - tax - fee
     
     def get_returned_qty(self, obj):
         # sum of all finalized returns for this sale line
@@ -251,6 +264,24 @@ class ReturnItemSerializer(serializers.ModelSerializer):
     product_name = serializers.SerializerMethodField()
     variant_name = serializers.SerializerMethodField()
     sku = serializers.SerializerMethodField()
+        # Original sale line context (single source of truth from SaleLine)
+    original_quantity = serializers.IntegerField(source="sale_line.qty", read_only=True)
+    original_unit_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="sale_line.unit_price", read_only=True
+    )
+    original_discount = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="sale_line.discount", read_only=True
+    )
+    original_tax = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="sale_line.tax", read_only=True
+    )
+    original_fee = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="sale_line.fee", read_only=True
+    )
+    original_total = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="sale_line.line_total", read_only=True
+    )
+    original_subtotal = serializers.SerializerMethodField()
 
     class Meta:
         model = ReturnItem
@@ -259,8 +290,24 @@ class ReturnItemSerializer(serializers.ModelSerializer):
             "refund_subtotal", "refund_tax", "refund_total", "created_at",
             "reason_code", "notes",   # NEW (writeable in draft; read-only in finalized)
             "product_name", "variant_name", "sku",
+            # original sale line context
+            "original_quantity",
+            "original_unit_price",
+            "original_subtotal",
+            "original_discount",
+            "original_tax",
+            "original_fee",
+            "original_total",
         ]
         read_only_fields = ("refund_subtotal", "refund_tax", "refund_total", "created_at")
+
+    def get_original_subtotal(self, obj):
+        sl = obj.sale_line
+        line_total = sl.line_total or Decimal("0")
+        discount = sl.discount or Decimal("0")
+        tax = sl.tax or Decimal("0")
+        fee = sl.fee or Decimal("0")
+        return line_total + discount - tax - fee
 
     def get_product_name(self, obj):
         # prefer snapshots on sale_line if present; else traverse variant → product
@@ -305,6 +352,9 @@ class ReturnSerializer(serializers.ModelSerializer):
     items = ReturnItemSerializer(many=True, read_only=True)
     refunds = RefundSerializer(many=True, read_only=True)
     sale_receipt_no = serializers.CharField(source="sale.receipt_no", read_only=True)
+    refund_subtotal_total = serializers.SerializerMethodField()
+    refund_tax_total = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Return
@@ -312,9 +362,18 @@ class ReturnSerializer(serializers.ModelSerializer):
             "id", "return_no", "status", "sale", "sale_receipt_no",
             "store", "processed_by", "reason_code", "notes",
             "refund_total", "items", "refunds",
+            "refund_subtotal_total", "refund_tax_total",
             "created_at", "updated_at",
         ]
         read_only_fields = ("return_no", "refund_total", "created_at", "updated_at")
+
+    def get_refund_subtotal_total(self, obj):
+        val = obj.items.aggregate(s=Sum("refund_subtotal"))["s"]
+        return val or Decimal("0.00")
+
+    def get_refund_tax_total(self, obj):
+        val = obj.items.aggregate(s=Sum("refund_tax"))["s"]
+        return val or Decimal("0.00")
 
 
 class ReturnStartSerializer(serializers.ModelSerializer):

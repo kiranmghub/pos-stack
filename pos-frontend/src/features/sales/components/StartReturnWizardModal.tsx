@@ -37,6 +37,12 @@ export default function StartReturnWizardModal({
     const [refunds, setRefunds] = React.useState<RefundLine[]>([]);
     const [refundTotal, setRefundTotal] = React.useState<number>(Number(draft?.refund_total || 0));
     const [reviewItems, setReviewItems] = React.useState<any[]>([]);
+    const [returnTotals, setReturnTotals] = React.useState<{
+        subtotal: number;
+        tax: number;
+        total: number;
+        } | null>(null);
+
     const [draftId, setDraftId] = React.useState<number | null>(draft?.id ?? null);
     const [activeLineId, setActiveLineId] = React.useState<number | null>(null);
     // bulk apply reason to all lines with qty > 0
@@ -188,7 +194,6 @@ export default function StartReturnWizardModal({
                 .map((ln: any) => ({
                     sale_line: ln.id,
                     qty_returned: Number(lineQty[ln.id] || 0),
-                    restock: true,
                     restock: lineRestock[ln.id] !== false,               // default true
                     condition: lineCondition[ln.id] || "RESALEABLE",
                     reason_code: (lineReason[ln.id] || "").trim(),
@@ -197,13 +202,19 @@ export default function StartReturnWizardModal({
 
                 .filter(it => it.qty_returned > 0);
 
-            const updated = await putReturnItems(id!, items);
-            const rt = Number(updated.refund_total || 0);
-            setReviewItems(Array.isArray(updated.items) ? updated.items : []);
-            setRefundTotal(rt);
-            // initialize one refund line to the full amount
-            setRefunds([{ method: "CASH", amount: rt }]);
-            setStep(2);
+                const updated = await putReturnItems(id!, items);
+
+                const rt = Number(updated.refund_total || 0);
+                setReviewItems(Array.isArray(updated.items) ? updated.items : []);
+                setRefundTotal(rt);
+                setReturnTotals({
+                subtotal: Number(updated.refund_subtotal_total || 0),
+                tax: Number(updated.refund_tax_total || 0),
+                total: rt,
+                });
+                setRefunds([{ method: "CASH", amount: rt }]);
+                setStep(2);
+
         } catch (e: any) {
             const msg = e?.message || e?.detail || "Could not save items.";
             error(msg);
@@ -281,6 +292,8 @@ export default function StartReturnWizardModal({
                                         </div>
                                         <div className="text-center">Qty</div>
                                     </div>
+
+                                    
 
                                     {/* Rows */}
                                     <div className="divide-y divide-zinc-800">
@@ -370,6 +383,26 @@ export default function StartReturnWizardModal({
                                                                 />
                                                             )}
                                                         </div>
+                                                    </div>
+
+                                                    {/* NEW: original pricing strip */}
+                                                    <div className="mt-1 text-[11px] text-zinc-400">
+                                                    <span className="mr-2">Original:</span>
+                                                    <span className="mr-2">
+                                                        Unit <span className="text-zinc-200">{safeMoney(ln.unit_price)}</span>
+                                                    </span>
+                                                    <span className="mr-2">
+                                                        Subtotal <span className="text-zinc-200">{safeMoney(ln.line_subtotal)}</span>
+                                                    </span>
+                                                    <span className="mr-2">
+                                                        Discount <span className="text-amber-300">-{safeMoney(ln.discount || 0)}</span>
+                                                    </span>
+                                                    <span className="mr-2">
+                                                        Tax <span className="text-blue-300">{safeMoney(ln.tax || 0)}</span>
+                                                    </span>
+                                                    <span>
+                                                        Total <span className="text-zinc-100">{safeMoney(ln.line_total)}</span>
+                                                    </span>
                                                     </div>
 
                                                     {/* Expand reason/notes when active */}
@@ -655,15 +688,38 @@ export default function StartReturnWizardModal({
                                                         Reason: <span className="text-zinc-300">{it.reason_code || "—"}</span>
                                                         {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
                                                     </div>
+                                                    {/* NEW: original line context */}
+                                                    <div className="mt-1 text-[11px] text-zinc-500">
+                                                    Original: Subtotal {safeMoney(it.original_subtotal)}
+                                                    {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
+                                                    {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
+                                                    {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
+                                                    {" • "}Qty {it.original_quantity}
+                                                    </div>
                                                 </div>
+                                                
+                                                  {/* Return-only amounts */}
+                                                <div className="text-center tabular-nums text-zinc-200">
+                                                    {it.qty_returned}
+                                                    <div className="text-[11px] text-zinc-500">
+                                                    of {it.original_quantity}
+                                                    </div>
+                                                </div>
+                                                <div className="text-center tabular-nums text-blue-300">
+                                                    {safeMoney(it.refund_tax || 0)}
+                                                </div>
+                                                <div className="text-center tabular-nums text-zinc-100 font-medium">
+                                                    {safeMoney(it.refund_total || 0)}
+                                                </div>
+{/*                                                 
                                                 <div className="text-center tabular-nums text-zinc-200">{it.qty_returned}</div>
                                                 <div className="text-center tabular-nums text-blue-300">{safeMoney(it.refund_tax || 0)}</div>
-                                                <div className="text-center tabular-nums text-zinc-100 font-medium">{safeMoney(it.refund_total || 0)}</div>
+                                                <div className="text-center tabular-nums text-zinc-100 font-medium">{safeMoney(it.refund_total || 0)}</div> */}
                                             </div>
                                         ))}
                                     </div>
                                     {/* Footer totals */}
-                                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
+                                    {/* <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
                                         <div className="text-zinc-400">Totals</div>
                                         <div />
                                         <div className="text-center tabular-nums text-blue-300">
@@ -672,6 +728,17 @@ export default function StartReturnWizardModal({
                                         <div className="text-center tabular-nums text-white font-semibold">
                                             {safeMoney(refundTotal)}
                                         </div>
+                                    </div> */}
+                                    {/* Footer totals */}
+                                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
+                                    <div className="text-zinc-400">Totals (this return)</div>
+                                    <div />
+                                    <div className="text-center tabular-nums text-blue-300">
+                                        {safeMoney(returnTotals?.tax ?? 0)}  {/* from updated.refund_tax_total */}
+                                    </div>
+                                    <div className="text-center tabular-nums text-white font-semibold">
+                                        {safeMoney(returnTotals?.total ?? 0)} {/* from updated.refund_total */}
+                                    </div>
                                     </div>
                                 </div>
 

@@ -57,6 +57,7 @@ export function VariantFormDrawer({
 }) {
   const lockedProductId = productId ?? (variant as any)?.product;
   const isEdit = !!variant?.id;
+  const isCreate = !isEdit;
   const [mode, setMode] = React.useState<"view" | "edit">(initialMode);
   React.useEffect(() => setMode(initialMode), [initialMode]);
   const isView = mode === "view";
@@ -806,8 +807,13 @@ React.useEffect(() => {
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.on_hand || 0}
                 onChange={(e) => setForm((s) => ({ ...s, on_hand: parseInt(e.target.value || "0") }))}
-                disabled={isView}
+                disabled={isView || isCreate}
               />
+              {isCreate && (
+                <p className="mt-1 text-xs text-zinc-500">
+                  Set on-hand after creating the variant via inventory adjustments or counts.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2 pt-6">

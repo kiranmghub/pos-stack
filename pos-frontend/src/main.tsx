@@ -60,10 +60,11 @@ function OwnerOnly({ children }: { children: JSX.Element }) {
   return children;
 }
 
-// if you want a hard-guarded Cashier route by role:
-function CashierOnly({ children }: { children: JSX.Element }) {
+// POS can be used by cashiers, owners, or managers
+function PosAllowed({ children }: { children: JSX.Element }) {
   const role = (getRole() || "").toLowerCase();
-  if (role !== "cashier") return <Restricted role={role} />;
+  const allowed = role === "cashier" || role === "owner" || role === "manager";
+  if (!allowed) return <Restricted role={role} />;
   return children;
 }
 
@@ -100,9 +101,9 @@ const router = createBrowserRouter([
     path: "/pos",
     element: (
       <ProtectedRoute>
-        <CashierOnly>
+        <PosAllowed>
           <PosRoute />
-        </CashierOnly>
+        </PosAllowed>
       </ProtectedRoute>
     ),
   },
@@ -168,4 +169,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
-
