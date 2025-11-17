@@ -170,16 +170,34 @@ class Refund(models.Model):
     def compute_line_refund(ln: "SaleLine", qty: int) -> dict:
         """
         Pro-rate line values by quantity to compute refundable amounts.
+        All math is done in Decimal, using the sale line as the single source of truth.
         """
         qty = int(qty or 0)
         if qty <= 0:
             return {"subtotal": Decimal("0.00"), "tax": Decimal("0.00"), "total": Decimal("0.00")}
-        # unitized values
-        subtotal = ((ln.line_total or 0) + (ln.discount or 0) - (ln.tax or 0) - (ln.fee or 0)) / ln.qty
-        tax = (ln.tax or 0) / ln.qty
-        total = subtotal + tax  # fees are not refunded by default (policy dependent)
+
+        # ensure all components are Decimals
+        line_total = ln.line_total or Decimal("0.00")
+        discount = ln.discount or Decimal("0.00")
+        tax = ln.tax or Decimal("0.00")
+        fee = ln.fee or Decimal("0.00")
+
+        # denominator: how many units were sold on this line
+        sold_qty = int(ln.qty or 0)
+        if sold_qty <= 0:
+            # defensive: if a bad line exists, treat as non-refundable
+            return {"subtotal": Decimal("0.00"), "tax": Decimal("0.00"), "total": Decimal("0.00")}
+
+        sold_qty_dec = Decimal(sold_qty)
+        # pre-tax, pre-fee, post-discount subtotal for the whole line
+        net_pre_tax_whole = line_total + discount - tax - fee
+        subtotal_per_unit = net_pre_tax_whole / sold_qty_dec
+        tax_per_unit = tax / sold_qty_dec
+        total_per_unit = subtotal_per_unit + tax_per_unit  # fees are not refunded
+
+        qty_dec = Decimal(qty)
         return {
-            "subtotal": subtotal * qty,
-            "tax": tax * qty,
-            "total": total * qty,
+            "subtotal": (subtotal_per_unit * qty_dec).quantize(Decimal("0.01")),
+            "tax": (tax_per_unit * qty_dec).quantize(Decimal("0.01")),
+            "total": (total_per_unit * qty_dec).quantize(Decimal("0.01")),
         }

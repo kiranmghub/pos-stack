@@ -800,7 +800,7 @@ React.useEffect(() => {
               )}
             </div>
 
-            <div>
+            {/* <div>
               <label className="mb-1 block text-sm font-medium">Initial On Hand</label>
               <input
                 type="number"
@@ -814,7 +814,7 @@ React.useEffect(() => {
                   Set on-hand after creating the variant via inventory adjustments or counts.
                 </p>
               )}
-            </div>
+            </div> */}
 
             <div className="flex items-center gap-2 pt-6">
               <input
