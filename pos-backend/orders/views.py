@@ -150,6 +150,7 @@ class SalesListView(generics.ListAPIView):
             discount_total=Coalesce(Sum("lines__discount"), zero),
             tax_total=Coalesce(Sum("lines__tax"), zero),
             fee_total=Coalesce(Sum("lines__fee"), zero),
+            total_returns=Coalesce(Count("returns", distinct=True), 0),
         ).order_by("-created_at", "-id")
 
         return qs

@@ -40,12 +40,32 @@ export function ReturnsTab(props: {
                   >
                     <div className="text-zinc-100">{r.return_no || r.id}</div>
                     <div className="text-zinc-400">{new Date(r.created_at).toLocaleString()}</div>
-                    <div className="truncate text-zinc-300">
+                    {/* <div className="truncate text-zinc-300">
                       <span className={`mr-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs ${r.status === "finalized" ? "bg-emerald-600/20 text-emerald-300" : "bg-zinc-700/40 text-zinc-300"}`}>
                         {r.status}
                       </span>
                       <span className="text-zinc-400">{r.reason_code || "—"}</span>
-                    </div>
+                    </div> */}
+                    <div className="truncate text-zinc-300 flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                        r.status === "finalized"
+                          ? "bg-emerald-600/20 text-emerald-300"
+                          : r.status === "draft"
+                          ? "bg-blue-600/20 text-blue-200"
+                          : "bg-zinc-700/40 text-zinc-300"
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                    {r.reason_code && (
+                      <span className="inline-flex items-center rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-200">
+                        {r.reason_code}
+                      </span>
+                    )}
+                    {!r.reason_code && <span className="text-[11px] text-zinc-500">No header reason</span>}
+                  </div>
+
                   </button>
                   <div className="justify-self-end flex items-center gap-2">
                     <div className="text-zinc-100">{safeMoney(r.refund_total || 0)}</div>
@@ -102,6 +122,20 @@ export function ReturnsTab(props: {
                           </div>
                         )}
 
+                        {/* Sticky-ish refund summary banner */}
+                        <div className="mb-2 rounded-lg bg-zinc-900/80 border border-zinc-800 px-3 py-2 text-xs flex items-center justify-between">
+                          <div className="text-zinc-300">
+                            Return {expandedReturn.return_no || `#${expandedReturn.id}`}
+                          </div>
+                          <div className="text-zinc-300">
+                            Refunded:&nbsp;
+                            <span className="text-white font-semibold">
+                              {safeMoney(expandedReturn.refund_total || 0)}
+                            </span>
+                          </div>
+                        </div>
+
+
                         {/* Two-column layout for Items + Refunds */}
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="rounded-xl border border-zinc-800 overflow-hidden">
@@ -111,24 +145,48 @@ export function ReturnsTab(props: {
                                 expandedReturn.items.map((it: any) => (
                                   <div key={it.id} className="px-3 py-2 text-sm">
                                     <div className="flex items-center justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <div className="truncate text-zinc-100">
-                                          {it.product_name || `Line #${it.sale_line}`}
+                                      <div className="min-w-0 flex items-start gap-2">
+                                      <div className="min-w-0 flex items-start gap-2">
+                                        {/* Avatar */}
+                                        <div className="mt-0.5 h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-medium text-zinc-300">
+                                          {((it.product_name || it.variant_name || it.sku || "?") as string)
+                                            .trim()
+                                            .charAt(0)
+                                            .toUpperCase()}
                                         </div>
-                                        <div className="truncate text-xs text-zinc-400">
-                                          {(it.variant_name || "").trim() || "—"}{it.sku ? ` • SKU: ${it.sku}` : ""}
+                                        {/* Text */}
+                                        <div className="min-w-0">
+                                          <div className="truncate text-zinc-100">
+                                            {it.product_name || `Line #${it.sale_line}`}
+                                          </div>
+                                          <div className="truncate text-xs text-zinc-400">
+                                            {(it.variant_name || "").trim() || "—"}{it.sku ? ` • SKU: ${it.sku}` : ""}
+                                          </div>
+                                          <div className="mt-1 text-xs text-zinc-400">
+                                            Reason: <span className="text-zinc-200">{it.reason_code || "—"}</span>
+                                            {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
+                                          </div>
+                                          {/* Original mini-table (which you already added) remains as-is underneath */}
+                                          <div className="mt-2 text-[11px] text-zinc-500">
+                                            <div className="grid grid-cols-5 gap-2 text-center">
+                                              <div>Unit</div>
+                                              <div>Subt.</div>
+                                              <div>Disc.</div>
+                                              <div>Tax</div>
+                                              <div>Total</div>
+                                            </div>
+                                            <div className="grid grid-cols-5 gap-2 text-center mt-1">
+                                              <div className="tabular-nums text-zinc-200">{safeMoney(it.original_unit_price)}</div>
+                                              <div className="tabular-nums text-zinc-200">{safeMoney(it.original_subtotal)}</div>
+                                              <div className="tabular-nums text-amber-300">-{safeMoney(it.original_discount)}</div>
+                                              <div className="tabular-nums text-blue-300">{safeMoney(it.original_tax)}</div>
+                                              <div className="tabular-nums text-zinc-100">{safeMoney(it.original_total)}</div>
+                                            </div>
+                                          </div>
                                         </div>
-                                        <div className="mt-1 text-xs text-zinc-400">
-                                          Reason: <span className="text-zinc-200">{it.reason_code || "—"}</span>
-                                          {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
-                                        </div>
-                                        <div className="mt-1 text-[11px] text-zinc-500">
-                                          Original: Subtotal {safeMoney(it.original_subtotal)}
-                                          {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
-                                          {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
-                                          {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
-                                          {" • "}Qty {it.original_quantity}
-                                        </div>
+                                      </div>
+
+
                                       </div>
                                       <div className="flex items-center gap-3">
                                         <div className="text-zinc-400 text-xs">

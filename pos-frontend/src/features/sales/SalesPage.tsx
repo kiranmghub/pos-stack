@@ -104,6 +104,13 @@ export default function SalesPage() {
     try { setDetail(await getSale(id)); } finally { setLoadingDetail(false); }
   }
 
+  // Open drawer + jump directly to Returns tab
+  async function openReturns(id: number) {
+    await openDetail(id);       // loads detail & opens drawer
+    setActiveTab("returns");    // then switch to Returns tab
+  }
+
+
   // Returns tab loader
   React.useEffect(() => {
     let alive = true;
@@ -209,6 +216,44 @@ const handleDeleteDraftReturn = async (returnId: number) => {
         dateTo={dateTo} setDateTo={setDateTo}
       />
 
+      {/* KPI Summary Banner */}
+      {rows.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+          {/* Total Sales */}
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Sales</div>
+            <div className="text-lg font-semibold text-zinc-100">
+              {safeMoney(rows.reduce((sum, r) => sum + Number(r.total || 0), 0))}
+            </div>
+          </div>
+
+          {/* Total Tax */}
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Tax</div>
+            <div className="text-lg font-semibold text-blue-300">
+              {safeMoney(rows.reduce((sum, r) => sum + Number(r.tax_total || 0), 0))}
+            </div>
+          </div>
+
+          {/* Total Returned */}
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Refunded</div>
+            <div className="text-lg font-semibold text-amber-300">
+              {safeMoney(
+                rows.reduce((sum, r) => sum + (r.total_returns > 0 ? 1 : 0), 0) // optional count
+              )}
+            </div>
+          </div>
+
+          {/* Receipts Count */}
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-wide text-zinc-400">Receipts</div>
+            <div className="text-lg font-semibold text-zinc-100">{rows.length}</div>
+          </div>
+        </div>
+      )}
+
+
       {/* Table */}
       <SalesTable
         rows={rows}
@@ -220,6 +265,7 @@ const handleDeleteDraftReturn = async (returnId: number) => {
         onOpenDetail={openDetail}
         onPageChange={setPage}
         onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+        onOpenReturns={openReturns}
       />
 
       {/* Drawer */}

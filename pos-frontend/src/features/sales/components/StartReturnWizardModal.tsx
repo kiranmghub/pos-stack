@@ -41,7 +41,7 @@ export default function StartReturnWizardModal({
         subtotal: number;
         tax: number;
         total: number;
-        } | null>(null);
+    } | null>(null);
 
     const [draftId, setDraftId] = React.useState<number | null>(draft?.id ?? null);
     const [activeLineId, setActiveLineId] = React.useState<number | null>(null);
@@ -49,6 +49,9 @@ export default function StartReturnWizardModal({
     const [bulkReason, setBulkReason] = React.useState<string>("");
     // bulk restock toggle (default ON)
     const [restockAll, setRestockAll] = React.useState<boolean>(true);
+    // show only lines with qty > 0 in Step 1
+    const [showSelectedOnly, setShowSelectedOnly] = React.useState<boolean>(false);
+
 
 
 
@@ -202,18 +205,18 @@ export default function StartReturnWizardModal({
 
                 .filter(it => it.qty_returned > 0);
 
-                const updated = await putReturnItems(id!, items);
+            const updated = await putReturnItems(id!, items);
 
-                const rt = Number(updated.refund_total || 0);
-                setReviewItems(Array.isArray(updated.items) ? updated.items : []);
-                setRefundTotal(rt);
-                setReturnTotals({
+            const rt = Number(updated.refund_total || 0);
+            setReviewItems(Array.isArray(updated.items) ? updated.items : []);
+            setRefundTotal(rt);
+            setReturnTotals({
                 subtotal: Number(updated.refund_subtotal_total || 0),
                 tax: Number(updated.refund_tax_total || 0),
                 total: rt,
-                });
-                setRefunds([{ method: "CASH", amount: rt }]);
-                setStep(2);
+            });
+            setRefunds([{ method: "CASH", amount: rt }]);
+            setStep(2);
 
         } catch (e: any) {
             const msg = e?.message || e?.detail || "Could not save items.";
@@ -293,7 +296,7 @@ export default function StartReturnWizardModal({
                                         <div className="text-center">Qty</div>
                                     </div>
 
-                                    
+
 
                                     {/* Rows */}
                                     <div className="divide-y divide-zinc-800">
@@ -306,19 +309,40 @@ export default function StartReturnWizardModal({
                                             );
                                             const maxQty = remaining;
 
+                                            // ✅ Hide unselected lines when toggle is ON
+                                            if (showSelectedOnly && qty <= 0) {
+                                                return null;
+                                            }
+
                                             return (
-                                                <div key={ln.id} className="px-3 py-2">
+                                                // <div key={ln.id} className="px-3 py-2">
+                                                <div
+                                                    key={ln.id}
+                                                    className="px-3 py-2 transition-colors hover:bg-zinc-800/40 cursor-pointer rounded-md"
+                                                >
+
                                                     {/* Row grid */}
                                                     <div className="grid grid-cols-[1fr_12rem_6rem] items-center gap-3">
                                                         {/* Item */}
+                                                        <div className="min-w-0 flex items-center gap-2">
+                                                        {/* Avatar */}
+                                                        <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-medium text-zinc-300">
+                                                            {((ln.product_name || ln.variant_name || ln.sku || "?") as string)
+                                                            .trim()
+                                                            .charAt(0)
+                                                            .toUpperCase()}
+                                                        </div>
+                                                        {/* Text */}
                                                         <div className="min-w-0">
                                                             <div className="text-zinc-100 truncate">
-                                                                {ln.product_name || "Item"}
+                                                            {ln.product_name || "Item"}
                                                             </div>
                                                             <div className="text-xs text-zinc-400 truncate">
-                                                                {ln.variant_name || ln.sku}
+                                                            {ln.variant_name || ln.sku}
                                                             </div>
                                                         </div>
+                                                        </div>
+
 
                                                         {/* Metrics */}
                                                         <div className="grid grid-cols-3 gap-2 text-[11px]">
@@ -387,134 +411,151 @@ export default function StartReturnWizardModal({
 
                                                     {/* NEW: original pricing strip */}
                                                     <div className="mt-1 text-[11px] text-zinc-400">
-                                                    <span className="mr-2">Original:</span>
-                                                    <span className="mr-2">
-                                                        Unit <span className="text-zinc-200">{safeMoney(ln.unit_price)}</span>
-                                                    </span>
-                                                    <span className="mr-2">
-                                                        Subtotal <span className="text-zinc-200">{safeMoney(ln.line_subtotal)}</span>
-                                                    </span>
-                                                    <span className="mr-2">
-                                                        Discount <span className="text-amber-300">-{safeMoney(ln.discount || 0)}</span>
-                                                    </span>
-                                                    <span className="mr-2">
-                                                        Tax <span className="text-blue-300">{safeMoney(ln.tax || 0)}</span>
-                                                    </span>
-                                                    <span>
-                                                        Total <span className="text-zinc-100">{safeMoney(ln.line_total)}</span>
-                                                    </span>
+                                                        <span className="mr-2">Original:</span>
+                                                        <span className="mr-2">
+                                                            Unit <span className="text-zinc-200">{safeMoney(ln.unit_price)}</span>
+                                                        </span>
+                                                        <span className="mr-2">
+                                                            Subtotal <span className="text-zinc-200">{safeMoney(ln.line_subtotal)}</span>
+                                                        </span>
+                                                        <span className="mr-2">
+                                                            Discount <span className="text-amber-300">-{safeMoney(ln.discount || 0)}</span>
+                                                        </span>
+                                                        <span className="mr-2">
+                                                            Tax <span className="text-blue-300">{safeMoney(ln.tax || 0)}</span>
+                                                        </span>
+                                                        <span>
+                                                            Total <span className="text-zinc-100">{safeMoney(ln.line_total)}</span>
+                                                        </span>
                                                     </div>
+                                                    {/* <div className="mt-2 text-[11px] text-zinc-400">
+                                                    <div className="grid grid-cols-5 gap-2 text-center">
+                                                        <div className="uppercase">Unit</div>
+                                                        <div className="uppercase">Subt.</div>
+                                                        <div className="uppercase">Disc.</div>
+                                                        <div className="uppercase">Tax</div>
+                                                        <div className="uppercase">Total</div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-5 gap-2 text-center mt-1">
+                                                        <div className="tabular-nums text-zinc-200">{safeMoney(ln.unit_price)}</div>
+                                                        <div className="tabular-nums text-zinc-200">{safeMoney(ln.line_subtotal)}</div>
+                                                        <div className="tabular-nums text-amber-300">-{safeMoney(ln.discount || 0)}</div>
+                                                        <div className="tabular-nums text-blue-300">{safeMoney(ln.tax || 0)}</div>
+                                                        <div className="tabular-nums text-zinc-100">{safeMoney(ln.line_total)}</div>
+                                                    </div>
+                                                    </div> */}
+
 
                                                     {/* Expand reason/notes when active */}
                                                     {isActive && (
-                                                    <div className="mt-2 grid gap-2 md:grid-cols-2">
-                                                        {/* Reason */}
-                                                        <label className="text-xs block">
-                                                        <span className="mb-1 block text-zinc-300">
-                                                            Reason<span className="text-red-400">*</span>
-                                                        </span>
-                                                        <select
-                                                            value={lineReason[ln.id] || ""}
-                                                            onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            setLineReason((prev) => ({ ...prev, [ln.id]: val }));
-                                                            setActiveLineId(ln.id);
-                                                            }}
-                                                            onKeyDown={(e) => {
-                                                            if (e.key === "Tab" && !e.shiftKey) {
-                                                                e.preventDefault();
-                                                                const n = notesRefs.current[ln.id];
-                                                                if (n) n.focus();
-                                                            }
-                                                            }}
-                                                            ref={(el) => {
-                                                            reasonRefs.current[ln.id] = el;
-                                                            }}
-                                                            className={`w-full rounded-md border bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 ${
-                                                            qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-zinc-700"
-                                                            }`}
-                                                        >
-                                                            <option value="">Select a reason…</option>
-                                                            <option value="DEFECTIVE">Defective / Damaged</option>
-                                                            <option value="WRONG_ITEM">Wrong item</option>
-                                                            <option value="CHANGED_MIND">Customer changed mind</option>
-                                                            <option value="OTHER">Other</option>
-                                                        </select>
-                                                        </label>
+                                                        <div className="mt-2 grid gap-2 md:grid-cols-2">
+                                                            {/* Reason */}
+                                                            <label className="text-xs block">
+                                                                <span className="mb-1 block text-zinc-300">
+                                                                    Reason<span className="text-red-400">*</span>
+                                                                </span>
+                                                                <select
+                                                                    value={lineReason[ln.id] || ""}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        setLineReason((prev) => ({ ...prev, [ln.id]: val }));
+                                                                        setActiveLineId(ln.id);
+                                                                    }}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Tab" && !e.shiftKey) {
+                                                                            e.preventDefault();
+                                                                            const n = notesRefs.current[ln.id];
+                                                                            if (n) n.focus();
+                                                                        }
+                                                                    }}
+                                                                    ref={(el) => {
+                                                                        reasonRefs.current[ln.id] = el;
+                                                                    }}
+                                                                    className={`w-full rounded-md border bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 ${qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-zinc-700"
+                                                                        }`}
+                                                                >
+                                                                    <option value="">Select a reason…</option>
+                                                                    <option value="DEFECTIVE">Defective / Damaged</option>
+                                                                    <option value="WRONG_ITEM">Wrong item</option>
+                                                                    <option value="CHANGED_MIND">Customer changed mind</option>
+                                                                    <option value="OTHER">Other</option>
+                                                                </select>
+                                                            </label>
 
-                                                        {/* Notes */}
-                                                        <label className="text-xs block">
-                                                        <span className="mb-1 block text-zinc-300">
-                                                            Notes (optional)
-                                                        </span>
-                                                        <input
-                                                            ref={(el) => { notesRefs.current[ln.id] = el; }}
-                                                            value={lineNotes[ln.id] || ""}
-                                                            onChange={(e) =>
-                                                            setLineNotes((prev) => ({
-                                                                ...prev,
-                                                                [ln.id]: e.target.value,
-                                                            }))
-                                                            }
-                                                            onKeyDown={(e) => {
-                                                            if (e.key === "Enter") {
-                                                                e.preventDefault();
-                                                                const idx = lineIds.indexOf(ln.id);
-                                                                for (let i = idx + 1; i < lineIds.length; i++) {
-                                                                const nextId = lineIds[i];
-                                                                const nxt = (saleDetail.lines as any[]).find((l) => l.id === nextId);
-                                                                if (!nxt) continue;
-                                                                const returned = Number(nxt.returned_qty || 0);
-                                                                const remaining = Number(
-                                                                    nxt.refundable_qty ?? Math.max(0, (nxt.quantity || 0) - returned)
-                                                                );
-                                                                if (remaining > 0) {
-                                                                    setActiveLineId(nextId);
-                                                                    const el = qtyRefs.current[nextId];
-                                                                    if (el) {
-                                                                    el.focus();
-                                                                    el.scrollIntoView({ block: "center" });
+                                                            {/* Notes */}
+                                                            <label className="text-xs block">
+                                                                <span className="mb-1 block text-zinc-300">
+                                                                    Notes (optional)
+                                                                </span>
+                                                                <input
+                                                                    ref={(el) => { notesRefs.current[ln.id] = el; }}
+                                                                    value={lineNotes[ln.id] || ""}
+                                                                    onChange={(e) =>
+                                                                        setLineNotes((prev) => ({
+                                                                            ...prev,
+                                                                            [ln.id]: e.target.value,
+                                                                        }))
                                                                     }
-                                                                    break;
-                                                                }
-                                                                }
-                                                            }
-                                                            }}
-                                                            maxLength={250}
-                                                            placeholder="Short note…"
-                                                            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                                                        />
-                                                        </label>
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") {
+                                                                            e.preventDefault();
+                                                                            const idx = lineIds.indexOf(ln.id);
+                                                                            for (let i = idx + 1; i < lineIds.length; i++) {
+                                                                                const nextId = lineIds[i];
+                                                                                const nxt = (saleDetail.lines as any[]).find((l) => l.id === nextId);
+                                                                                if (!nxt) continue;
+                                                                                const returned = Number(nxt.returned_qty || 0);
+                                                                                const remaining = Number(
+                                                                                    nxt.refundable_qty ?? Math.max(0, (nxt.quantity || 0) - returned)
+                                                                                );
+                                                                                if (remaining > 0) {
+                                                                                    setActiveLineId(nextId);
+                                                                                    const el = qtyRefs.current[nextId];
+                                                                                    if (el) {
+                                                                                        el.focus();
+                                                                                        el.scrollIntoView({ block: "center" });
+                                                                                    }
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    maxLength={250}
+                                                                    placeholder="Short note…"
+                                                                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                                />
+                                                            </label>
 
-                                                        {/* Restock */}
-                                                        <label className="text-xs flex items-center gap-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={lineRestock[ln.id] !== false}
-                                                            onChange={(e) =>
-                                                            setLineRestock((prev) => ({ ...prev, [ln.id]: e.target.checked }))
-                                                            }
-                                                            className="h-4 w-4 rounded border-zinc-700 bg-zinc-900"
-                                                        />
-                                                        <span className="text-zinc-300">Restock to inventory</span>
-                                                        </label>
+                                                            {/* Restock */}
+                                                            <label className="text-xs flex items-center gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={lineRestock[ln.id] !== false}
+                                                                    onChange={(e) =>
+                                                                        setLineRestock((prev) => ({ ...prev, [ln.id]: e.target.checked }))
+                                                                    }
+                                                                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-900"
+                                                                />
+                                                                <span className="text-zinc-300">Restock to inventory</span>
+                                                            </label>
 
-                                                        {/* Condition */}
-                                                        <label className="text-xs block">
-                                                        <span className="mb-1 block text-zinc-300">Condition</span>
-                                                        <select
-                                                            value={lineCondition[ln.id] || "RESALEABLE"}
-                                                            onChange={(e) =>
-                                                            setLineCondition((prev) => ({ ...prev, [ln.id]: e.target.value }))
-                                                            }
-                                                            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                                                        >
-                                                            <option value="RESALEABLE">Resaleable</option>
-                                                            <option value="DAMAGED">Damaged</option>
-                                                            <option value="OPEN_BOX">Open box</option>
-                                                        </select>
-                                                        </label>
-                                                    </div>
+                                                            {/* Condition */}
+                                                            <label className="text-xs block">
+                                                                <span className="mb-1 block text-zinc-300">Condition</span>
+                                                                <select
+                                                                    value={lineCondition[ln.id] || "RESALEABLE"}
+                                                                    onChange={(e) =>
+                                                                        setLineCondition((prev) => ({ ...prev, [ln.id]: e.target.value }))
+                                                                    }
+                                                                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                                >
+                                                                    <option value="RESALEABLE">Resaleable</option>
+                                                                    <option value="DAMAGED">Damaged</option>
+                                                                    <option value="OPEN_BOX">Open box</option>
+                                                                </select>
+                                                            </label>
+                                                        </div>
                                                     )}
 
                                                 </div>
@@ -559,83 +600,124 @@ export default function StartReturnWizardModal({
 
                                     {/* Quick action: copy reason / clear reasons */}
                                     <div className="rounded-lg border border-zinc-800 p-3">
-                                    <div className="text-xs text-zinc-400 mb-1">Quick actions</div>
-                                    <div className="grid grid-cols-[1fr_auto_auto] gap-2">
-                                        <select
-                                        value={bulkReason}
-                                        onChange={(e) => setBulkReason(e.target.value)}
-                                        className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
-                                        >
-                                        <option value="">Select a reason…</option>
-                                        <option value="DEFECTIVE">Defective / Damaged</option>
-                                        <option value="WRONG_ITEM">Wrong item</option>
-                                        <option value="CHANGED_MIND">Customer changed mind</option>
-                                        <option value="OTHER">Other</option>
-                                        </select>
+                                        <div className="text-xs text-zinc-400 mb-1">Quick actions</div>
+                                        <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+                                            <select
+                                                value={bulkReason}
+                                                onChange={(e) => setBulkReason(e.target.value)}
+                                                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                            >
+                                                <option value="">Select a reason…</option>
+                                                <option value="DEFECTIVE">Defective / Damaged</option>
+                                                <option value="WRONG_ITEM">Wrong item</option>
+                                                <option value="CHANGED_MIND">Customer changed mind</option>
+                                                <option value="OTHER">Other</option>
+                                            </select>
+                                            <button
+                                                type="button"
+                                                disabled={!bulkReason || totalSelected === 0}
+                                                onClick={() => {
+                                                    if (!bulkReason) return;
+                                                    setLineReason((prev) => {
+                                                        const next = { ...prev };
+                                                        (saleDetail.lines || []).forEach((l: any) => {
+                                                            if (Number(lineQty[l.id] || 0) > 0) next[l.id] = bulkReason;
+                                                        });
+                                                        return next;
+                                                    });
+                                                }}
+                                                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                                            >
+                                                Copy reason to selected
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={totalSelected === 0}
+                                                onClick={() =>
+                                                    setLineReason((prev) => {
+                                                        const next = { ...prev };
+                                                        (saleDetail.lines || []).forEach((l: any) => {
+                                                            if (Number(lineQty[l.id] || 0) > 0) next[l.id] = "";
+                                                        });
+                                                        return next;
+                                                    })
+                                                }
+                                                className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+                                            >
+                                                Clear reasons
+                                            </button>
+                                        </div>
+
+                                        {/* NEW: bulk restock toggle */}
+                                        <div className="mt-3 flex items-center justify-between">
+                                            <span className="text-xs text-zinc-400">Restock selected items</span>
+                                            <button
+                                                type="button"
+                                                disabled={totalSelected === 0}
+                                                onClick={() => {
+                                                    const next = !restockAll;
+                                                    setRestockAll(next);
+                                                    setLineRestock((prev) => {
+                                                        const copy = { ...prev };
+                                                        (saleDetail.lines || []).forEach((l: any) => {
+                                                            if (Number(lineQty[l.id] || 0) > 0) {
+                                                                copy[l.id] = next;
+                                                            }
+                                                        });
+                                                        return copy;
+                                                    });
+                                                }}
+                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${restockAll
+                                                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40"
+                                                        : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                                    } disabled:opacity-50`}
+                                            >
+                                                {restockAll ? "On" : "Off"}
+                                            </button>
+                                        </div>
+
+                                        {/* NEW: show only selected toggle */}
+                                        <div className="mt-2 flex items-center justify-between">
+                                        <span className="text-xs text-zinc-400">Show only selected items</span>
                                         <button
-                                        type="button"
-                                        disabled={!bulkReason || totalSelected === 0}
-                                        onClick={() => {
-                                            if (!bulkReason) return;
-                                            setLineReason((prev) => {
-                                            const next = { ...prev };
-                                            (saleDetail.lines || []).forEach((l: any) => {
-                                                if (Number(lineQty[l.id] || 0) > 0) next[l.id] = bulkReason;
-                                            });
-                                            return next;
-                                            });
-                                        }}
-                                        className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                                            type="button"
+                                            disabled={totalSelected === 0}
+                                            onClick={() => setShowSelectedOnly((prev) => !prev)}
+                                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                            showSelectedOnly
+                                                ? "bg-blue-600/30 text-blue-200 border border-blue-500/60"
+                                                : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                            } disabled:opacity-50`}
                                         >
-                                        Copy reason to selected
+                                            {showSelectedOnly ? "On" : "Off"}
                                         </button>
-                                        <button
-                                        type="button"
-                                        disabled={totalSelected === 0}
-                                        onClick={() =>
-                                            setLineReason((prev) => {
-                                            const next = { ...prev };
-                                            (saleDetail.lines || []).forEach((l: any) => {
-                                                if (Number(lineQty[l.id] || 0) > 0) next[l.id] = "";
-                                            });
-                                            return next;
-                                            })
-                                        }
-                                        className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
-                                        >
-                                        Clear reasons
-                                        </button>
+                                        </div>
+
                                     </div>
 
-                                    {/* NEW: bulk restock toggle */}
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <span className="text-xs text-zinc-400">Restock selected items</span>
-                                        <button
-                                        type="button"
-                                        disabled={totalSelected === 0}
-                                        onClick={() => {
-                                            const next = !restockAll;
-                                            setRestockAll(next);
-                                            setLineRestock((prev) => {
-                                            const copy = { ...prev };
-                                            (saleDetail.lines || []).forEach((l: any) => {
-                                                if (Number(lineQty[l.id] || 0) > 0) {
-                                                copy[l.id] = next;
-                                                }
-                                            });
-                                            return copy;
-                                            });
-                                        }}
-                                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                            restockAll
-                                            ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40"
-                                            : "bg-zinc-800 text-zinc-300 border border-zinc-700"
-                                        } disabled:opacity-50`}
-                                        >
-                                        {restockAll ? "On" : "Off"}
-                                        </button>
+                                    {/* Legend for colors */}
+                                    <div className="rounded-lg border border-zinc-800 px-3 py-2 text-[11px] text-zinc-400 space-y-1">
+                                    <div className="text-xs text-zinc-300 font-medium">Legend</div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                                        Remaining / OK
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2">
+                                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                                        Discount / warning
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2">
+                                        <span className="h-2 w-2 rounded-full bg-blue-400" />
+                                        Tax amounts
+                                        </span>
                                     </div>
                                     </div>
+
 
 
                                     <div className="rounded-lg border border-zinc-800 px-3 py-2 text-sm text-zinc-300">
@@ -661,6 +743,15 @@ export default function StartReturnWizardModal({
 
                     {step === 2 && (
                         <>
+                            <div className="flex items-center justify-between bg-zinc-800/60 border border-zinc-700 rounded-lg px-4 py-2 mb-3">
+                                <div className="text-sm text-zinc-300 font-medium">
+                                    Review selected items
+                                </div>
+                                <div className="text-sm text-zinc-300">
+                                    Total Refund: <span className="text-white font-semibold">{safeMoney(returnTotals?.total ?? 0)}</span>
+                                </div>
+                            </div>
+
                             <div className="grid md:grid-cols-[2fr_1fr] gap-4">
                                 {/* Left: review selected items */}
                                 <div className="rounded-xl border border-zinc-800 overflow-hidden">
@@ -690,19 +781,19 @@ export default function StartReturnWizardModal({
                                                     </div>
                                                     {/* NEW: original line context */}
                                                     <div className="mt-1 text-[11px] text-zinc-500">
-                                                    Original: Subtotal {safeMoney(it.original_subtotal)}
-                                                    {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
-                                                    {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
-                                                    {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
-                                                    {" • "}Qty {it.original_quantity}
+                                                        Original: Subtotal {safeMoney(it.original_subtotal)}
+                                                        {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
+                                                        {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
+                                                        {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
+                                                        {" • "}Qty {it.original_quantity}
                                                     </div>
                                                 </div>
-                                                
-                                                  {/* Return-only amounts */}
+
+                                                {/* Return-only amounts */}
                                                 <div className="text-center tabular-nums text-zinc-200">
                                                     {it.qty_returned}
                                                     <div className="text-[11px] text-zinc-500">
-                                                    of {it.original_quantity}
+                                                        of {it.original_quantity}
                                                     </div>
                                                 </div>
                                                 <div className="text-center tabular-nums text-blue-300">
@@ -711,7 +802,7 @@ export default function StartReturnWizardModal({
                                                 <div className="text-center tabular-nums text-zinc-100 font-medium">
                                                     {safeMoney(it.refund_total || 0)}
                                                 </div>
-{/*                                                 
+                                                {/*                                                 
                                                 <div className="text-center tabular-nums text-zinc-200">{it.qty_returned}</div>
                                                 <div className="text-center tabular-nums text-blue-300">{safeMoney(it.refund_tax || 0)}</div>
                                                 <div className="text-center tabular-nums text-zinc-100 font-medium">{safeMoney(it.refund_total || 0)}</div> */}
@@ -731,14 +822,14 @@ export default function StartReturnWizardModal({
                                     </div> */}
                                     {/* Footer totals */}
                                     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
-                                    <div className="text-zinc-400">Totals (this return)</div>
-                                    <div />
-                                    <div className="text-center tabular-nums text-blue-300">
-                                        {safeMoney(returnTotals?.tax ?? 0)}  {/* from updated.refund_tax_total */}
-                                    </div>
-                                    <div className="text-center tabular-nums text-white font-semibold">
-                                        {safeMoney(returnTotals?.total ?? 0)} {/* from updated.refund_total */}
-                                    </div>
+                                        <div className="text-zinc-400">Totals (this return)</div>
+                                        <div />
+                                        <div className="text-center tabular-nums text-blue-300">
+                                            {safeMoney(returnTotals?.tax ?? 0)}  {/* from updated.refund_tax_total */}
+                                        </div>
+                                        <div className="text-center tabular-nums text-white font-semibold">
+                                            {safeMoney(returnTotals?.total ?? 0)} {/* from updated.refund_total */}
+                                        </div>
                                     </div>
                                 </div>
 

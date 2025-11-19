@@ -47,6 +47,7 @@ class SaleListSerializer(serializers.ModelSerializer):
     discount_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     tax_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     # we do not include fee_total in list fields by default; add if you plan to show it
+    total_returns = serializers.IntegerField(read_only=True)
  
 
     class Meta:
@@ -57,6 +58,7 @@ class SaleListSerializer(serializers.ModelSerializer):
             "subtotal", "discount_total", "tax_total", "total",
             "status",  # pending/completed/void
             "lines_count",
+            "total_returns",
         ]
 
     def get_store_name(self, obj):
