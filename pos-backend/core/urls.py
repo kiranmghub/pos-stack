@@ -102,6 +102,10 @@ urlpatterns = [
     path("api/v1/catalog/export", CatalogExportView.as_view(), name="catalog-export-slash"),
     path("api/v1/catalog/import/template", CatalogImportTemplateView.as_view(), name="catalog-import-template"),
     path("api/v1/catalog/import", CatalogImportView.as_view(), name="catalog-import"),
+    path("api/v1/", include("customers.urls", namespace="customers")),
+    path("api/v1/", include("loyalty.urls", namespace="loyalty")),
+
+
 
 ]
 

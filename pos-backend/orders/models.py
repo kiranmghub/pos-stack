@@ -7,6 +7,8 @@ from stores.models import Store, Register
 from catalog.models import Variant
 from django.contrib.auth.models import User
 from decimal import Decimal
+from customers.models import Customer
+
 
 
 class Sale(models.Model):
@@ -20,6 +22,14 @@ class Sale(models.Model):
     store = models.ForeignKey(Store, on_delete=models.PROTECT, related_name="sales")
     register = models.ForeignKey(Register, on_delete=models.PROTECT, related_name="sales")
     cashier = models.ForeignKey(User, on_delete=models.PROTECT, related_name="sales")
+    customer = models.ForeignKey(
+        Customer,
+        null=True,
+        blank=True,
+        related_name="sales",
+        on_delete=models.SET_NULL,
+        help_text="Optional customer associated with this sale.",
+    )
 
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")

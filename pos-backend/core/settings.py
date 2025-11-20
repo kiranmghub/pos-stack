@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "orders",
     "inventory",
     "customers",
+    "loyalty",
     "stores",
     "payments",
     "tenants",
