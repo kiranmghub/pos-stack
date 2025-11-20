@@ -1,0 +1,55 @@
+import * as React from "react";
+
+type StoreLite = { id: number; name: string; code?: string; is_active?: boolean };
+
+export function DiscountsToolbar({
+  storeId,
+  setStoreId,
+  stores,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+}: {
+  storeId: string;
+  setStoreId: (v: string) => void;
+  stores: StoreLite[];
+  dateFrom: string;
+  setDateFrom: (v: string) => void;
+  dateTo: string;
+  setDateTo: (v: string) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+      <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
+        <select
+          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          value={storeId}
+          onChange={(e) => setStoreId(e.target.value)}
+        >
+          <option value="">All stores</option>
+          {stores.map((s) => (
+            <option key={s.id} value={String(s.id)}>
+              {s.name}
+              {s.code ? ` (${s.code})` : ""}
+            </option>
+          ))}
+        </select>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <input
+            type="date"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

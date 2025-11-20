@@ -378,6 +378,116 @@ class ReturnSerializer(serializers.ModelSerializer):
         return val or Decimal("0.00")
 
 
+class ReturnListSerializer(serializers.ModelSerializer):
+    sale_receipt_no = serializers.CharField(source="sale.receipt_no", read_only=True)
+    store_name = serializers.CharField(source="store.name", read_only=True)
+    store_code = serializers.CharField(source="store.code", read_only=True)
+    cashier_name = serializers.SerializerMethodField()
+    processed_by_name = serializers.SerializerMethodField()
+    reason_summary = serializers.SerializerMethodField()
+    refund_subtotal_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    refund_tax_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    items_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Return
+        fields = [
+            "id",
+            "return_no",
+            "status",
+            "sale",
+            "sale_receipt_no",
+            "store",
+            "store_name",
+            "store_code",
+            "cashier_name",
+            "processed_by_name",
+            "reason_code",
+            "reason_summary",
+            "refund_total",
+            "refund_subtotal_total",
+            "refund_tax_total",
+            "items_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_cashier_name(self, obj):
+        cashier = getattr(obj.sale, "cashier", None)
+        if not cashier:
+            return None
+        return cashier.get_full_name() or cashier.username
+
+    def get_processed_by_name(self, obj):
+        user = getattr(obj, "processed_by", None)
+        if not user:
+            return None
+        return user.get_full_name() or user.username
+
+    def get_reason_summary(self, obj):
+        if obj.reason_code:
+            return obj.reason_code
+        return getattr(obj, "first_item_reason", None)
+
+
+class SalePaymentListSerializer(serializers.ModelSerializer):
+    sale_receipt_no = serializers.CharField(source="sale.receipt_no", read_only=True)
+    store_name = serializers.CharField(source="sale.store.name", read_only=True)
+    store_code = serializers.CharField(source="sale.store.code", read_only=True)
+    cashier_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SalePayment
+        fields = [
+            "id",
+            "sale_id",
+            "sale_receipt_no",
+            "store_name",
+            "store_code",
+            "cashier_name",
+            "type",
+            "amount",
+            "received",
+            "change",
+            "txn_ref",
+            "meta",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_cashier_name(self, obj):
+        cashier = getattr(obj.sale, "cashier", None)
+        if not cashier:
+            return None
+        return cashier.get_full_name() or cashier.username
+
+
+class RefundListSerializer(serializers.ModelSerializer):
+    return_no = serializers.CharField(source="return_ref.return_no", read_only=True)
+    sale_id = serializers.IntegerField(source="return_ref.sale_id", read_only=True)
+    sale_receipt_no = serializers.CharField(source="return_ref.sale.receipt_no", read_only=True)
+    store_name = serializers.CharField(source="return_ref.store.name", read_only=True)
+    store_code = serializers.CharField(source="return_ref.store.code", read_only=True)
+
+    class Meta:
+        model = Refund
+        fields = [
+            "id",
+            "return_ref_id",
+            "return_no",
+            "sale_id",
+            "sale_receipt_no",
+            "store_name",
+            "store_code",
+            "method",
+            "amount",
+            "external_ref",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
 class ReturnStartSerializer(serializers.ModelSerializer):
     """
     For POST /orders/{sale_id}/returns — create a draft Return
