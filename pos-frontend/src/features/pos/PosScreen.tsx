@@ -20,7 +20,7 @@ import {
   type DiscountRule,
 } from "./api";
 
-import type { PosCustomer, searchCustomers } from "./api"; // adjust import names accordingly
+import type { PosCustomer, searchCustomers } from "./api"; 
 
 
 // ---------- tiny utils ----------

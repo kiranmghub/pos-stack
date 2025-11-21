@@ -1,5 +1,7 @@
 // pos-frontend/src/features/pos/api.ts
 import { authHeaders, refreshAccessIfNeeded, logout } from "@/lib/auth";
+import { apiFetchJSON } from "@/lib/auth";
+
 
 
 export type TaxBasis = "PCT" | "FLAT";
@@ -56,7 +58,6 @@ export type TaxRule = {
 };
 
 
-// types
 export type PosCustomer = {
   id: number;
   name: string;
@@ -64,14 +65,17 @@ export type PosCustomer = {
   phone?: string;
 };
 
-
-// NEW: search customers by query (name/email/phone)
-export async function searchCustomers(params: { query: string }) {
+export async function searchCustomers(params: { query: string }): Promise<PosCustomer[]> {
   const q = params.query.trim();
   if (!q) return [];
-  const res = await fetchWithAuth(`/api/v1/customers?query=${encodeURIComponent(q)}`);
-  // assuming your customers list returns [{ id, name, email, phone, ... }]
-  return Array.isArray(res) ? res : (res.results || []);
+  const res = await apiFetchJSON(`/api/v1/customers/?q=${encodeURIComponent(q)}`);
+  const arr = Array.isArray(res) ? res : res.results || [];
+  return arr.map((c: any) => ({
+    id: c.id,
+    name: c.full_name || `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+    email: c.email,
+    phone: c.phone_number,
+  }));
 }
 
 
