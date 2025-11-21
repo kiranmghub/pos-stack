@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 from django.utils import timezone
+from typing import Optional
 
 from tenants.models import Tenant
 from customers.models import Customer
@@ -9,14 +10,14 @@ from orders.models import Sale, Return
 from .models import LoyaltyProgram, LoyaltyAccount, LoyaltyTransaction
 
 
-def _get_program_for_tenant(tenant: Tenant) -> LoyaltyProgram | None:
+def _get_program_for_tenant(tenant: Tenant) -> Optional[LoyaltyProgram]:
     try:
         return tenant.loyalty_program
     except LoyaltyProgram.DoesNotExist:
         return None
 
 
-def _get_or_create_account(customer: Customer) -> LoyaltyAccount | None:
+def _get_or_create_account(customer: Customer) -> Optional[LoyaltyAccount]:
     if not customer.is_loyalty_member:
         return None
     program = _get_program_for_tenant(customer.tenant)

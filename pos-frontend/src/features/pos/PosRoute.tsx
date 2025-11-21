@@ -1,4 +1,4 @@
-// src/features/pos/PosRoute.tsx
+// pos-frontend/src/features/pos/PosRoute.tsx
 import React from "react";
 import AppShell from "@/components/AppShell";
 import PosScreen from "./PosScreen";

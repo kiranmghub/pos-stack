@@ -17,6 +17,10 @@ from stores.models import Store, Register
 from catalog.models import Variant
 from inventory.models import InventoryItem
 from orders.models import Sale, SaleLine, SalePayment
+from customers.models import Customer
+from customers.services import update_customer_after_sale
+from loyalty.services import record_earning
+
 from rest_framework import status, permissions
 from django.db.models import F
 
@@ -320,6 +324,15 @@ class POSCheckoutView(APIView):
         lines = data.get("lines") or []
         payment = data.get("payment") or {}
 
+        # NEW: optional customer_id
+        customer = None
+        customer_id = data.get("customer_id")
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id, tenant=tenant)
+            except Customer.DoesNotExist:
+                return Response({"detail": "Invalid customer"}, status=400)
+
         if not store_id or not lines:
             return Response({"detail": "store_id and lines are required"}, status=400)
 
@@ -350,6 +363,7 @@ class POSCheckoutView(APIView):
                     register=register,
                     cashier=user,
                     status="pending",
+                    customer=customer,
                 )
 
                 subtotal = Decimal("0.00")
@@ -646,6 +660,14 @@ class POSCheckoutView(APIView):
                 sale.status = "completed"
                 sale.save(update_fields=["total", "status"])
 
+                # Optionally update customer/loyalty aggregates
+                if sale.customer_id:
+                    if callable(update_customer_after_sale):
+                        update_customer_after_sale(sale)          # e.g. update cumulated spend, etc.
+                    if callable(record_earning):
+                        record_earning(sale)       # e.g. loyalty points
+
+
                 # Build a sorted list of per-rule taxes: sort by rule priority then id
                 priority_by_id = {r.id: r.priority for r in rules_tax}
                 tax_by_rule = sorted(
@@ -698,6 +720,19 @@ class POSCheckoutView(APIView):
                     "store": {"id": store.id, "code": store.code, "name": store.name},
                     "register": {"id": register.id},
                     "cashier": {"id": user.id, "username": user.username},
+                    "customer": (
+                        {
+                            "id": sale.customer.id,
+                            "name": getattr(sale.customer, "name", None)
+                                    or getattr(sale.customer, "full_name", None)
+                                    or getattr(sale.customer, "email", None)
+                                    or getattr(sale.customer, "id", None),
+                            "email": getattr(sale.customer, "email", None),
+                            "phone": getattr(sale.customer, "phone", None) if hasattr(sale.customer, "phone") else None,
+                        }
+                        if sale.customer_id
+                        else None
+                    ),
                     "created_at": timezone.localtime(sale.created_at).isoformat(),
 
                     # right-hand amount = price × qty (pre-discount, pre-tax)

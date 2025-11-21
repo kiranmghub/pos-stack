@@ -1,4 +1,4 @@
-// src/features/pos/PosScreen.tsx
+// pos-frontend/src/features/pos/PosScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ShoppingCart, Search, Minus, Plus, Trash2,
@@ -19,6 +19,9 @@ import {
   getActiveDiscountRules,
   type DiscountRule,
 } from "./api";
+
+import type { PosCustomer, searchCustomers } from "./api"; // adjust import names accordingly
+
 
 // ---------- tiny utils ----------
 const CART_KEY = "pos_cart_v2";
@@ -89,6 +92,11 @@ export default function PosScreen() {
   // track which cart lines are expanded (by variant id)
   const [expandedLines, setExpandedLines] = useState<Record<number, boolean>>({});
 
+  // --- Customer selection for POS checkout ---
+  const [customer, setCustomer] = useState<PosCustomer | null>(null);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+
+
   const LineToggle: React.FC<{ open: boolean; onClick: () => void }> = ({ open, onClick }) => (
     <button
       onClick={onClick}
@@ -97,7 +105,7 @@ export default function PosScreen() {
     >
       {open ? "Hide details" : "Details"}
     </button>
-);
+  );
 
   // total items in cart (sum of quantities)
   const cartCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
@@ -440,6 +448,8 @@ img{display:block;margin:8px auto}
         })),
         payment,
         coupon_codes: appliedCoupons.map(x => x.code),
+        // NEW: optional customer_id passed through to backend
+        customer_id: customer?.id ?? null,
       };
       const res = await checkout(payload);
       console.log("checkout response", res); // quick sanity check
@@ -581,12 +591,12 @@ img{display:block;margin:8px auto}
   }
 
   type Badge = {
-  id: number;
-  name: string;
-  text: string;     // short value like "20% OFF" or "-$5.00 (receipt)"
-  label: string;    // "RULE NAME — 20% OFF"
-  kind: "auto" | "coupon";
-};
+    id: number;
+    name: string;
+    text: string;     // short value like "20% OFF" or "-$5.00 (receipt)"
+    label: string;    // "RULE NAME — 20% OFF"
+    kind: "auto" | "coupon";
+  };
 
 
   function badgesForVariant(
@@ -985,10 +995,21 @@ img{display:block;margin:8px auto}
                 </span>
                 Cart
               </h2>
-
-              {/* <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
-            <LogOut className="h-4 w-4" /> Logout
-          </button> */}
+              {/* NEW: Customer selector pill */}
+              <button
+                type="button"
+                onClick={() => setCustomerModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-100 hover:bg-slate-700"
+              >
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-[11px] uppercase">
+                  {customer?.name
+                    ? customer.name.charAt(0)
+                    : "👤"}
+                </span>
+                <span className="truncate max-w-[10rem]">
+                  {customer?.name || "Select customer"}
+                </span>
+              </button>
             </div>
 
             {/* Barcode */}
@@ -1064,22 +1085,21 @@ img{display:block;margin:8px auto}
                         );
                       })()}
                     </div>
-                    
+
 
                     {/* Per-line breakdown (expand/collapse with smooth transition) */}
                     <div
-                      className={`transition-all duration-600 ease-in-out overflow-hidden ${
-                        expandedLines[l.variant.id]
+                      className={`transition-all duration-600 ease-in-out overflow-hidden ${expandedLines[l.variant.id]
                           ? "max-h-64 opacity-100 mt-2"
                           : "max-h-0 opacity-0"
-                      }`}
+                        }`}
                     >
                       {expandedLines[l.variant.id] && (() => {
                         const qLine = quote?.lines?.find((ln: any) => ln.variant_id === l.variant.id);
                         if (!qLine) return null;
 
                         const hasDisc = Array.isArray(qLine.discounts) && qLine.discounts.length > 0;
-                        const hasTax  = Array.isArray(qLine.taxes)     && qLine.taxes.length > 0;
+                        const hasTax = Array.isArray(qLine.taxes) && qLine.taxes.length > 0;
                         if (!hasDisc && !hasTax)
                           return <div className="text-xs text-slate-400">No adjustments on this line.</div>;
 
@@ -1241,6 +1261,15 @@ img{display:block;margin:8px auto}
               {msg && <div className="mt-3 rounded-lg bg-slate-800 p-2 text-sm text-slate-200">{msg}</div>}
             </div>
           </div>
+
+
+          {/* ---- CUSTOMER MODAL ---- */}
+          <CustomerModal
+            open={customerModalOpen}
+            onClose={() => setCustomerModalOpen(false)}
+            onSelect={(c) => setCustomer(c)}
+          />
+
 
           {/* ---- CASH MODAL ---- */}
           {showCash && (
@@ -1516,3 +1545,118 @@ function CardModal({
     </div>
   );
 }
+
+type CustomerModalProps = {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (c: PosCustomer | null) => void;
+};
+
+const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }) => {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<PosCustomer[]>([]);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setResults([]);
+    setErrorMsg(null);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    const id = setTimeout(async () => {
+      try {
+        setLoading(true);
+        setErrorMsg(null);
+        const list = await (await import("./api")).searchCustomers({ query: q });
+        setResults(Array.isArray(list) ? list : []);
+      } catch (e: any) {
+        setErrorMsg(e?.message || "Failed to search customers");
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(id);
+  }, [open, query]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-800 p-4">
+          <h3 className="font-semibold text-slate-100">Select customer</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+            ×
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name, email, or phone…"
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+          />
+          {errorMsg && (
+            <div className="rounded-md border border-red-500/40 bg-red-900/20 px-3 py-2 text-xs text-red-200">
+              {errorMsg}
+            </div>
+          )}
+          {loading && <div className="text-sm text-slate-400">Searching…</div>}
+          {!loading && results.length === 0 && query.trim().length >= 2 && !errorMsg && (
+            <div className="text-sm text-slate-500">No customers found for “{query.trim()}”.</div>
+          )}
+          <div className="max-h-64 overflow-y-auto space-y-1">
+            {results.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => { onSelect(c); onClose(); }}
+                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-slate-800 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-medium text-slate-200">
+                    {String(c.name || c.email || c.phone || "?").trim().charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-medium text-slate-100 truncate">{c.name || "Unnamed"}</div>
+                    <div className="text-[11px] text-slate-400">
+                      {c.email || c.phone || "No contact on file"}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-t border-slate-800 p-3">
+          <button
+            type="button"
+            onClick={() => { onSelect(null); onClose(); }}
+            className="text-xs text-slate-300 hover:underline"
+          >
+            Clear selection
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-600"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+

@@ -1,4 +1,4 @@
-// src/features/pos/api.ts
+// pos-frontend/src/features/pos/api.ts
 import { authHeaders, refreshAccessIfNeeded, logout } from "@/lib/auth";
 
 
@@ -55,6 +55,26 @@ export type TaxRule = {
   end_at?: string | null;
 };
 
+
+// types
+export type PosCustomer = {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+};
+
+
+// NEW: search customers by query (name/email/phone)
+export async function searchCustomers(params: { query: string }) {
+  const q = params.query.trim();
+  if (!q) return [];
+  const res = await fetchWithAuth(`/api/v1/customers?query=${encodeURIComponent(q)}`);
+  // assuming your customers list returns [{ id, name, email, phone, ... }]
+  return Array.isArray(res) ? res : (res.results || []);
+}
+
+
 export async function getActiveDiscountRules(store_id: number): Promise<DiscountRule[]> {
   const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/active?store_id=${store_id}`);
   const data = await jsonOrThrow<{ ok: boolean; rules: DiscountRule[] }>(res);
@@ -67,16 +87,6 @@ export async function getActiveTaxRules(store_id: number): Promise<TaxRule[]> {
   return data.rules;
 }
 
-// === Coupon validation ===
-// export async function validateCoupon(code: string, subtotal?: number) {
-//   const params = new URLSearchParams({ code: code.trim() });
-//   if (typeof subtotal === "number") {
-//     params.set("subtotal", String(subtotal.toFixed(2)));
-//   }
-//   const res = await fetchWithAuth(`${API_BASE}/api/v1/discounts/coupon?${params.toString()}`);
-//   const data = await jsonOrThrow<{ ok: boolean; coupon?: any }>(res);
-//   return data.coupon!;
-// }
 
 export async function validateCoupon(code: string, subtotal?: number): Promise<CouponWithRule> {
   const params = new URLSearchParams({ code: code.trim() });
@@ -245,19 +255,6 @@ export type QuoteOut = {
   }>;
 };
 
-// export async function quoteTotals(payload: {
-//   store_id: number;
-//   lines: QuoteLineIn[];
-//   coupon_code?: string;
-// }): Promise<QuoteOut> {
-//   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/quote`, {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(payload),
-//   });
-//   const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut }>(res);
-//   return data.quote;
-// }
 
 
 export async function quoteTotals(payload: {
