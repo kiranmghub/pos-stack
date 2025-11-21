@@ -20,7 +20,8 @@ import {
   type DiscountRule,
 } from "./api";
 
-import type { PosCustomer, searchCustomers } from "./api"; 
+import type { PosCustomer } from "./api";
+
 
 
 // ---------- tiny utils ----------
@@ -174,7 +175,16 @@ img{display:block;margin:8px auto}
     <div class="muted">${r?.store?.code || ""} — ${r?.store?.name || ""}</div>
     <div class="muted">Receipt #${r?.receipt_no || ""}</div>
     <div class="muted">${new Date(r?.created_at || Date.now()).toLocaleString()}</div>
+    ${r?.customer
+        ? `<div class="muted">Customer: ${r.customer.name
+        || r.customer.email
+        || r.customer.phone
+        || ("#" + r.customer.id)
+        }</div>`
+        : ""
+      }
   </div>
+
   <div class="bar"></div>
   <table>
     <thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th></tr></thead>
@@ -1090,8 +1100,8 @@ img{display:block;margin:8px auto}
                     {/* Per-line breakdown (expand/collapse with smooth transition) */}
                     <div
                       className={`transition-all duration-600 ease-in-out overflow-hidden ${expandedLines[l.variant.id]
-                          ? "max-h-64 opacity-100 mt-2"
-                          : "max-h-0 opacity-0"
+                        ? "max-h-64 opacity-100 mt-2"
+                        : "max-h-0 opacity-0"
                         }`}
                     >
                       {expandedLines[l.variant.id] && (() => {
@@ -1326,6 +1336,22 @@ img{display:block;margin:8px auto}
                     {new Date(lastReceipt?.created_at || Date.now()).toLocaleString()}
                   </div>
 
+                  {lastReceipt?.customer && (
+                    <div className="text-sm text-slate-300">
+                      Customer:{" "}
+                      <span className="font-medium">
+                        {lastReceipt.customer.name || `#${lastReceipt.customer.id}`}
+                      </span>
+                      {lastReceipt.customer.email && (
+                        <span className="text-slate-400"> • {lastReceipt.customer.email}</span>
+                      )}
+                      {lastReceipt.customer.phone && (
+                        <span className="text-slate-400"> • {lastReceipt.customer.phone}</span>
+                      )}
+                    </div>
+                  )}
+
+
                   <div className="rounded-lg bg-slate-800 p-3">
                     {(lastReceipt?.lines || []).map((l: any) => (
                       <div key={`${l.variant_id}-${l.sku}-${l.name}`} className="flex items-center justify-between py-1">
@@ -1558,11 +1584,24 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
   const [results, setResults] = useState<PosCustomer[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+
+
   React.useEffect(() => {
     if (!open) return;
     setQuery("");
     setResults([]);
     setErrorMsg(null);
+
+    setNewName("");
+    setNewEmail("");
+    setNewPhone("");
+    setCreateError(null);
+    setCreating(false);
   }, [open]);
 
   React.useEffect(() => {
@@ -1587,6 +1626,52 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
     }, 250);
     return () => clearTimeout(id);
   }, [open, query]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const name = newName.trim();
+    const email = newEmail.trim();
+    const phone = newPhone.trim();
+
+    if (!name && !email && !phone) {
+      setCreateError("Please enter at least a name, email, or phone.");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      setCreateError(null);
+
+      const api = await import("./api");
+      const created = await api.createCustomer({
+        // we stuff full name into first_name for quick POS creation
+        first_name: name || undefined,
+        email: email || undefined,
+        phone_number: phone || undefined,
+      });
+
+      const selected: PosCustomer = {
+        id: created.id,
+        name:
+          created.full_name ||
+          name ||
+          created.email ||
+          created.phone_number ||
+          `Customer #${created.id}`,
+        email: created.email || undefined,
+        phone: created.phone_number || undefined,
+      };
+
+      onSelect(selected);
+      onClose();
+    } catch (err: any) {
+      setCreateError(err?.message || "Failed to create customer");
+    } finally {
+      setCreating(false);
+    }
+  };
+
 
   if (!open) return null;
 
@@ -1638,6 +1723,50 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
               </button>
             ))}
           </div>
+
+          {/* Quick create section */}
+          <div className="pt-3 mt-2 border-t border-slate-800 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Quick create
+            </div>
+            <form onSubmit={handleCreate} className="space-y-2">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Full name"
+                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+              />
+              <div className="flex gap-2">
+                <input
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="Email (optional)"
+                  className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+                />
+                <input
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="Phone (optional)"
+                  className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+                />
+              </div>
+              {createError && (
+                <div className="text-xs text-red-300">
+                  {createError}
+                </div>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-slate-50 hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {creating ? "Creating…" : "Create & select"}
+                </button>
+              </div>
+            </form>
+          </div>
+
         </div>
         <div className="flex items-center justify-between border-t border-slate-800 p-3">
           <button

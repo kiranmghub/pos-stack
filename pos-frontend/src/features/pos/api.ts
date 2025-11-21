@@ -65,6 +65,23 @@ export type PosCustomer = {
   phone?: string;
 };
 
+export type CreateCustomerInput = {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone_number?: string;
+};
+
+export type CustomerApiModel = {
+  id: number;
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+};
+
+
 export async function searchCustomers(params: { query: string }): Promise<PosCustomer[]> {
   const q = params.query.trim();
   if (!q) return [];
@@ -77,6 +94,19 @@ export async function searchCustomers(params: { query: string }): Promise<PosCus
     phone: c.phone_number,
   }));
 }
+
+export async function createCustomer(
+  payload: CreateCustomerInput
+): Promise<CustomerApiModel> {
+  const res = await apiFetchJSON("/api/v1/customers/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  // apiFetchJSON already throws on non-2xx; res is parsed JSON
+  return res as CustomerApiModel;
+}
+
 
 
 export async function getActiveDiscountRules(store_id: number): Promise<DiscountRule[]> {
