@@ -54,6 +54,65 @@ export type SaleDetail = {
   }>;
 };
 
+// --- Customers & Loyalty (CRM) ---
+
+export type CustomerSummaryRow = {
+  id: number;
+  full_name: string;
+  email: string | null;
+  phone_number: string | null;
+  total_spend: string;
+  total_returns: string;
+  net_spend: string;
+  visits_count: number;
+};
+
+export type CustomerDetail = {
+  id: number;
+  full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+  total_spend: string;
+  total_returns: string;
+  net_spend: string;
+  visits_count: number;
+  last_purchase_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// You can just reuse SaleRow for customer-specific sales rows,
+// but we declare an alias for clarity.
+export type CustomerSaleRow = SaleRow;
+
+export type LoyaltyAccount = {
+  id: number;
+  customer: number;
+  customer_name: string;
+  points_balance: number;
+  tier: string | null;
+  updated_at: string;
+};
+
+export type LoyaltyTx = {
+  id: number;
+  type: "EARN" | "RETURN" | "ADJUST";
+  points: number;
+  balance_after: number;
+  sale_id: number | null;
+  metadata: any;
+  created_at: string;
+};
+
+
 export async function listSales(params: {
   page?: number;
   page_size?: number;
@@ -329,3 +388,103 @@ export async function deleteReturn(returnId: number) {
 
   return null; // nothing to parse
 }
+
+
+// --- Customers (summary, detail, sales) ---
+
+export async function listCustomerSummaries(params: {
+  page?: number;
+  page_size?: number;
+  q?: string;
+  date_from?: string;
+  date_to?: string;
+}): Promise<{ results: CustomerSummaryRow[]; count: number }> {
+  const search = new URLSearchParams();
+  if (params.page) search.set("page", String(params.page));
+  if (params.page_size) search.set("page_size", String(params.page_size));
+  if (params.q) search.set("q", params.q);
+  if (params.date_from) search.set("date_from", params.date_from);
+  if (params.date_to) search.set("date_to", params.date_to);
+
+  const raw = await apiFetchJSON<any>(
+    `/api/v1/customers/sales-summary?${search.toString()}`
+  );
+
+  // Backend currently returns a plain list: [ {...}, {...} ]
+  if (Array.isArray(raw)) {
+    return {
+      results: raw as CustomerSummaryRow[],
+      count: raw.length,
+    };
+  }
+
+  // If you later switch to DRF pagination ({ results, count }), this still works
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  const count =
+    typeof raw.count === "number" ? raw.count : (results as any[]).length;
+
+  return { results, count };
+}
+
+
+export async function getCustomer(customerId: number): Promise<CustomerDetail> {
+  return apiFetchJSON(`/api/v1/customers/${customerId}`);
+}
+
+export async function listCustomerSales(
+  customerId: number,
+  params: { page?: number; page_size?: number; date_from?: string; date_to?: string } = {}
+): Promise<{ results: CustomerSaleRow[]; count: number }> {
+  const search = new URLSearchParams();
+  if (params.page) search.set("page", String(params.page));
+  if (params.page_size) search.set("page_size", String(params.page_size));
+  if (params.date_from) search.set("date_from", params.date_from);
+  if (params.date_to) search.set("date_to", params.date_to);
+
+  return apiFetchJSON(`/api/v1/customers/${customerId}/sales?${search.toString()}`);
+}
+
+// --- Loyalty (account + history) ---
+
+export async function getLoyaltyAccount(
+  customerId: number
+): Promise<LoyaltyAccount | null> {
+  try {
+    return await apiFetchJSON<LoyaltyAccount>(
+      `/api/v1/loyalty/accounts/${customerId}`
+    );
+  } catch (err: any) {
+    // Treat 404 (no account) as "no loyalty yet"
+    if (err?.message?.toLowerCase().includes("not found")) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+export async function listLoyaltyHistory(
+  customerId: number,
+  params: { page?: number; page_size?: number } = {}
+): Promise<{ results: LoyaltyTx[]; count: number }> {
+  const search = new URLSearchParams();
+  if (params.page) search.set("page", String(params.page));
+  if (params.page_size) search.set("page_size", String(params.page_size));
+
+  const raw = await apiFetchJSON<any>(
+    `/api/v1/loyalty/accounts/${customerId}/history?${search.toString()}`
+  );
+
+  if (Array.isArray(raw)) {
+    return {
+      results: raw as LoyaltyTx[],
+      count: raw.length,
+    };
+  }
+
+  const results = Array.isArray(raw.results) ? raw.results : [];
+  const count =
+    typeof raw.count === "number" ? raw.count : (results as any[]).length;
+
+  return { results, count };
+}
+

@@ -104,7 +104,7 @@ class CustomerSalesView(generics.ListAPIView):
 
 class CustomerSalesSummaryView(generics.ListAPIView):
     """
-    GET /api/v1/customers/sales-summary?date_from=&date_to=
+    GET /api/v1/customers/sales-summary?date_from=&date_to=&q=
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -116,13 +116,25 @@ class CustomerSalesSummaryView(generics.ListAPIView):
         if tenant:
             qs = qs.filter(tenant=tenant)
 
+        # NEW: search filter
+        q = self.request.query_params.get("q")
+        if q:
+            qs = qs.filter(
+                Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(email__icontains=q)
+                | Q(phone_number__icontains=q)
+            )
+
         date_from = self.request.query_params.get("date_from")
         date_to = self.request.query_params.get("date_to")
         if date_from:
             qs = qs.filter(last_purchase_date__date__gte=date_from)
         if date_to:
             qs = qs.filter(last_purchase_date__date__lte=date_to)
-        return qs
+
+        # Optional: keep results stable & recent-first
+        return qs.order_by("-last_purchase_date", "-id")
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()

@@ -24,9 +24,13 @@ import { DiscountsToolbar } from "./components/DiscountsToolbar";
 import { DiscountRulesTable } from "./components/DiscountRulesTable";
 import { DiscountSalesTable } from "./components/DiscountSalesTable";
 import StartReturnWizardModal from "./components/StartReturnWizardModal";
+import { CustomersTab } from "./components/CustomersTab";
+import { CustomerDrawer } from "./components/CustomerDrawer";
 import { useNotify } from "@/lib/notify"; // toasts, same as Catalogs :contentReference[oaicite:2]{index=2}
 import { getRole } from "@/lib/auth";
 import { ensureAuthedFetch } from "@/components/AppShell";
+
+
 
 type MainSalesTab =
   | "overview"
@@ -116,6 +120,7 @@ export default function SalesPage() {
   const [loadingDetail, setLoadingDetail] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"details" | "returns">("details");
   const [mainTab, setMainTab] = React.useState<MainSalesTab>("overview");
+  const [openCustomerId, setOpenCustomerId] = React.useState<number | null>(null);
   const role = (getRole() || "").toLowerCase();
   const canViewPayments = React.useMemo(
     () => ["owner", "admin", "finance"].includes(role),
@@ -678,7 +683,7 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
           { id: "returns", label: "Returns", ready: true },
           { id: "payments", label: "Payments", ready: canViewPayments },
           { id: "discounts", label: "Discounts", ready: canViewDiscounts },
-          { id: "customers", label: "Customers", ready: false },
+          { id: "customers", label: "Customers", ready: true },
           { id: "taxes", label: "Taxes", ready: false },
           { id: "audit", label: "Audit", ready: false },
           { id: "analytics", label: "Analytics", ready: false },
@@ -1091,6 +1096,13 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
         )
       )}
 
+      {mainTab === "customers" && (
+        <CustomersTab
+          onSelectCustomer={(id) => setOpenCustomerId(id)}
+        />
+      )}
+
+
       {/* Drawer */}
       <SaleDrawer
         openId={openId}
@@ -1141,6 +1153,14 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
           }
         }}
       />
+
+      <CustomerDrawer
+        customerId={openCustomerId}
+        open={openCustomerId != null}
+        onClose={() => setOpenCustomerId(null)}
+        onOpenSale={(saleId) => openDetail(saleId)}
+      />
+
 
     </div>
   );
