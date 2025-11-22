@@ -17,6 +17,7 @@ type CustomerDrawerProps = {
   open: boolean;
   onClose: () => void;
   onOpenSale?: (saleId: number) => void;
+  refreshKey?: number;
 };
 
 type CustomerDrawerTab = "overview" | "purchases" | "loyalty";
@@ -26,6 +27,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   open,
   onClose,
   onOpenSale,
+  refreshKey,
 }) => {
   const { safeMoney } = useMoney();
 
@@ -72,7 +74,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     return () => {
       alive = false;
     };
-  }, [open, customerId]);
+  }, [open, customerId, refreshKey]);
 
   // Load sales when tab active
   React.useEffect(() => {
@@ -100,7 +102,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     return () => {
       alive = false;
     };
-  }, [open, customerId, activeTab, salesPage, salesPageSize]);
+  }, [open, customerId, activeTab, salesPage, salesPageSize, refreshKey]);
 
   // Load loyalty when tab active
   React.useEffect(() => {
@@ -124,7 +126,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     return () => {
       alive = false;
     };
-  }, [open, customerId, activeTab]);
+  }, [open, customerId, activeTab, refreshKey]);
 
   if (!open || !customerId) return null;
 

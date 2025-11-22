@@ -92,3 +92,5 @@ class CustomerSalesSummarySerializer(serializers.Serializer):
     total_returns = serializers.DecimalField(max_digits=12, decimal_places=2)
     net_spend = serializers.DecimalField(max_digits=12, decimal_places=2)
     visits_count = serializers.IntegerField()
+    is_loyalty_member = serializers.BooleanField()
+    loyalty_points = serializers.IntegerField()

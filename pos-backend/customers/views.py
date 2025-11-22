@@ -13,6 +13,8 @@ from .serializers import (
 )
 from orders.models import Sale
 from orders.serializers import SaleListSerializer  # reuse
+from loyalty.models import LoyaltyAccount
+
 
 
 def _resolve_request_tenant(request):
@@ -138,18 +140,33 @@ class CustomerSalesSummaryView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        rows = [
-            {
-                "id": c.id,
-                "full_name": c.full_name,
-                "email": c.email,
-                "phone_number": c.phone_number,
-                "total_spend": c.total_spend,
-                "total_returns": c.total_returns,
-                "net_spend": c.net_spend,
-                "visits_count": c.visits_count,
-            }
-            for c in qs
-        ]
+
+        # Look up loyalty accounts for these customers in bulk
+        customer_ids = [c.id for c in qs]
+        tenant = _resolve_request_tenant(request)
+        accounts = LoyaltyAccount.objects.filter(
+            tenant=tenant, customer_id__in=customer_ids
+        )
+        accounts_by_customer = {a.customer_id: a for a in accounts}
+
+        rows = []
+        for c in qs:
+            acct = accounts_by_customer.get(c.id)
+            rows.append(
+                {
+                    "id": c.id,
+                    "full_name": c.full_name,
+                    "email": c.email,
+                    "phone_number": c.phone_number,
+                    "total_spend": c.total_spend,
+                    "total_returns": c.total_returns,
+                    "net_spend": c.net_spend,
+                    "visits_count": c.visits_count,
+                    "is_loyalty_member": bool(acct),
+                    "loyalty_points": acct.points_balance if acct else 0,
+                }
+            )
+
         serializer = self.get_serializer(rows, many=True)
         return Response(serializer.data)
+

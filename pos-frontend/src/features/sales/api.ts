@@ -65,6 +65,8 @@ export type CustomerSummaryRow = {
   total_returns: string;
   net_spend: string;
   visits_count: number;
+  is_loyalty_member: boolean;
+  loyalty_points: number;
 };
 
 export type CustomerDetail = {

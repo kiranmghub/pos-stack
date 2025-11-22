@@ -9,10 +9,12 @@ import { CustomersTable } from "./CustomersTable";
 
 type CustomersTabProps = {
   onSelectCustomer: (id: number) => void;
+  refreshKey?: number;
 };
 
 export const CustomersTab: React.FC<CustomersTabProps> = ({
   onSelectCustomer,
+  refreshKey,
 }) => {
   const { safeMoney } = useMoney();
 
@@ -62,7 +64,7 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
     return () => {
       alive = false;
     };
-  }, [page, pageSize, search, dateFrom, dateTo]);
+  }, [page, pageSize, search, dateFrom, dateTo, refreshKey]);
 
   const handleSelect = (row: CustomerSummaryRow) => {
     onSelectCustomer(row.id);

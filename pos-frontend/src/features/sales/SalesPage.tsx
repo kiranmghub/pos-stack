@@ -117,6 +117,7 @@ export default function SalesPage() {
   // Drawer + detail
   const [openId, setOpenId] = React.useState<number | null>(null);
   const [detail, setDetail] = React.useState<SaleDetail | null>(null);
+  const [customersRefreshKey, setCustomersRefreshKey] = React.useState(0);
   const [loadingDetail, setLoadingDetail] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"details" | "returns">("details");
   const [mainTab, setMainTab] = React.useState<MainSalesTab>("overview");
@@ -1099,6 +1100,7 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
       {mainTab === "customers" && (
         <CustomersTab
           onSelectCustomer={(id) => setOpenCustomerId(id)}
+          refreshKey={customersRefreshKey}
         />
       )}
 
@@ -1151,6 +1153,8 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
             const data = await listReturnsForSale(openId);
             setReturns(Array.isArray(data) ? data : (data?.results ?? []));
           }
+          // NEW: refresh customers summary + drawer
+          setCustomersRefreshKey((x) => x + 1);
         }}
       />
 
@@ -1159,6 +1163,7 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
         open={openCustomerId != null}
         onClose={() => setOpenCustomerId(null)}
         onOpenSale={(saleId) => openDetail(saleId)}
+        refreshKey={customersRefreshKey}
       />
 
 

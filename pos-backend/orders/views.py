@@ -19,6 +19,8 @@ from .serializers import (
     SaleListSerializer, SaleDetailSerializer, ReturnSerializer, ReturnStartSerializer, ReturnAddItemsSerializer, ReturnFinalizeSerializer,
     ReturnListSerializer, SalePaymentListSerializer, RefundListSerializer,
 )
+from customers.services import update_customer_after_return
+from loyalty.services import record_return
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from datetime import datetime, time
@@ -812,7 +814,18 @@ class ReturnFinalizeView(generics.CreateAPIView):
                 ret.assign_return_no()
             ret.status = "finalized"
             ret.save(update_fields=["status", "return_no"])
+
+            # NEW: update customer aggregates & loyalty after return
+            update_customer_after_return(ret)
+            if ret.sale and ret.sale.customer_id:
+                try:
+                    record_return(ret)
+                except Exception:
+                    # Don't block return finalization if loyalty update fails
+                    pass
+
         return Response(ReturnSerializer(ret).data, status=200)
+
     
 
 class ReturnDetailView(generics.RetrieveDestroyAPIView):
