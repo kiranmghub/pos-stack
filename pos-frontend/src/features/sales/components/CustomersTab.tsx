@@ -9,11 +9,14 @@ import { CustomersTable } from "./CustomersTable";
 
 type CustomersTabProps = {
   onSelectCustomer: (id: number) => void;
+  onViewCustomerDetails: (id: number) => void;
   refreshKey?: number;
 };
 
+
 export const CustomersTab: React.FC<CustomersTabProps> = ({
   onSelectCustomer,
+  onViewCustomerDetails,
   refreshKey,
 }) => {
   const { safeMoney } = useMoney();
@@ -26,6 +29,15 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
   const [loading, setLoading] = React.useState(false);
+
+  const handleSelectRow = (row: CustomerSummaryRow) => {
+    onSelectCustomer(row.id);
+  };
+
+  const handleViewDetails = (row: CustomerSummaryRow) => {
+    onViewCustomerDetails(row.id);
+  };
+
 
   const lastPage = Math.max(1, Math.ceil(count / pageSize));
 
@@ -121,9 +133,11 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
           setPageSize(size);
           setPage(1);
         }}
-        onSelect={handleSelect}
+        onSelectRow={handleSelectRow}
+        onViewDetails={handleViewDetails}
         safeMoney={safeMoney}
       />
+
     </div>
   );
 };

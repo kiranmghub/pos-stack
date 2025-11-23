@@ -4,6 +4,7 @@ from .views import (
     RecentSalesView, SalesListView, SaleDetailView, SaleReturnsListCreate, ReturnAddItemsView, ReturnFinalizeView, ReturnDetailView,
     ReturnItemDeleteView, ReturnVoidView, ReturnListView, PaymentListView, RefundListView, PaymentSummaryView, PaymentExportView,
     DiscountSummaryView, DiscountSalesListView, DiscountExportView,
+    TaxSummaryView, TaxSalesListView, AuditLogListView, AuditLogDetailView,
 )
 
 
@@ -22,6 +23,10 @@ urlpatterns = [
     path("discounts/summary", DiscountSummaryView.as_view(), name="discounts-summary"),
     path("discounts/sales", DiscountSalesListView.as_view(), name="discounts-sales"),
     path("discounts/export", DiscountExportView.as_view(), name="discounts-export"),
+    path("taxes/summary", TaxSummaryView.as_view(), name="taxes-summary"),
+    path("taxes/sales", TaxSalesListView.as_view(), name="taxes-sales"),
+    path("audit/logs", AuditLogListView.as_view(), name="audit-logs"),
+    path("audit/logs/<int:pk>", AuditLogDetailView.as_view(), name="audit-log-detail"),
     path("returns/<int:pk>/items", ReturnAddItemsView.as_view(), name="return-items"),
     path("returns/<int:pk>/finalize", ReturnFinalizeView.as_view(), name="return-finalize"),
     path("returns/<int:pk>", ReturnDetailView.as_view(), name="return-detail"),

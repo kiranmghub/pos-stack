@@ -1,7 +1,7 @@
 # pos-backend/orders/serializers.py
 
 from rest_framework import serializers
-from .models import Sale, SaleLine, SalePayment, Return, ReturnItem, Refund
+from .models import Sale, SaleLine, SalePayment, Return, ReturnItem, Refund, AuditLog
 from decimal import Decimal
 from django.db.models import Sum
 
@@ -528,6 +528,33 @@ class ReturnAddItemsSerializer(serializers.Serializer):
                 raise serializers.ValidationError({idx: "notes must be ≤ 250 characters"})
 
         return data
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    sale_receipt_no = serializers.CharField(source="sale.receipt_no", read_only=True)
+    store_name = serializers.CharField(source="store.name", read_only=True)
+    user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            "id",
+            "action",
+            "severity",
+            "metadata",
+            "created_at",
+            "sale_id",
+            "sale_receipt_no",
+            "store_name",
+            "user",
+            "user_name",
+        ]
+        read_only_fields = fields
+
+    def get_user_name(self, obj):
+        if not obj.user:
+            return None
+        return obj.user.get_full_name() or obj.user.username
 
 
 class ReturnFinalizeSerializer(serializers.Serializer):

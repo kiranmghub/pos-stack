@@ -18,6 +18,7 @@ type CustomerDrawerProps = {
   onClose: () => void;
   onOpenSale?: (saleId: number) => void;
   refreshKey?: number;
+  onEditCustomer?: (id: number) => void;
 };
 
 type CustomerDrawerTab = "overview" | "purchases" | "loyalty";
@@ -407,7 +408,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    Updated: {new Date(account.updated_at).toLocaleString()}
+                    Member since: {account.created_at ? new Date(account.created_at).toLocaleString() : "—"}
                   </div>
                 </div>
               )}

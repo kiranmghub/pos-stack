@@ -16,7 +16,7 @@ from tenants.models import TenantUser
 from stores.models import Store, Register
 from catalog.models import Variant
 from inventory.models import InventoryItem
-from orders.models import Sale, SaleLine, SalePayment
+from orders.models import Sale, SaleLine, SalePayment, AuditLog
 from customers.models import Customer
 from customers.services import update_customer_after_sale
 from loyalty.services import record_earning
@@ -879,6 +879,19 @@ class POSCheckoutView(APIView):
                         is_active=True,
                     ).update(used_count=F("used_count") + 1)
 
+                AuditLog.record(
+                    tenant=tenant,
+                    user=user,
+                    sale=sale,
+                    action="SALE_COMPLETED",
+                    severity="info",
+                    metadata={
+                        "sale_id": sale.id,
+                        "total": str(sale.total),
+                        "lines": len(req_lines),
+                        "payment_type": payment.get("type"),
+                    },
+                )
 
 
         except Variant.DoesNotExist:

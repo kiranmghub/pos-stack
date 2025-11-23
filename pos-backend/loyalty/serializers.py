@@ -31,6 +31,7 @@ class LoyaltyAccountSerializer(serializers.ModelSerializer):
             "customer_name",
             "points_balance",
             "tier",
+            "created_at",
             "updated_at",
         ]
-        read_only_fields = ["tenant", "updated_at"]
+        read_only_fields = ["tenant", "created_at", "updated_at"]

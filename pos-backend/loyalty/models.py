@@ -61,6 +61,7 @@ class LoyaltyAccount(models.Model):
     )
     points_balance = models.IntegerField(default=0)
     tier = models.CharField(max_length=32, blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

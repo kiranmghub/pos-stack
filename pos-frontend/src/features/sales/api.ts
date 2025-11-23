@@ -207,6 +207,26 @@ export type DiscountRuleSummary = {
   sales_count: number;
 };
 
+export type TaxRuleSummary = {
+  code: string;
+  name: string;
+  tax_amount: string;
+  sales_count: number;
+};
+
+export type AuditLogEntry = {
+  id: number;
+  action: string;
+  severity: "info" | "warning" | "critical";
+  metadata: Record<string, any>;
+  created_at: string;
+  sale_id?: number | null;
+  sale_receipt_no?: string | null;
+  store_name?: string | null;
+  user?: number | null;
+  user_name?: string | null;
+};
+
 // ---- Returns API ----
 export async function listReturns(params: {
   page?: number;
@@ -318,6 +338,65 @@ export async function listDiscountSales(params: {
   if (params?.page) q.set("page", String(params.page));
   if (params?.page_size) q.set("page_size", String(params.page_size));
   return apiFetchJSON(url.pathname + "?" + q.toString());
+}
+
+export async function getTaxSummary(params: {
+  store_id?: string | number;
+  date_from?: string;
+  date_to?: string;
+}): Promise<{ total_tax: string; taxed_sales: number; rules: TaxRuleSummary[] }> {
+  const url = new URL("/api/v1/orders/taxes/summary", window.location.origin);
+  const q = url.searchParams;
+  if (params?.store_id) q.set("store_id", String(params.store_id));
+  if (params?.date_from) q.set("date_from", params.date_from);
+  if (params?.date_to) q.set("date_to", params.date_to);
+  return apiFetchJSON(url.pathname + "?" + q.toString());
+}
+
+export async function listTaxSales(params: {
+  rule_code: string;
+  store_id?: string | number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<{ count: number; results: SaleRow[] }> {
+  const url = new URL("/api/v1/orders/taxes/sales", window.location.origin);
+  const q = url.searchParams;
+  q.set("rule_code", params.rule_code);
+  if (params?.store_id) q.set("store_id", String(params.store_id));
+  if (params?.date_from) q.set("date_from", params.date_from);
+  if (params?.date_to) q.set("date_to", params.date_to);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.page_size) q.set("page_size", String(params.page_size));
+  return apiFetchJSON(url.pathname + "?" + q.toString());
+}
+
+export async function listAuditLogs(params: {
+  action?: string;
+  severity?: string;
+  store_id?: string | number;
+  user_id?: string | number;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<{ count: number; results: AuditLogEntry[] }> {
+  const url = new URL("/api/v1/orders/audit/logs", window.location.origin);
+  const q = url.searchParams;
+  if (params?.action) q.set("action", params.action);
+  if (params?.severity) q.set("severity", params.severity);
+  if (params?.store_id) q.set("store_id", String(params.store_id));
+  if (params?.user_id) q.set("user_id", String(params.user_id));
+  if (params?.date_from) q.set("date_from", params.date_from);
+  if (params?.date_to) q.set("date_to", params.date_to);
+  if (params?.page) q.set("page", String(params.page));
+  if (params?.page_size) q.set("page_size", String(params.page_size));
+  return apiFetchJSON(url.pathname + "?" + q.toString());
+}
+
+export async function getAuditLog(id: number): Promise<AuditLogEntry> {
+  return apiFetchJSON(`/api/v1/orders/audit/logs/${id}`);
 }
 
 export async function listReturnsForSale(saleId: number) {
@@ -490,3 +569,18 @@ export async function listLoyaltyHistory(
   return { results, count };
 }
 
+
+export async function updateCustomer(
+  customerId: number,
+  payload: Partial<CustomerDetail>
+): Promise<CustomerDetail> {
+  const res = await apiFetchJSON<CustomerDetail>(
+    `/api/v1/customers/${customerId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  return res;
+}

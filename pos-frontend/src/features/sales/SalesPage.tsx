@@ -4,8 +4,10 @@ import {
   listReturnsForSale,
   getReturnById,      // NOTE: your api.ts should hit /api/v1/orders/returns/${id}
   listSales, getSale, listInventoryStores, listReturns, listPayments, listRefunds, getPaymentSummary, getDiscountSummary, listDiscountSales,
+  getTaxSummary, listTaxSales,
   deleteReturnItem, voidReturn, deleteReturn,
-  type SaleRow, type SaleDetail, type ReturnListRow, type PaymentListRow, type RefundListRow, type DiscountRuleSummary
+  type SaleRow, type SaleDetail, type ReturnListRow, type PaymentListRow, type RefundListRow, type DiscountRuleSummary, type TaxRuleSummary, type AuditLogEntry,
+  listAuditLogs, getAuditLog,
 } from "./api";
 
 import { useMoney } from "./useMoney";
@@ -23,12 +25,20 @@ import { RefundsTable } from "./components/RefundsTable";
 import { DiscountsToolbar } from "./components/DiscountsToolbar";
 import { DiscountRulesTable } from "./components/DiscountRulesTable";
 import { DiscountSalesTable } from "./components/DiscountSalesTable";
+import { TaxesToolbar } from "./components/TaxesToolbar";
+import { TaxRuleTable } from "./components/TaxRuleTable";
+import { TaxSalesTable } from "./components/TaxSalesTable";
 import StartReturnWizardModal from "./components/StartReturnWizardModal";
 import { CustomersTab } from "./components/CustomersTab";
+import { AuditFilters } from "./components/AuditFilters";
+import { AuditTimeline } from "./components/AuditTimeline";
+import { AuditDrawer } from "./components/AuditDrawer";
 import { CustomerDrawer } from "./components/CustomerDrawer";
 import { useNotify } from "@/lib/notify"; // toasts, same as Catalogs :contentReference[oaicite:2]{index=2}
 import { getRole } from "@/lib/auth";
 import { ensureAuthedFetch } from "@/components/AppShell";
+import { CustomerEditDrawer } from "./components/CustomerEditDrawer";
+
 
 
 
@@ -113,6 +123,32 @@ export default function SalesPage() {
   const [discountSalesPageSize, setDiscountSalesPageSize] = React.useState(10);
   const [loadingDiscountSales, setLoadingDiscountSales] = React.useState(false);
   const [discountSearch, setDiscountSearch] = React.useState("");
+  const [taxStoreId, setTaxStoreId] = React.useState("");
+  const [taxDateFrom, setTaxDateFrom] = React.useState("");
+  const [taxDateTo, setTaxDateTo] = React.useState("");
+  const [taxSummary, setTaxSummary] = React.useState<{
+    total_tax: string;
+    taxed_sales: number;
+    rules: TaxRuleSummary[];
+  } | null>(null);
+  const [loadingTaxSummary, setLoadingTaxSummary] = React.useState(false);
+  const [taxRuleSearch, setTaxRuleSearch] = React.useState("");
+  const [selectedTaxRule, setSelectedTaxRule] = React.useState<TaxRuleSummary | null>(null);
+  const [taxSalesRows, setTaxSalesRows] = React.useState<SaleRow[]>([]);
+  const [taxSalesCount, setTaxSalesCount] = React.useState(0);
+  const [taxSalesPage, setTaxSalesPage] = React.useState(1);
+  const [taxSalesPageSize, setTaxSalesPageSize] = React.useState(10);
+  const [loadingTaxSales, setLoadingTaxSales] = React.useState(false);
+  const [auditAction, setAuditAction] = React.useState("");
+  const [auditSeverity, setAuditSeverity] = React.useState("");
+  const [auditDateFrom, setAuditDateFrom] = React.useState("");
+  const [auditDateTo, setAuditDateTo] = React.useState("");
+  const [auditPage, setAuditPage] = React.useState(1);
+  const [auditPageSize, setAuditPageSize] = React.useState(20);
+  const [auditCount, setAuditCount] = React.useState(0);
+  const [auditLogs, setAuditLogs] = React.useState<AuditLogEntry[]>([]);
+  const [loadingAudit, setLoadingAudit] = React.useState(false);
+  const [selectedAudit, setSelectedAudit] = React.useState<AuditLogEntry | null>(null);
 
   // Drawer + detail
   const [openId, setOpenId] = React.useState<number | null>(null);
@@ -121,7 +157,9 @@ export default function SalesPage() {
   const [loadingDetail, setLoadingDetail] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<"details" | "returns">("details");
   const [mainTab, setMainTab] = React.useState<MainSalesTab>("overview");
+  const [editingCustomerId, setEditingCustomerId] = React.useState<number | null>(null);
   const [openCustomerId, setOpenCustomerId] = React.useState<number | null>(null);
+
   const role = (getRole() || "").toLowerCase();
   const canViewPayments = React.useMemo(
     () => ["owner", "admin", "finance"].includes(role),
@@ -129,6 +167,14 @@ export default function SalesPage() {
   );
   const canViewDiscounts = React.useMemo(
     () => ["owner", "admin", "manager"].includes(role),
+    [role]
+  );
+  const canViewTaxes = React.useMemo(
+    () => ["owner", "admin"].includes(role),
+    [role]
+  );
+  const canViewAudit = React.useMemo(
+    () => ["owner", "admin", "auditor"].includes(role),
     [role]
   );
 
@@ -149,10 +195,15 @@ export default function SalesPage() {
   const { safeMoney } = useMoney();
 
   React.useEffect(() => {
-    if ((mainTab === "payments" && !canViewPayments) || (mainTab === "discounts" && !canViewDiscounts)) {
+    if (
+      (mainTab === "payments" && !canViewPayments) ||
+      (mainTab === "discounts" && !canViewDiscounts) ||
+      (mainTab === "taxes" && !canViewTaxes) ||
+      (mainTab === "audit" && !canViewAudit)
+    ) {
       setMainTab("overview");
     }
-  }, [canViewPayments, canViewDiscounts, mainTab]);
+  }, [canViewPayments, canViewDiscounts, canViewTaxes, canViewAudit, mainTab]);
 
   // List loader
   async function load() {
@@ -305,37 +356,37 @@ export default function SalesPage() {
     if (notify) success("Return voided.");
   };
 
-const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
-  // Optimistic update: remove from UI immediately
-  setReturns(prev => prev.filter(r => r.id !== returnId));
+  const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
+    // Optimistic update: remove from UI immediately
+    setReturns(prev => prev.filter(r => r.id !== returnId));
 
-  // Collapse expanded panel if this was the open one
-  if (expandedReturnId === returnId) {
-    setExpandedReturnId(null);
-    setExpandedReturn(null);
-  }
+    // Collapse expanded panel if this was the open one
+    if (expandedReturnId === returnId) {
+      setExpandedReturnId(null);
+      setExpandedReturn(null);
+    }
 
-  try {
-    await deleteReturn(returnId);
-    if (notify) success("Draft return deleted.");
-  } catch (e: any) {
-    const msg = e?.message || e?.detail || "Unable to delete draft return.";
-    error(msg);
-    // On error, re-fetch to restore accurate state
+    try {
+      await deleteReturn(returnId);
+      if (notify) success("Draft return deleted.");
+    } catch (e: any) {
+      const msg = e?.message || e?.detail || "Unable to delete draft return.";
+      error(msg);
+      // On error, re-fetch to restore accurate state
+      if (openId && activeTab === "returns") {
+        const data = await listReturnsForSale(openId);
+        setReturns(Array.isArray(data) ? data : (data?.results ?? []));
+      }
+      return;
+    }
+
+    // Background refresh to stay in sync with backend
     if (openId && activeTab === "returns") {
       const data = await listReturnsForSale(openId);
       setReturns(Array.isArray(data) ? data : (data?.results ?? []));
     }
-    return;
-  }
-
-  // Background refresh to stay in sync with backend
-  if (openId && activeTab === "returns") {
-    const data = await listReturnsForSale(openId);
-    setReturns(Array.isArray(data) ? data : (data?.results ?? []));
-  }
-  setReturnsReloadKey((k) => k + 1);
-};
+    setReturnsReloadKey((k) => k + 1);
+  };
 
   const handleOpenReturnRow = async (row: ReturnListRow) => {
     await openDetail(row.sale);
@@ -404,6 +455,15 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
     await openDetail(row.id);
   };
 
+  const handleSelectAuditEntry = async (entry: AuditLogEntry) => {
+    try {
+      const fresh = await getAuditLog(entry.id);
+      setSelectedAudit(fresh);
+    } catch {
+      setSelectedAudit(entry);
+    }
+  };
+
   const handleCopyRefundReference = async (row: RefundListRow) => {
     if (!row.external_ref) {
       error("No reference on this refund.");
@@ -454,6 +514,10 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
         if (!alive) return;
         setDiscountSalesRows(data.results || []);
         setDiscountSalesCount(Number(data.count || 0));
+      } catch {
+        if (!alive) return;
+        setDiscountSalesRows([]);
+        setDiscountSalesCount(0);
       } finally {
         if (alive) setLoadingDiscountSales(false);
       }
@@ -469,6 +533,83 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
     discountSalesPage,
     discountSalesPageSize,
   ]);
+
+  React.useEffect(() => {
+    if (mainTab !== "taxes" || !canViewTaxes) return;
+    let alive = true;
+    setLoadingTaxSummary(true);
+    (async () => {
+      try {
+        const data = await getTaxSummary({
+          store_id: taxStoreId || undefined,
+          date_from: taxDateFrom || undefined,
+          date_to: taxDateTo || undefined,
+        });
+        if (!alive) return;
+        setTaxSummary(data);
+      } finally {
+        if (alive) setLoadingTaxSummary(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [mainTab, canViewTaxes, taxStoreId, taxDateFrom, taxDateTo]);
+
+  React.useEffect(() => {
+    if (mainTab !== "taxes" || !canViewTaxes || !selectedTaxRule) return;
+    let alive = true;
+    setLoadingTaxSales(true);
+    (async () => {
+      try {
+        const data = await listTaxSales({
+          rule_code: selectedTaxRule.code,
+          store_id: taxStoreId || undefined,
+          date_from: taxDateFrom || undefined,
+          date_to: taxDateTo || undefined,
+          page: taxSalesPage,
+          page_size: taxSalesPageSize,
+        });
+        if (!alive) return;
+        setTaxSalesRows(data.results || []);
+        setTaxSalesCount(Number(data.count || 0));
+      } finally {
+        if (alive) setLoadingTaxSales(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [
+    mainTab,
+    canViewTaxes,
+    selectedTaxRule,
+    taxStoreId,
+    taxDateFrom,
+    taxDateTo,
+    taxSalesPage,
+    taxSalesPageSize,
+  ]);
+
+  React.useEffect(() => {
+    if (mainTab !== "audit" || !canViewAudit) return;
+    let alive = true;
+    setLoadingAudit(true);
+    (async () => {
+      try {
+        const data = await listAuditLogs({
+          action: auditAction || undefined,
+          severity: auditSeverity || undefined,
+          date_from: auditDateFrom || undefined,
+          date_to: auditDateTo || undefined,
+          page: auditPage,
+          page_size: auditPageSize,
+        });
+        if (!alive) return;
+        setAuditLogs(data.results || []);
+        setAuditCount(Number(data.count || 0));
+      } finally {
+        if (alive) setLoadingAudit(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [mainTab, canViewAudit, auditAction, auditSeverity, auditDateFrom, auditDateTo, auditPage, auditPageSize]);
 
   const latestDraft = React.useMemo(
     () => returnRows.find((row) => row.status === "draft"),
@@ -516,6 +657,14 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
     if (!q) return rules;
     return rules.filter((rule) => rule.name.toLowerCase().includes(q) || rule.code.toLowerCase().includes(q));
   }, [discountSummary, discountSearch]);
+  const filteredTaxRules = React.useMemo(() => {
+    const q = taxRuleSearch.trim().toLowerCase();
+    const rules = taxSummary?.rules || [];
+    if (!q) return rules;
+    return rules.filter(
+      (rule) => rule.name.toLowerCase().includes(q) || rule.code.toLowerCase().includes(q)
+    );
+  }, [taxSummary, taxRuleSearch]);
 
   const buildPaymentsQuery = React.useCallback(
     (kind: "payments" | "refunds") => {
@@ -685,8 +834,8 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
           { id: "payments", label: "Payments", ready: canViewPayments },
           { id: "discounts", label: "Discounts", ready: canViewDiscounts },
           { id: "customers", label: "Customers", ready: true },
-          { id: "taxes", label: "Taxes", ready: false },
-          { id: "audit", label: "Audit", ready: false },
+          { id: "taxes", label: "Taxes", ready: canViewTaxes },
+          { id: "audit", label: "Audit", ready: canViewAudit },
           { id: "analytics", label: "Analytics", ready: false },
           { id: "risk", label: "Risk", ready: false },
           { id: "attachments", label: "Attachments", ready: false },
@@ -696,13 +845,12 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
             key={tab.id}
             type="button"
             onClick={() => tab.ready && setMainTab(tab.id as MainSalesTab)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              mainTab === tab.id
-                ? "bg-blue-600 text-white shadow"
-                : tab.ready
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${mainTab === tab.id
+              ? "bg-blue-600 text-white shadow"
+              : tab.ready
                 ? "text-zinc-300 hover:bg-white/5"
                 : "text-zinc-600 cursor-not-allowed"
-            }`}
+              }`}
             disabled={!tab.ready}
           >
             {tab.label}
@@ -820,11 +968,10 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
                   key={chip.value || "all"}
                   type="button"
                   onClick={() => setReturnStatus(chip.value)}
-                  className={`rounded-full px-3 py-1 font-medium ${
-                    returnStatus === chip.value
-                      ? "bg-blue-600 text-white"
-                      : "bg-zinc-900 text-zinc-300 border border-zinc-700 hover:bg-white/5"
-                  }`}
+                  className={`rounded-full px-3 py-1 font-medium ${returnStatus === chip.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-zinc-900 text-zinc-300 border border-zinc-700 hover:bg-white/5"
+                    }`}
                 >
                   {chip.label}
                   {chip.value === "draft" ? (
@@ -870,121 +1017,121 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
 
       {mainTab === "payments" && (
         canViewPayments ? (
-        <div className="space-y-4">
-          <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center text-sm text-zinc-300 md:grid-cols-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Collected (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">
-                {loadingPaymentSummary ? "…" : safeMoney(paymentTotalCollected)}
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center text-sm text-zinc-300 md:grid-cols-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Collected (page)</div>
+                <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">
+                  {loadingPaymentSummary ? "…" : safeMoney(paymentTotalCollected)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Refunded (page)</div>
+                <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">
+                  {loadingPaymentSummary ? "…" : safeMoney(refundTotalAmount)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Net (page)</div>
+                <div className={`mt-1 text-2xl font-semibold tabular-nums ${netPaymentTotal >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
+                  {loadingPaymentSummary ? "…" : safeMoney(netPaymentTotal)}
+                </div>
+              </div>
+              <div className="text-left">
+                <div className="text-[11px] uppercase tracking-wide text-zinc-500">By method (page)</div>
+                <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                  {["CASH", "CARD", "STORE_CREDIT", "OTHER"].map((method) => {
+                    const amount = paymentTotalsByMethod[method] || 0;
+                    return (
+                      <span key={method} className="rounded-full border border-white/10 px-2 py-0.5 text-white/80">
+                        {method.replace("_", " ")} · {loadingPaymentSummary ? "…" : safeMoney(amount)}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Refunded (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">
-                {loadingPaymentSummary ? "…" : safeMoney(refundTotalAmount)}
-              </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-zinc-500">Exports:</span>
+              <button
+                type="button"
+                className="rounded-md border border-white/20 px-3 py-1 text-white hover:bg-white/10"
+                onClick={() => handleExportPayments("payments")}
+              >
+                Download payments CSV
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-white/20 px-3 py-1 text-white hover:bg-white/10"
+                onClick={() => handleExportPayments("refunds")}
+              >
+                Download refunds CSV
+              </button>
             </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Net (page)</div>
-              <div className={`mt-1 text-2xl font-semibold tabular-nums ${netPaymentTotal >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
-                {loadingPaymentSummary ? "…" : safeMoney(netPaymentTotal)}
-              </div>
-            </div>
-            <div className="text-left">
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">By method (page)</div>
-              <div className="mt-1 flex flex-wrap gap-2 text-xs">
-                {["CASH", "CARD", "STORE_CREDIT", "OTHER"].map((method) => {
-                  const amount = paymentTotalsByMethod[method] || 0;
-                  return (
-                    <span key={method} className="rounded-full border border-white/10 px-2 py-0.5 text-white/80">
-                      {method.replace("_", " ")} · {loadingPaymentSummary ? "…" : safeMoney(amount)}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+
+            <PaymentsToolbar
+              title="Payments filters"
+              storeId={paymentStoreId}
+              setStoreId={setPaymentStoreId}
+              stores={stores}
+              method={paymentMethod}
+              setMethod={setPaymentMethod}
+              dateFrom={paymentDateFrom}
+              setDateFrom={setPaymentDateFrom}
+              dateTo={paymentDateTo}
+              setDateTo={setPaymentDateTo}
+            />
+
+            <PaymentsTable
+              rows={paymentRows}
+              loading={loadingPayments}
+              page={paymentPage}
+              pageSize={paymentPageSize}
+              count={paymentCount}
+              lastPage={paymentLastPage}
+              onPageChange={setPaymentPage}
+              onPageSizeChange={(size) => {
+                setPaymentPageSize(size);
+                setPaymentPage(1);
+              }}
+              onSelect={handleOpenPaymentRow}
+              onStartRefund={handleStartRefundFromPayment}
+              onCopyReference={handleCopyPaymentReference}
+              safeMoney={safeMoney}
+            />
+
+            <PaymentsToolbar
+              title="Refunds filters"
+              storeId={refundStoreId}
+              setStoreId={setRefundStoreId}
+              stores={stores}
+              method={refundMethod}
+              setMethod={setRefundMethod}
+              dateFrom={refundDateFrom}
+              setDateFrom={setRefundDateFrom}
+              dateTo={refundDateTo}
+              setDateTo={setRefundDateTo}
+            />
+
+            <RefundsTable
+              rows={refundRows}
+              loading={loadingRefunds}
+              page={refundPage}
+              pageSize={refundPageSize}
+              count={refundCount}
+              lastPage={refundLastPage}
+              onPageChange={setRefundPage}
+              onPageSizeChange={(size) => {
+                setRefundPageSize(size);
+                setRefundPage(1);
+              }}
+              onSelect={handleOpenRefundRow}
+              onViewSale={handleOpenRefundSale}
+              onCopyReference={handleCopyRefundReference}
+              safeMoney={safeMoney}
+            />
           </div>
-
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-zinc-500">Exports:</span>
-            <button
-              type="button"
-              className="rounded-md border border-white/20 px-3 py-1 text-white hover:bg-white/10"
-              onClick={() => handleExportPayments("payments")}
-            >
-              Download payments CSV
-            </button>
-            <button
-              type="button"
-              className="rounded-md border border-white/20 px-3 py-1 text-white hover:bg-white/10"
-              onClick={() => handleExportPayments("refunds")}
-            >
-              Download refunds CSV
-            </button>
-          </div>
-
-          <PaymentsToolbar
-            title="Payments filters"
-            storeId={paymentStoreId}
-            setStoreId={setPaymentStoreId}
-            stores={stores}
-            method={paymentMethod}
-            setMethod={setPaymentMethod}
-            dateFrom={paymentDateFrom}
-            setDateFrom={setPaymentDateFrom}
-            dateTo={paymentDateTo}
-            setDateTo={setPaymentDateTo}
-          />
-
-          <PaymentsTable
-            rows={paymentRows}
-            loading={loadingPayments}
-            page={paymentPage}
-            pageSize={paymentPageSize}
-            count={paymentCount}
-            lastPage={paymentLastPage}
-            onPageChange={setPaymentPage}
-            onPageSizeChange={(size) => {
-              setPaymentPageSize(size);
-              setPaymentPage(1);
-            }}
-            onSelect={handleOpenPaymentRow}
-            onStartRefund={handleStartRefundFromPayment}
-            onCopyReference={handleCopyPaymentReference}
-            safeMoney={safeMoney}
-          />
-
-          <PaymentsToolbar
-            title="Refunds filters"
-            storeId={refundStoreId}
-            setStoreId={setRefundStoreId}
-            stores={stores}
-            method={refundMethod}
-            setMethod={setRefundMethod}
-            dateFrom={refundDateFrom}
-            setDateFrom={setRefundDateFrom}
-            dateTo={refundDateTo}
-            setDateTo={setRefundDateTo}
-          />
-
-          <RefundsTable
-            rows={refundRows}
-            loading={loadingRefunds}
-            page={refundPage}
-            pageSize={refundPageSize}
-            count={refundCount}
-            lastPage={refundLastPage}
-            onPageChange={setRefundPage}
-            onPageSizeChange={(size) => {
-              setRefundPageSize(size);
-              setRefundPage(1);
-            }}
-            onSelect={handleOpenRefundRow}
-            onViewSale={handleOpenRefundSale}
-            onCopyReference={handleCopyRefundReference}
-            safeMoney={safeMoney}
-          />
-        </div>
         ) : (
           <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
             You don’t have permission to view Payments & Refunds. Ask an owner or finance admin to grant access.
@@ -1099,10 +1246,141 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
 
       {mainTab === "customers" && (
         <CustomersTab
-          onSelectCustomer={(id) => setOpenCustomerId(id)}
+          onSelectCustomer={(id) => setOpenCustomerId(id)}               // row click -> view drawer
+          onViewCustomerDetails={(id) => setEditingCustomerId(id)}       // "View details" -> edit drawer
           refreshKey={customersRefreshKey}
         />
       )}
+
+
+      {mainTab === "taxes" && (
+        canViewTaxes ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-950 to-slate-900/60 px-4 py-3 text-sm text-cyan-100 md:grid-cols-3">
+              <div className="text-center">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Total tax</div>
+                <div className="mt-2 text-3xl font-bold text-cyan-300 tabular-nums">
+                  {loadingTaxSummary ? "…" : safeMoney(Number(taxSummary?.total_tax || 0))}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Taxed receipts</div>
+                <div className="mt-2 text-3xl font-bold text-white tabular-nums">
+                  {loadingTaxSummary ? "…" : taxSummary?.taxed_sales || 0}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Compliance tips</div>
+                <div className="mt-2 text-xs text-cyan-100/70">
+                  Review filings for spikes, confirm jurisdiction codes, and export rule-level worksheets before closing the period.
+                </div>
+              </div>
+            </div>
+
+            <TaxesToolbar
+              storeId={taxStoreId}
+              setStoreId={setTaxStoreId}
+              stores={stores}
+              dateFrom={taxDateFrom}
+              setDateFrom={setTaxDateFrom}
+              dateTo={taxDateTo}
+              setDateTo={setTaxDateTo}
+            />
+
+            <TaxRuleTable
+              rows={filteredTaxRules}
+              loading={loadingTaxSummary}
+              onSelect={(rule) => {
+                setSelectedTaxRule(rule);
+                setTaxSalesPage(1);
+              }}
+              searchQuery={taxRuleSearch}
+              setSearchQuery={setTaxRuleSearch}
+            />
+
+            {selectedTaxRule && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-cyan-100">
+                  <div>
+                    Filings for <span className="font-semibold">{selectedTaxRule.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs text-cyan-300 hover:text-cyan-200"
+                    onClick={() => setSelectedTaxRule(null)}
+                  >
+                    Clear selection
+                  </button>
+                </div>
+                <TaxSalesTable
+                  rows={taxSalesRows}
+                  loading={loadingTaxSales}
+                  page={taxSalesPage}
+                  pageSize={taxSalesPageSize}
+                  count={taxSalesCount}
+                  lastPage={Math.max(1, Math.ceil(taxSalesCount / taxSalesPageSize))}
+                  onPageChange={setTaxSalesPage}
+                  onPageSizeChange={(size) => {
+                    setTaxSalesPageSize(size);
+                    setTaxSalesPage(1);
+                  }}
+                  onOpenSale={handleOpenDiscountSale}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
+            You don’t have permission to view Taxes & Compliance.
+          </div>
+        )
+      )}
+
+      {mainTab === "audit" && (
+        canViewAudit ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-2xl border border-fuchsia-500/40 bg-gradient-to-r from-slate-950 to-slate-900/80 px-4 py-3 text-sm text-fuchsia-100 md:grid-cols-3">
+              <div className="text-center">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200/70">Events</div>
+                <div className="mt-2 text-3xl font-bold text-white tabular-nums">{auditCount}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200/70">Critical</div>
+                <div className="mt-2 text-3xl font-bold text-rose-300 tabular-nums">
+                  {auditLogs.filter((log) => log.severity === "critical").length}
+                </div>
+              </div>
+              <div className="text-xs text-fuchsia-100/80 md:text-left">
+                Track approvals, overrides, and anomaly alerts across all stores. Each audit row links to the full sale or return record for deeper investigation.
+              </div>
+            </div>
+            <AuditFilters
+              action={auditAction}
+              setAction={setAuditAction}
+              severity={auditSeverity}
+              setSeverity={setAuditSeverity}
+              dateFrom={auditDateFrom}
+              setDateFrom={setAuditDateFrom}
+              dateTo={auditDateTo}
+              setDateTo={setAuditDateTo}
+            />
+            <AuditTimeline entries={auditLogs} loading={loadingAudit} onSelect={handleSelectAuditEntry} />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
+            You don’t have permission to view Audit & Activity.
+          </div>
+        )
+      )}
+
+      <AuditDrawer
+        entry={selectedAudit}
+        onClose={() => setSelectedAudit(null)}
+        onOpenSale={(id) => {
+          setSelectedAudit(null);
+          openDetail(id);
+        }}
+      />
 
 
       {/* Drawer */}
@@ -1119,11 +1397,14 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
             safeMoney={safeMoney}
             onStartReturn={async () => {
               if (!detail) return;
-              setWizardDraft(null); // no draft yet
-              setWizardOpen(true);  // wizard will create draft on Save & Continue
+              setWizardDraft(null);
+              setWizardOpen(true);
             }}
+            onOpenCustomer={(customerId) => setOpenCustomerId(customerId)}
+            onViewCustomerDetails={(customerId) => setEditingCustomerId(customerId)}
           />
         )}
+
 
         {activeTab === "returns" && (
           <ReturnsTab
@@ -1162,9 +1443,20 @@ const handleDeleteDraftReturn = async (returnId: number, notify = true) => {
         customerId={openCustomerId}
         open={openCustomerId != null}
         onClose={() => setOpenCustomerId(null)}
-        onOpenSale={(saleId) => openDetail(saleId)}
+        onOpenSale={(id) => openDetail(id)}
         refreshKey={customersRefreshKey}
       />
+
+      <CustomerEditDrawer
+        customerId={editingCustomerId}
+        open={editingCustomerId != null}
+        startInViewMode={true}
+        onClose={() => setEditingCustomerId(null)}
+        onSaved={() => {
+          setCustomersRefreshKey((x) => x + 1);
+        }}
+      />
+
 
 
     </div>

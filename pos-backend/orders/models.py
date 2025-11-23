@@ -211,3 +211,40 @@ class Refund(models.Model):
             "tax": (tax_per_unit * qty_dec).quantize(Decimal("0.01")),
             "total": (total_per_unit * qty_dec).quantize(Decimal("0.01")),
         }
+
+
+class AuditLog(models.Model):
+    SEVERITY_CHOICES = [
+        ("info", "Info"),
+        ("warning", "Warning"),
+        ("critical", "Critical"),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="audit_logs")
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, null=True, blank=True, related_name="audit_logs")
+    store = models.ForeignKey(Store, on_delete=models.CASCADE, null=True, blank=True, related_name="audit_logs")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="audit_logs")
+    action = models.CharField(max_length=64)
+    severity = models.CharField(max_length=16, choices=SEVERITY_CHOICES, default="info")
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.action} @ {self.created_at}"
+
+    @classmethod
+    def record(cls, *, tenant, action, user=None, sale=None, store=None, severity="info", metadata=None):
+        if sale and not store:
+            store = sale.store
+        cls.objects.create(
+            tenant=tenant,
+            action=action,
+            user=user,
+            sale=sale,
+            store=store,
+            severity=severity,
+            metadata=metadata or {},
+        )

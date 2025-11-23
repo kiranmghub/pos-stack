@@ -3,29 +3,32 @@ import * as React from "react";
 import type { CustomerSummaryRow } from "../api";
 
 type CustomersTableProps = {
-    rows: CustomerSummaryRow[];
-    loading: boolean;
-    page: number;
-    pageSize: number;
-    count: number;
-    lastPage: number;
-    onPageChange: (page: number) => void;
-    onPageSizeChange: (size: number) => void;
-    onSelect: (row: CustomerSummaryRow) => void;
-    safeMoney: (amount: number | string) => string;
+  rows: CustomerSummaryRow[];
+  loading: boolean;
+  page: number;
+  pageSize: number;
+  count: number;
+  lastPage: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
+  onSelectRow: (row: CustomerSummaryRow) => void;
+  onViewDetails: (row: CustomerSummaryRow) => void;
+  safeMoney: (amount: number | string) => string;
 };
 
+
 export const CustomersTable: React.FC<CustomersTableProps> = ({
-    rows,
-    loading,
-    page,
-    pageSize,
-    count,
-    lastPage,
-    onPageChange,
-    onPageSizeChange,
-    onSelect,
-    safeMoney,
+  rows,
+  loading,
+  page,
+  pageSize,
+  count,
+  lastPage,
+  onPageChange,
+  onPageSizeChange,
+  onSelectRow,
+  onViewDetails,
+  safeMoney,
 }) => {
     return (
         <div className="space-y-2">
@@ -61,7 +64,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                             <tr
                                 key={row.id}
                                 className="cursor-pointer border-t border-zinc-800/80 hover:bg-zinc-900/60"
-                                onClick={() => onSelect(row)}
+                                onClick={() => onSelectRow(row)}
                             >
                                 <td className="px-3 py-2 align-middle">
                                     <div className="flex items-center gap-2">
@@ -79,14 +82,25 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                                             </span>
                                             {row.is_loyalty_member && (
                                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
-                                                {/* simple star/medal icon */}
                                                 <span aria-hidden="true" className="text-[11px]">
                                                     ★
                                                 </span>
                                                 <span className="tracking-wide">Loyalty Member</span>
                                                 </span>
                                             )}
+                                            <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onViewDetails(row);
+                                            }}
+                                            className="text-[10px] text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
+                                            >
+                                            View details
+                                            </button>
+
                                             </div>
+
 
                                         </div>
                                     </div>

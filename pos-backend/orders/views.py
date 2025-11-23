@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from common.api_mixins import IsInTenant
-from .models import Sale, Return, ReturnItem, Refund, SaleLine, SalePayment
+from .models import Sale, Return, ReturnItem, Refund, SaleLine, SalePayment, AuditLog
 from rest_framework.generics import ListAPIView
 from .serializers import RecentSaleSerializer
 from django.shortcuts import get_object_or_404
@@ -17,7 +17,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError, PermissionDenied, NotFound
 from .serializers import (
     SaleListSerializer, SaleDetailSerializer, ReturnSerializer, ReturnStartSerializer, ReturnAddItemsSerializer, ReturnFinalizeSerializer,
-    ReturnListSerializer, SalePaymentListSerializer, RefundListSerializer,
+    ReturnListSerializer, SalePaymentListSerializer, RefundListSerializer, AuditLogSerializer,
 )
 from customers.services import update_customer_after_return
 from loyalty.services import record_return
@@ -688,6 +688,189 @@ class DiscountSalesListView(generics.ListAPIView):
         return qs.order_by("-created_at", "-id")
 
 
+class TaxSummaryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        tenant = _resolve_request_tenant(request)
+        store_id = request.query_params.get("store_id")
+        date_from = request.query_params.get("date_from")
+        date_to = request.query_params.get("date_to")
+
+        def _to_aware_dt(val, end_of_day):
+            if not val:
+                return None
+            dt = parse_datetime(val)
+            if dt is None:
+                d = parse_date(val)
+                if not d:
+                    return None
+                naive = datetime.combine(d, time.max if end_of_day else time.min)
+                return timezone.make_aware(naive, timezone.get_current_timezone())
+            return timezone.make_aware(dt, timezone.get_current_timezone()) if timezone.is_naive(dt) else dt
+
+        qs = Sale.objects.select_related("store")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        df = _to_aware_dt(date_from, False)
+        dt_ = _to_aware_dt(date_to, True)
+        if df:
+            qs = qs.filter(created_at__gte=df)
+        if dt_:
+            qs = qs.filter(created_at__lte=dt_)
+
+        rule_map: dict[str, dict] = {}
+        total_tax = Decimal("0.00")
+        sales_count = 0
+
+        for sale in qs.iterator():
+            receipt = sale.receipt_data or {}
+            totals = receipt.get("totals") or {}
+            tax_rules = receipt.get("tax_by_rule") or totals.get("tax_by_rule") or []
+            tax_amount = Decimal(str(totals.get("tax") or "0"))
+            if tax_amount > 0:
+                total_tax += tax_amount
+                sales_count += 1
+            for entry in tax_rules:
+                amount = Decimal(str(entry.get("amount") or "0"))
+                if amount <= 0:
+                    continue
+                code = (entry.get("code") or f"TAX-{entry.get('rule_id') or ''}" or "UNKNOWN").upper()
+                bucket = rule_map.setdefault(code, {
+                    "code": code,
+                    "name": entry.get("name") or code,
+                    "tax_amount": Decimal("0.00"),
+                    "sales": set(),
+                })
+                bucket["tax_amount"] += amount
+                bucket["sales"].add(sale.id)
+
+        rules = []
+        for code, data in rule_map.items():
+            rules.append({
+                "code": code,
+                "name": data["name"],
+                "tax_amount": str(data["tax_amount"]),
+                "sales_count": len(data["sales"]),
+            })
+        rules.sort(key=lambda x: Decimal(x["tax_amount"]), reverse=True)
+
+        return Response({
+            "total_tax": str(total_tax),
+            "taxed_sales": sales_count,
+            "rules": rules,
+        })
+
+
+class TaxSalesListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SaleListSerializer
+    queryset = Sale.objects.none()
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = Sale.objects.select_related("store", "cashier")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+
+        store_id = self.request.query_params.get("store_id")
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+        rule_code = (self.request.query_params.get("rule_code") or "").strip()
+
+        def _to_aware_dt(val, end_of_day):
+            if not val:
+                return None
+            dt = parse_datetime(val)
+            if dt is None:
+                d = parse_date(val)
+                if not d:
+                    return None
+                naive = datetime.combine(d, time.max if end_of_day else time.min)
+                return timezone.make_aware(naive, timezone.get_current_timezone())
+            return timezone.make_aware(dt, timezone.get_current_timezone()) if timezone.is_naive(dt) else dt
+
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        df = _to_aware_dt(date_from, False)
+        dt_ = _to_aware_dt(date_to, True)
+        if df:
+            qs = qs.filter(created_at__gte=df)
+        if dt_:
+            qs = qs.filter(created_at__lte=dt_)
+        if rule_code:
+            qs = qs.filter(
+                Q(receipt_data__tax_by_rule__contains=[{"code": rule_code}]) |
+                Q(receipt_data__totals__tax_by_rule__contains=[{"code": rule_code}])
+            )
+
+        return qs.order_by("-created_at", "-id")
+
+
+class AuditLogListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AuditLogSerializer
+    queryset = AuditLog.objects.none()
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = AuditLog.objects.select_related("sale", "store", "user")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+
+        action = (self.request.query_params.get("action") or "").strip()
+        severity = (self.request.query_params.get("severity") or "").strip()
+        store_id = self.request.query_params.get("store_id")
+        sale_id = self.request.query_params.get("sale_id")
+        user_id = self.request.query_params.get("user_id")
+        date_from = self.request.query_params.get("date_from")
+        date_to = self.request.query_params.get("date_to")
+
+        def _to_aware_dt(val, end_of_day):
+            if not val:
+                return None
+            dt = parse_datetime(val)
+            if dt is None:
+                d = parse_date(val)
+                if not d:
+                    return None
+                naive = datetime.combine(d, time.max if end_of_day else time.min)
+                return timezone.make_aware(naive, timezone.get_current_timezone())
+            return timezone.make_aware(dt, timezone.get_current_timezone()) if timezone.is_naive(dt) else dt
+
+        if action:
+            qs = qs.filter(action__iexact=action)
+        if severity:
+            qs = qs.filter(severity__iexact=severity)
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        if sale_id:
+            qs = qs.filter(sale_id=sale_id)
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        df = _to_aware_dt(date_from, False)
+        dt_ = _to_aware_dt(date_to, True)
+        if df:
+            qs = qs.filter(created_at__gte=df)
+        if dt_:
+            qs = qs.filter(created_at__lte=dt_)
+        return qs.order_by("-created_at", "-id")
+
+
+class AuditLogDetailView(generics.RetrieveAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = AuditLogSerializer
+
+    def get_queryset(self):
+        tenant = _resolve_request_tenant(self.request)
+        qs = AuditLog.objects.select_related("sale", "store", "user")
+        if tenant:
+            qs = qs.filter(tenant=tenant)
+        return qs
+
+
 class SaleReturnsListCreate(generics.ListCreateAPIView):
     """
     GET  /api/v1/orders/{pk}/returns
@@ -722,6 +905,17 @@ class SaleReturnsListCreate(generics.ListCreateAPIView):
         # assign return number
         ret.assign_return_no()
         ret.save(update_fields=["return_no"])
+        AuditLog.record(
+            tenant=sale.tenant,
+            user=request.user if request.user.is_authenticated else None,
+            sale=sale,
+            action="RETURN_DRAFT_CREATED",
+            severity="info",
+            metadata={
+                "return_id": ret.id,
+                "reason": payload.get("reason_code"),
+            },
+        )
         return Response(ReturnSerializer(ret).data, status=201)
 
 
@@ -824,6 +1018,15 @@ class ReturnFinalizeView(generics.CreateAPIView):
                     # Don't block return finalization if loyalty update fails
                     pass
 
+        AuditLog.record(
+            tenant=ret.tenant,
+            user=request.user if request.user.is_authenticated else None,
+            sale=ret.sale,
+            action="RETURN_FINALIZED",
+            severity="info",
+            metadata={"return_id": ret.id, "refund_total": str(ret.refund_total)},
+        )
+
         return Response(ReturnSerializer(ret).data, status=200)
 
     
@@ -912,4 +1115,12 @@ class ReturnVoidView(generics.CreateAPIView):
             return Response({"detail": "Only draft returns can be voided"}, status=400)
         ret.status = "void"
         ret.save(update_fields=["status"])
+        AuditLog.record(
+            tenant=ret.tenant,
+            user=request.user if request.user.is_authenticated else None,
+            sale=ret.sale,
+            action="RETURN_VOIDED",
+            severity="warning",
+            metadata={"return_id": ret.id},
+        )
         return Response({"id": ret.id, "status": ret.status})

@@ -3,17 +3,74 @@ import * as React from "react";
 
 export function SaleDetailsTab(props: {
   detail: any;
-  safeMoney: (v:any)=>string;
+  safeMoney: (v: any) => string;
   onStartReturn: () => void;
+  onOpenCustomer?: (customerId: number) => void;
+  onViewCustomerDetails?: (customerId: number) => void;
 }) {
-  const { detail, safeMoney, onStartReturn } = props;
+  const {
+    detail,
+    safeMoney,
+    onStartReturn,
+    onOpenCustomer,
+    onViewCustomerDetails,
+  } = props;
   const [showBreakdown, setShowBreakdown] = React.useState(false);
+  const customer =
+    (detail as any)?.receipt_data?.customer ||
+    (detail as any)?.customer ||
+    null;
+
 
   return (
     <>
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div><span className="text-zinc-400">Store:</span> {detail.store_name || "—"}</div>
         <div><span className="text-zinc-400">Cashier:</span> {detail.cashier_name || "—"}</div>
+        {customer && (
+          <div className="mt-2 flex flex-col gap-1 text-sm">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-zinc-400">Customer:</span>
+              <span className="text-zinc-100">
+                {customer.name ||
+                  customer.full_name ||
+                  customer.email ||
+                  customer.phone ||
+                  (customer.id ? `#${customer.id}` : "—")}
+              </span>
+              {customer.email && (
+                <span className="text-xs text-zinc-400">{customer.email}</span>
+              )}
+              {customer.phone && (
+                <span className="text-xs text-zinc-400">{customer.phone}</span>
+              )}
+            </div>
+
+            {customer.id && (onOpenCustomer || onViewCustomerDetails) && (
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                {onOpenCustomer && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenCustomer(customer.id)}
+                    className="rounded-md border border-zinc-700 px-2 py-0.5 text-xs text-zinc-100 hover:bg-zinc-800"
+                  >
+                    View history
+                  </button>
+                )}
+                {onViewCustomerDetails && (
+                  <button
+                    type="button"
+                    onClick={() => onViewCustomerDetails(customer.id)}
+                    className="rounded-md border border-zinc-700 px-2 py-0.5 text-xs text-zinc-100 hover:bg-zinc-800"
+                  >
+                    Edit profile
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div><span className="text-zinc-400">Created:</span> {new Date(detail.created_at).toLocaleString()}</div>
         <div><span className="text-zinc-400">Updated:</span> {new Date(detail.updated_at).toLocaleString()}</div>
         <div><span className="text-zinc-400">Status:</span> {detail.status}</div>
@@ -45,43 +102,43 @@ export function SaleDetailsTab(props: {
           </div>
           {(Array.isArray((detail as any)?.receipt_data?.lines) && (detail as any).receipt_data.lines.length > 0
             ? (detail as any).receipt_data.lines.map((ln: any, idx: number) => (
-                <div key={`${ln.sku ?? idx}`} className="rounded-lg border border-zinc-800 p-2.5 bg-zinc-900/40">
-                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-start text-[13px]">
-                    <div className="min-w-0">
-                      <div className="text-zinc-100 truncate">{ln.name ?? "Product"}</div>
-                      <div className="text-xs text-zinc-400 truncate">
-                        SKU: {ln.sku ?? "—"} • Qty: {ln.qty ?? "—"} • Unit: {safeMoney(ln.unit_price)}
-                      </div>
+              <div key={`${ln.sku ?? idx}`} className="rounded-lg border border-zinc-800 p-2.5 bg-zinc-900/40">
+                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-start text-[13px]">
+                  <div className="min-w-0">
+                    <div className="text-zinc-100 truncate">{ln.name ?? "Product"}</div>
+                    <div className="text-xs text-zinc-400 truncate">
+                      SKU: {ln.sku ?? "—"} • Qty: {ln.qty ?? "—"} • Unit: {safeMoney(ln.unit_price)}
                     </div>
-                    <div className="justify-self-end text-zinc-200">{safeMoney(ln.line_subtotal ?? 0)}</div>
-                    <div className="justify-self-end text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</div>
-                    <div className="justify-self-end text-blue-300">{safeMoney(ln.tax ?? 0)}</div>
-                    <div className="justify-self-end font-medium text-zinc-100">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</div>
                   </div>
-                  {showBreakdown && (
-                    <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-zinc-400">
-                      <div>Subtotal: <span className="text-zinc-200">{safeMoney(ln.line_subtotal ?? 0)}</span></div>
-                      <div>Discount: <span className="text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</span></div>
-                      <div>Tax: <span className="text-blue-300">{safeMoney(ln.tax ?? 0)}</span></div>
-                      <div>Fee: <span className="text-zinc-200">{safeMoney(ln.fee ?? 0)}</span></div>
-                      <div>Net (pre-tax): <span className="text-zinc-200">{safeMoney(ln.line_net ?? 0)}</span></div>
-                      <div>Gross after tax: <span className="text-zinc-100">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</span></div>
-                    </div>
-                  )}
+                  <div className="justify-self-end text-zinc-200">{safeMoney(ln.line_subtotal ?? 0)}</div>
+                  <div className="justify-self-end text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</div>
+                  <div className="justify-self-end text-blue-300">{safeMoney(ln.tax ?? 0)}</div>
+                  <div className="justify-self-end font-medium text-zinc-100">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</div>
                 </div>
-              ))
+                {showBreakdown && (
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-zinc-400">
+                    <div>Subtotal: <span className="text-zinc-200">{safeMoney(ln.line_subtotal ?? 0)}</span></div>
+                    <div>Discount: <span className="text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</span></div>
+                    <div>Tax: <span className="text-blue-300">{safeMoney(ln.tax ?? 0)}</span></div>
+                    <div>Fee: <span className="text-zinc-200">{safeMoney(ln.fee ?? 0)}</span></div>
+                    <div>Net (pre-tax): <span className="text-zinc-200">{safeMoney(ln.line_net ?? 0)}</span></div>
+                    <div>Gross after tax: <span className="text-zinc-100">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</span></div>
+                  </div>
+                )}
+              </div>
+            ))
             : detail.lines.map((it: any) => (
-                <div key={it.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 text-sm">
-                  <div className="truncate">
-                    <div className="text-zinc-100">{it.product_name || "Product"}</div>
-                    <div className="text-xs text-zinc-400">{it.variant_name || it.sku}</div>
-                  </div>
-                  <div className="justify-self-end">{it.quantity}</div>
-                  <div className="justify-self-end">{safeMoney(it.unit_price)}</div>
-                  <div className="justify-self-end">{safeMoney(it.tax || 0)}</div>
-                  <div className="justify-self-end font-medium">{safeMoney(it.line_total)}</div>
+              <div key={it.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 text-sm">
+                <div className="truncate">
+                  <div className="text-zinc-100">{it.product_name || "Product"}</div>
+                  <div className="text-xs text-zinc-400">{it.variant_name || it.sku}</div>
                 </div>
-              ))
+                <div className="justify-self-end">{it.quantity}</div>
+                <div className="justify-self-end">{safeMoney(it.unit_price)}</div>
+                <div className="justify-self-end">{safeMoney(it.tax || 0)}</div>
+                <div className="justify-self-end font-medium">{safeMoney(it.line_total)}</div>
+              </div>
+            ))
           )}
         </div>
       </div>
