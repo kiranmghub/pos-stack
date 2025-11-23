@@ -365,6 +365,7 @@ img{display:block;margin:8px auto}
     );
   };
 
+
   const removeLine = (id: number) => setCart(prev => prev.filter(l => l.variant.id !== id));
   const clearCart = () => setCart([]);
 
@@ -1157,31 +1158,54 @@ img{display:block;margin:8px auto}
                       })()}
                     </div>
 
-
-
-
-
-
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => changeQty(l.variant.id, -1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
+                    <button
+                      onClick={() => changeQty(l.variant.id, -1)}
+                      className="rounded bg-slate-700 p-1 hover:bg-slate-600"
+                    >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="tabular-nums min-w-[1.5rem] text-center">{l.qty}</span>
-                    <button onClick={() => changeQty(l.variant.id, +1)} className="rounded bg-slate-700 p-1 hover:bg-slate-600">
+                      <input
+                        type="number"
+                        min={0}
+                        max={999}
+                        value={l.qty}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          let n = parseInt(raw, 10);
+                          if (!Number.isFinite(n) || n < 0) n = 0;
+
+                          const delta = n - l.qty;
+                          if (delta !== 0) {
+                            changeQty(l.variant.id, delta);
+                          }
+                        }}
+                        className="w-14 rounded bg-slate-900 px-1.5 py-1 text-center text-sm tabular-nums border border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    <button
+                      onClick={() => changeQty(l.variant.id, +1)}
+                      className="rounded bg-slate-700 p-1 hover:bg-slate-600"
+                    >
                       <Plus className="h-4 w-4" />
                     </button>
-                    <button onClick={() => removeLine(l.variant.id)} className="text-red-400 hover:text-red-300">
+                    <button
+                      onClick={() => removeLine(l.variant.id)}
+                      className="text-red-400 hover:text-red-300"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                     <LineToggle
                       open={!!expandedLines[l.variant.id]}
                       onClick={() =>
-                        setExpandedLines(prev => ({ ...prev, [l.variant.id]: !prev[l.variant.id] }))
+                        setExpandedLines((prev) => ({
+                          ...prev,
+                          [l.variant.id]: !prev[l.variant.id],
+                        }))
                       }
                     />
-
                   </div>
+
                 </div>
               ))}
               {cart.length === 0 && <div className="text-center text-slate-400">No items yet</div>}
