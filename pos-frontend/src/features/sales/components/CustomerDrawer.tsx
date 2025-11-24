@@ -19,6 +19,7 @@ type CustomerDrawerProps = {
   onOpenSale?: (saleId: number) => void;
   refreshKey?: number;
   onEditCustomer?: (id: number) => void;
+  safeMoney?: (v: any) => string;
 };
 
 type CustomerDrawerTab = "overview" | "purchases" | "loyalty";
@@ -29,8 +30,10 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   onClose,
   onOpenSale,
   refreshKey,
+  safeMoney: safeMoneyProp,
 }) => {
-  const { safeMoney } = useMoney();
+  const { safeMoney: defaultMoney } = useMoney();
+  const safeMoney = safeMoneyProp || defaultMoney;
 
   const [activeTab, setActiveTab] = React.useState<CustomerDrawerTab>("overview");
   const [detail, setDetail] = React.useState<CustomerDetail | null>(null);

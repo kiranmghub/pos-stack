@@ -6,7 +6,7 @@ import {
   listSales, getSale, listInventoryStores, listReturns, listPayments, listRefunds, getPaymentSummary, getDiscountSummary, listDiscountSales,
   getTaxSummary, listTaxSales,
   deleteReturnItem, voidReturn, deleteReturn,
-  type SaleRow, type SaleDetail, type ReturnListRow, type PaymentListRow, type RefundListRow, type DiscountRuleSummary, type TaxRuleSummary, type AuditLogEntry,
+  type SaleRow, type SaleDetail, type ReturnListRow, type PaymentListRow, type RefundListRow, type DiscountRuleSummary, type TaxRuleSummary, type AuditLogEntry, type CurrencyInfo,
   listAuditLogs, getAuditLog,
 } from "./api";
 
@@ -191,8 +191,8 @@ export default function SalesPage() {
   const [wizardOpen, setWizardOpen] = React.useState(false);
   const [wizardDraft, setWizardDraft] = React.useState<null | { id: number; refund_total: number }>(null);
 
-
-  const { safeMoney } = useMoney();
+  const [currency, setCurrency] = React.useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
+  const { safeMoney } = useMoney(currency);
 
   React.useEffect(() => {
     if (
@@ -218,6 +218,16 @@ export default function SalesPage() {
       });
       setRows(res.results || []);
       setCount(Number(res.count || 0));
+      const cur = (res as any).currency || (res.results && res.results[0]?.currency) || null;
+      if (cur) {
+        setCurrency({
+          code: cur.code || cur.currency_code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      } else if (res.results?.[0]?.currency_code) {
+        setCurrency((prev) => ({ ...prev, code: res.results[0].currency_code || prev.code }));
+      }
       const last = Math.max(1, Math.ceil(Number(res.count || 0) / pageSize));
       if (page > last) setPage(last);
     } finally {
@@ -256,7 +266,20 @@ export default function SalesPage() {
     setOpenId(id);
     setActiveTab("details");
     setLoadingDetail(true);
-    try { setDetail(await getSale(id)); } finally { setLoadingDetail(false); }
+    try {
+      const d = await getSale(id);
+      setDetail(d);
+      const cur = (d as any).currency || (d as any).receipt_data?.currency || null;
+      if (cur) {
+        setCurrency({
+          code: cur.code || cur.currency_code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      } else if ((d as any).currency_code) {
+        setCurrency((prev) => ({ ...prev, code: (d as any).currency_code || prev.code }));
+      }
+    } finally { setLoadingDetail(false); }
   }
 
   // Open drawer + jump directly to Returns tab
@@ -917,6 +940,7 @@ export default function SalesPage() {
             onPageChange={setPage}
             onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
             onOpenReturns={openReturns}
+            safeMoney={safeMoney}
           />
         </>
       )}
@@ -1249,6 +1273,7 @@ export default function SalesPage() {
           onSelectCustomer={(id) => setOpenCustomerId(id)}               // row click -> view drawer
           onViewCustomerDetails={(id) => setEditingCustomerId(id)}       // "View details" -> edit drawer
           refreshKey={customersRefreshKey}
+          safeMoney={safeMoney}
         />
       )}
 
@@ -1429,7 +1454,20 @@ export default function SalesPage() {
         draft={wizardDraft}
         onFinalized={async () => {
           // refresh sale detail and returns list after finalize
-          if (openId) setDetail(await getSale(openId));
+          if (openId) {
+            const d = await getSale(openId);
+            setDetail(d);
+            const cur = (d as any).currency || (d as any).receipt_data?.currency || null;
+            if (cur) {
+              setCurrency({
+                code: cur.code || cur.currency_code || "USD",
+                symbol: cur.symbol || undefined,
+                precision: cur.precision ?? currency.precision ?? 2,
+              });
+            } else if ((d as any).currency_code) {
+              setCurrency((prev) => ({ ...prev, code: (d as any).currency_code || prev.code }));
+            }
+          }
           if (openId && activeTab === "returns") {
             const data = await listReturnsForSale(openId);
             setReturns(Array.isArray(data) ? data : (data?.results ?? []));
@@ -1437,6 +1475,7 @@ export default function SalesPage() {
           // NEW: refresh customers summary + drawer
           setCustomersRefreshKey((x) => x + 1);
         }}
+        safeMoney={safeMoney}
       />
 
       <CustomerDrawer
@@ -1445,6 +1484,7 @@ export default function SalesPage() {
         onClose={() => setOpenCustomerId(null)}
         onOpenSale={(id) => openDetail(id)}
         refreshKey={customersRefreshKey}
+        safeMoney={safeMoney}
       />
 
       <CustomerEditDrawer

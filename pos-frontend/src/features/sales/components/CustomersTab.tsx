@@ -11,6 +11,7 @@ type CustomersTabProps = {
   onSelectCustomer: (id: number) => void;
   onViewCustomerDetails: (id: number) => void;
   refreshKey?: number;
+  safeMoney?: (v: any) => string;
 };
 
 
@@ -18,8 +19,10 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
   onSelectCustomer,
   onViewCustomerDetails,
   refreshKey,
+  safeMoney: safeMoneyProp,
 }) => {
-  const { safeMoney } = useMoney();
+  const { safeMoney: defaultMoney } = useMoney();
+  const safeMoney = safeMoneyProp || defaultMoney;
 
   const [search, setSearch] = React.useState("");
   const [dateFrom, setDateFrom] = React.useState("");

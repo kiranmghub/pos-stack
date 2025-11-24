@@ -32,6 +32,7 @@ class Sale(models.Model):
     )
 
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    currency_code = models.CharField(max_length=3, default="USD")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     # receipt snapshot
@@ -80,6 +81,7 @@ class SalePayment(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="pos_payments")
 
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    currency_code = models.CharField(max_length=3, default="USD")
     amount = models.DecimalField(max_digits=10, decimal_places=2)             # applied to this sale
     received = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # cash given (for cash)
     change = models.DecimalField(max_digits=10, decimal_places=2, default=0)    # cash returned

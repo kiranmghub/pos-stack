@@ -168,6 +168,11 @@ class InventoryOverviewView(APIView):
                 "low_stock_count": low_count,
                 "recent": recent_data,
                 "summary": summary,  # kept for UI (contains total_skus/total_qty/total_value)
+                "currency": {
+                    "code": getattr(tenant, "currency_code", "USD"),
+                    "symbol": getattr(tenant, "currency_symbol", None),
+                    "precision": getattr(tenant, "currency_precision", 2),
+                },
             },
             status=200,
         )
@@ -236,7 +241,15 @@ class StockByStoreListView(APIView):
             "low_stock": int(v.on_hand or 0) <= LOW_STOCK_THRESHOLD,
         } for v in rows]
 
-        return Response({"results": data, "count": total}, status=200)
+        return Response({
+            "results": data,
+            "count": total,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
+        }, status=200)
 
 
 class AdjustmentReasonsView(APIView):

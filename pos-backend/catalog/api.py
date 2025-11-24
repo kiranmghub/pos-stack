@@ -712,8 +712,17 @@ class CatalogProductListCreateView(ListCreateAPIView):
         total = qs.count()
         start = (page - 1) * page_size
         items = qs[start:start + page_size]
-        data = ProductListSerializer(items, many=True, context={"request": request}).data
-        return Response({"count": total, "results": data}, status=200)
+        tenant = _resolve_request_tenant(request)
+        data = ProductListSerializer(items, many=True, context={"request": request, "tenant": tenant}).data
+        return Response({
+            "count": total,
+            "results": data,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
+        }, status=200)
 
     def create(self, request, *args, **kwargs):
         tenant = _resolve_request_tenant(request)
@@ -1208,7 +1217,5 @@ class BarcodeGenerateView(APIView):
             if not Variant.objects.filter(product__tenant=tenant, barcode__iexact=code).exists():
                 return Response({"barcode": code, "type": btype})
         return Response({"detail": "Could not allocate unique barcode"}, status=409)
-
-
 
 

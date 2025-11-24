@@ -3,6 +3,8 @@ import { ensureAuthedFetch } from "@/components/AppShell";
 
 const API = import.meta.env.VITE_API_BASE || "";
 
+export type CurrencyInfo = { code: string; symbol?: string | null; precision?: number | null };
+
 export type InvReason = { id: number; code: string; name: string };
 export type InvStockRow = {
   id: number;
@@ -19,7 +21,7 @@ export async function getOverview(params: { store_id?: number }) {
   if (params.store_id) u.searchParams.set("store_id", String(params.store_id));
   const res = await ensureAuthedFetch(u.toString());
   if (!res.ok) throw new Error("Failed to load overview");
-  return res.json() as Promise<{ on_hand_value: string; low_stock_count: number; recent: any[] }>;
+  return res.json() as Promise<{ on_hand_value: string; low_stock_count: number; recent: any[]; currency?: CurrencyInfo }>;
 }
 
 export async function listReasons() {
@@ -34,7 +36,7 @@ export async function listStock(params: {
   category?: string;
   page?: number;
   page_size?: number;
-}) {
+}): Promise<{ results: InvStockRow[]; count: number; currency?: CurrencyInfo }> {
   const u = new URL(`${API}/api/v1/inventory/stock`, window.location.origin);
   u.searchParams.set("store_id", String(params.store_id));
   if (params.q) u.searchParams.set("q", params.q);
@@ -43,7 +45,7 @@ export async function listStock(params: {
   if (params.page_size) u.searchParams.set("page_size", String(params.page_size));
   const res = await ensureAuthedFetch(u.toString());
   if (!res.ok) throw new Error("Failed to load stock");
-  return res.json() as Promise<{ results: InvStockRow[]; count: number }>;
+  return res.json() as Promise<{ results: InvStockRow[]; count: number; currency?: CurrencyInfo }>;
 }
 
 export async function createAdjustment(payload: {

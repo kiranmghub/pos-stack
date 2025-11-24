@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useNotify } from "@/lib/notify";
 import { startReturnForSale, putReturnItems, finalizeReturn } from "../api";
-import { useMoney } from "../useMoney";
 
 type RefundLine = { method: "CASH" | "CARD" | "STORE_CREDIT" | "OTHER"; amount: number; external_ref?: string };
 
@@ -16,16 +15,17 @@ function StepPill({ n, active, label }: { n: number; active: boolean; label: str
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
 
 export default function StartReturnWizardModal({
-    open, onClose, saleDetail, draft, onFinalized,
+    open, onClose, saleDetail, draft, onFinalized, safeMoney: safeMoneyProp,
 }: {
     open: boolean;
     onClose: () => void;
     saleDetail: any; // current SaleDetail
     draft: { id: number; refund_total: number } | null; // may be null at open
     onFinalized: () => Promise<void> | void;            // refresh detail/returns after finalize
+    safeMoney: (v: any) => string;
 }) {
     const { error, success } = useNotify();
-    const { safeMoney } = useMoney();
+    const safeMoney = safeMoneyProp;
 
     const [step, setStep] = React.useState<1 | 2>(1); // 1 = Items, 2 = Refund
     const [busy, setBusy] = React.useState(false);

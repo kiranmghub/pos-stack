@@ -18,6 +18,7 @@ import {
   type QuoteOut,
   getActiveDiscountRules,
   type DiscountRule,
+  type CurrencyInfo,
 } from "./api";
 
 import type { PosCustomer } from "./api";
@@ -42,6 +43,27 @@ function toNum(s: any, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function formatCurrency(value: number | string, currency: CurrencyInfo) {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  const precision = Number.isFinite(currency?.precision as number)
+    ? Number(currency.precision)
+    : 2;
+  const code = currency?.code || "USD";
+  const symbol = currency?.symbol ?? null;
+  const safe = Number.isFinite(num) ? num : 0;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(safe);
+  } catch {
+    const prefix = symbol ? symbol : `${code} `;
+    return `${prefix}${safe.toFixed(precision)}`;
+  }
+}
+
 // ---------- types ----------
 type CartLine = { variant: VariantLite; qty: number; line_discount?: number };
 
@@ -58,6 +80,7 @@ export default function PosScreen() {
     const s = localStorage.getItem(STORE_KEY);
     return s ? Number(s) : null;
   });
+  const [currency, setCurrency] = useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
 
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<VariantLite[]>([]);
@@ -82,6 +105,7 @@ export default function PosScreen() {
   const [autoDiscRules, setAutoDiscRules] = useState<DiscountRule[]>([]);
   const [couponDiscRules, setCouponDiscRules] = useState<DiscountRule[]>([]);
   const [couponRuleByCode, setCouponRuleByCode] = useState<Record<string, DiscountRule>>({});
+  const money = (value: number | string) => formatCurrency(value, currency);
 
 
 
@@ -145,19 +169,20 @@ export default function PosScreen() {
   }
 
   function buildReceiptHtml(r: any, qr?: string | null) {
+    const m = (val: any) => money(val);
     const lines = (r?.lines || []).map(
       (l: any) => `
         <tr>
           <td style="padding:4px 0">${l.name} (${l.sku || "-"})</td>
           <td style="text-align:right;padding:4px 0">${l.qty}</td>
-          <td style="text-align:right;padding:4px 0">$${l.unit_price}</td>
-          <td style="text-align:right;padding:4px 0">$${l.line_subtotal ?? l.line_total ?? l.line_net}</td>
+          <td style="text-align:right;padding:4px 0">${m(l.unit_price)}</td>
+          <td style="text-align:right;padding:4px 0">${m(l.line_subtotal ?? l.line_total ?? l.line_net)}</td>
         </tr>`
     ).join("");
 
     const taxLines = (r?.totals?.tax_by_rule || [])
       .map((t: any) =>
-        `<tr><td>${t.name}</td><td style="text-align:right">$${t.amount}</td></tr>`
+        `<tr><td>${t.name}</td><td style="text-align:right">${m(t.amount)}</td></tr>`
       ).join("");
 
     return `<!doctype html>
@@ -192,16 +217,16 @@ img{display:block;margin:8px auto}
   </table>
   <div class="bar"></div>
   <table class="totals">
-    <tr><td>Subtotal</td><td style="text-align:right">$${r?.totals?.subtotal || "0.00"}</td></tr>
+    <tr><td>Subtotal</td><td style="text-align:right">${m(r?.totals?.subtotal || "0.00")}</td></tr>
     ${taxLines}
-    ${r?.totals?.discount ? `<tr><td>Total Discounts</td><td style="text-align:right">-$${r.totals.discount}</td></tr>` : ""}
-    <tr><td>Total Taxes</td><td style="text-align:right">$${r?.totals?.tax || "0.00"}</td></tr>
-    ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">$${r.totals.fees}</td></tr>` : ""}
-    <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>$${r?.totals?.grand_total || "0.00"}</strong></td></tr>
+    ${r?.totals?.discount ? `<tr><td>Total Discounts</td><td style="text-align:right">${m(-r.totals.discount)}</td></tr>` : ""}
+    <tr><td>Total Taxes</td><td style="text-align:right">${m(r?.totals?.tax || "0.00")}</td></tr>
+    ${r?.totals?.fees ? `<tr><td>Fees</td><td style="text-align:right">${m(r.totals.fees)}</td></tr>` : ""}
+    <tr><td><strong>Grand Total</strong></td><td style="text-align:right"><strong>${m(r?.totals?.grand_total || "0.00")}</strong></td></tr>
   </table>
   <div class="bar"></div>
   <div>Cashier: ${r?.cashier?.username || "-"}</div>
-  ${r?.payment ? `<div>Payment: ${r.payment.type}${r.payment.received ? ` (received $${r.payment.received})` : ""}${r.payment.change ? `, change $${r.payment.change}` : ""}</div>` : ""}
+  ${r?.payment ? `<div>Payment: ${r.payment.type}${r.payment.received ? ` (received ${m(r.payment.received)})` : ""}${r.payment.change ? `, change ${m(r.payment.change)}` : ""}</div>` : ""}
   ${qr ? `<img width="160" height="160" src="${qr}" alt="QR" />` : ""}
   <div class="center muted">Thank you for your business!</div>
   <script>window.onafterprint=()=>window.close&&window.close();</script>
@@ -246,6 +271,14 @@ img{display:block;margin:8px auto}
         //   localStorage.setItem(STORE_KEY, String(first.id));
         // }
         setStores(safe);
+        const current = safe.find(s => s.id === storeId) || safe[0];
+        if (current) {
+          setCurrency({
+            code: current.currency_code || "USD",
+            symbol: current.currency_symbol || undefined,
+            precision: current.currency_precision ?? 2,
+          });
+        }
         if (safe.length > 0) {
           if (!storeId) {
             const first = safe[0];
@@ -276,8 +309,15 @@ img{display:block;margin:8px auto}
     if (!storeId) return;
     (async () => {
       try {
-        const list = await searchProducts({ store_id: storeId, query });
+        const { products: list, currency: cur } = await searchProducts({ store_id: storeId, query });
         setProducts(list);
+        if (cur) {
+          setCurrency({
+            code: cur.code || "USD",
+            symbol: cur.symbol || undefined,
+            precision: cur.precision ?? currency.precision ?? 2,
+          });
+        }
       } catch (e: any) {
         setMsg(e.message || "Failed to load products");
       }
@@ -428,12 +468,19 @@ img{display:block;margin:8px auto}
       try {
         setQuoteError(null);
         if (quoteLines.length === 0) { setQuote(null); return; }
-        const q = await quoteTotals({
+        const { quote: q, currency: cur } = await quoteTotals({
           store_id: storeId!,
           lines: quoteLines,
           coupon_codes: appliedCoupons.map(x => x.code),
         });
         setQuote(q);
+        if (cur) {
+          setCurrency({
+            code: cur.code || "USD",
+            symbol: cur.symbol || undefined,
+            precision: cur.precision ?? currency.precision ?? 2,
+          });
+        }
       } catch (e: any) {
         setQuote(null);
         setQuoteError(e?.message || "Failed to get totals");
@@ -464,6 +511,14 @@ img{display:block;margin:8px auto}
       };
       const res = await checkout(payload);
       console.log("checkout response", res); // quick sanity check
+      if ((res as any).currency) {
+        const cur = (res as any).currency as CurrencyInfo;
+        setCurrency({
+          code: cur.code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      }
 
 
       // legacy summary
@@ -477,6 +532,14 @@ img{display:block;margin:8px auto}
       // open full receipt modal
       setLastReceipt((res as any).receipt || null);
       setLastQR((res as any).qr_png_data_url || null);
+      if ((res as any).receipt?.currency) {
+        const cur = (res as any).receipt.currency as CurrencyInfo;
+        setCurrency({
+          code: cur.code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      }
       if ((res as any).receipt) setReceiptOpen(true);
 
       setMsg(`Sale #${res.sale_id} completed`);
@@ -720,6 +783,14 @@ img{display:block;margin:8px auto}
                   onChange={(e) => {
                     const v = Number(e.target.value);
                     setStoreId(v);
+                    const selected = stores.find(s => s.id === v);
+                    if (selected) {
+                      setCurrency({
+                        code: selected.currency_code || "USD",
+                        symbol: selected.currency_symbol || undefined,
+                        precision: selected.currency_precision ?? 2,
+                      });
+                    }
                     localStorage.setItem(STORE_KEY, String(v));
                   }}
                   className="bg-transparent outline-none"
@@ -778,12 +849,19 @@ img{display:block;margin:8px auto}
                     setCoupon(""); // clear input
 
                     // re-quote immediately with all coupons
-                    const q = await quoteTotals({
+                    const { quote: q, currency: cur } = await quoteTotals({
                       store_id: storeId!,
                       lines: quoteLines,
                       coupon_codes: next.map(x => x.code),
                     });
                     setQuote(q);
+                    if (cur) {
+                      setCurrency({
+                        code: cur.code || "USD",
+                        symbol: cur.symbol || undefined,
+                        precision: cur.precision ?? currency.precision ?? 2,
+                      });
+                    }
 
                   } catch (err: any) {
                     setCouponOk(false);
@@ -829,12 +907,19 @@ img{display:block;margin:8px auto}
                         }
 
                         if (storeId && quoteLines.length) {
-                          const q = await quoteTotals({
+                          const { quote: q, currency: cur } = await quoteTotals({
                             store_id: storeId,
                             lines: quoteLines,
                             coupon_codes: next.map(x => x.code),
                           });
                           setQuote(q);
+                          if (cur) {
+                            setCurrency({
+                              code: cur.code || "USD",
+                              symbol: cur.symbol || undefined,
+                              precision: cur.precision ?? currency.precision ?? 2,
+                            });
+                          }
                         }
                       }}
                       className="rounded bg-slate-700 px-1.5 py-0.5 text-xs hover:bg-slate-600"
@@ -947,7 +1032,7 @@ img{display:block;margin:8px auto}
                       {(() => {
                         const pv = pricePreviewForVariant(p, autoDiscRules, couponDiscRules);
                         if (!pv) {
-                          return <div className="text-sm text-slate-400">${toMoney(p.price)}</div>;
+                          return <div className="text-sm text-slate-400">{money(p.price)}</div>;
                         }
                         const orig = toMoney(pv.orig);
                         const fin = toMoney(pv.final);
@@ -955,15 +1040,15 @@ img{display:block;margin:8px auto}
                           <div className="text-sm">
                             {pv.final < pv.orig ? (
                               <>
-                                <span className="text-slate-400 line-through mr-2">${orig}</span>
-                                <span className="text-emerald-300 font-semibold">${fin}</span>
+                                <span className="text-slate-400 line-through mr-2">{money(orig)}</span>
+                                <span className="text-emerald-300 font-semibold">{money(fin)}</span>
                                 {pv.hasReceipt && (
                                   <span className="ml-2 text-xs text-slate-400">(more at checkout)</span>
                                 )}
                               </>
                             ) : (
                               <>
-                                <span className="text-slate-200">${orig}</span>
+                                <span className="text-slate-200">{money(orig)}</span>
                                 {pv.hasReceipt && (
                                   <span className="ml-2 text-xs text-slate-400">(savings at checkout)</span>
                                 )}
@@ -1063,7 +1148,7 @@ img{display:block;margin:8px auto}
 
                     <hr className="border-slate-700/60 my-1" />
                     <div className="text-sm text-slate-400">
-                      ${toMoney(l.variant.price)} × {l.qty}
+                      {money(l.variant.price)} × {l.qty}
                       {(() => {
                         const qLine = quote?.lines?.find(
                           (ln: any) => ln.variant_id === l.variant.id
@@ -1083,13 +1168,13 @@ img{display:block;margin:8px auto}
                           <span className="ml-2">
                             {dSum > 0 && (
                               <span className="text-emerald-400/90">
-                                {" "}–${toMoney(dSum)} discounts
+                                {" "}–{money(dSum)} discounts
                               </span>
                             )}
                             {tSum > 0 && (
                               <span className="text-amber-400/90">
                                 {dSum > 0 ? ", " : " "}
-                                +${toMoney(tSum)} tax
+                                +{money(tSum)} tax
                               </span>
                             )}
                           </span>
@@ -1128,7 +1213,7 @@ img{display:block;margin:8px auto}
                                       className="flex justify-between text-xs"
                                     >
                                       <span className="truncate">{d.name}</span>
-                                      <span className="tabular-nums">-${toMoney(d.amount)}</span>
+                                      <span className="tabular-nums">{money(-toNum(d.amount))}</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -1147,7 +1232,7 @@ img{display:block;margin:8px auto}
                                       className="flex justify-between text-xs"
                                     >
                                       <span className="truncate">{t.name}</span>
-                                      <span className="tabular-nums">+${toMoney(t.amount)}</span>
+                                      <span className="tabular-nums">+{money(t.amount)}</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -1225,14 +1310,14 @@ img{display:block;margin:8px auto}
 
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="tabular-nums">${toMoney(showSub)}</span>
+                <span className="tabular-nums">{money(showSub)}</span>
               </div>
 
               {/* Optional per-rule discount lines (if backend ever returns them) */}
               {!lastReceipt && (quote?.discount_by_rule || []).map((d: any) => (
                 <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
                   <span>{d.name}</span>
-                  <span className="tabular-nums">-${toMoney(d.amount)}</span>
+                  <span className="tabular-nums">{money(-toNum(d.amount))}</span>
                 </div>
               ))}
 
@@ -1240,7 +1325,7 @@ img{display:block;margin:8px auto}
               {!!showDisc && !lastReceipt && (
                 <div className="flex justify-between text-sm">
                   <span>Total Discounts</span>
-                  <span className="tabular-nums">-${toMoney(showDisc)}</span>
+                  <span className="tabular-nums">{money(-showDisc)}</span>
                 </div>
               )}
 
@@ -1248,17 +1333,17 @@ img{display:block;margin:8px auto}
               {!lastReceipt && (quote?.tax_by_rule || []).map((r: any) => (
                 <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
                   <span>{r.name}</span>
-                  <span className="tabular-nums">${toMoney(r.amount)}</span>
+                  <span className="tabular-nums">{money(r.amount)}</span>
                 </div>
               ))}
 
               <div className="flex justify-between">
                 <span>Total Taxes</span>
-                <span className="tabular-nums">${toMoney(showTax)}</span>
+                <span className="tabular-nums">{money(showTax)}</span>
               </div>
 
               <div className="flex justify-between font-semibold text-lg">
-                <span>Total</span><span className="tabular-nums">${toMoney(showGrand)}</span>
+                <span>Total</span><span className="tabular-nums">{money(showGrand)}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-3">
@@ -1309,6 +1394,7 @@ img{display:block;margin:8px auto}
           {showCash && (
             <CashModal
               total={showGrand}
+              currency={currency}
               onClose={() => setShowCash(false)}
               onSubmit={(cashAmount) =>
                 submitCheckout({
@@ -1324,6 +1410,7 @@ img{display:block;margin:8px auto}
           {showCard && (
             <CardModal
               total={showGrand}
+              currency={currency}
               onClose={() => setShowCard(false)}
               onSubmit={(card) =>
                 submitCheckout({
@@ -1384,61 +1471,61 @@ img{display:block;margin:8px auto}
                           <div className="text-xs text-slate-400">{l.sku || "-"}</div>
                         </div>
                         <div className="tabular-nums text-right">
-                          <div className="text-slate-400">{l.qty} × ${l.unit_price}</div>
-                          <div className="font-medium">${l.line_subtotal ?? l.line_total ?? l.line_net}</div>
+                          <div className="text-slate-400">{l.qty} × {money(l.unit_price)}</div>
+                          <div className="font-medium">{money(l.line_subtotal ?? l.line_total ?? l.line_net)}</div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span className="tabular-nums">${lastReceipt?.totals?.subtotal || "0.00"}</span>
-                    </div>
-                    {(lastReceipt?.totals?.discount_by_rule || []).map((d: any) => (
-                      <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
-                        <span>{d.name}</span>
-                        <span className="tabular-nums">-${d.amount}</span>
-                      </div>
-                    ))}
-
-                    {!!lastReceipt?.totals?.discount && (
+                    <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span>Total Discounts</span>
-                        <span className="tabular-nums">-${lastReceipt?.totals?.discount}</span>
+                        <span>Subtotal</span>
+                        <span className="tabular-nums">{money(lastReceipt?.totals?.subtotal || "0.00")}</span>
+                      </div>
+                      {(lastReceipt?.totals?.discount_by_rule || []).map((d: any) => (
+                        <div key={d.rule_id ?? d.code ?? d.name} className="flex justify-between text-sm opacity-90">
+                          <span>{d.name}</span>
+                          <span className="tabular-nums">{money(-toNum(d.amount))}</span>
+                        </div>
+                      ))}
+
+                      {!!lastReceipt?.totals?.discount && (
+                        <div className="flex justify-between">
+                          <span>Total Discounts</span>
+                          <span className="tabular-nums">{money(-toNum(lastReceipt?.totals?.discount))}</span>
+                        </div>
+                      )}
+                      {/* NEW: per-rule tax lines, if present */}
+                      {(lastReceipt?.totals?.tax_by_rule || []).map((r: any) => (
+                        <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
+                          <span>{r.name}</span>
+                          <span className="tabular-nums">{money(r.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between">
+                        <span>Total Taxes</span>
+                        <span className="tabular-nums">{money(lastReceipt?.totals?.tax || "0.00")}</span>
+                      </div>
+                      {!!lastReceipt?.totals?.fees && (
+                        <div className="flex justify-between">
+                          <span>Fees</span>
+                          <span className="tabular-nums">{money(lastReceipt?.totals?.fees)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-lg font-semibold">
+                        <span>Total</span>
+                        <span className="tabular-nums">{money(lastReceipt?.totals?.grand_total || "0.00")}</span>
+                      </div>
+                    </div>
+
+                    {lastReceipt?.payment && (
+                      <div className="rounded-lg bg-slate-800 p-3 text-sm">
+                        <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
+                        {lastReceipt.payment.received && (<div>Received: {money(lastReceipt.payment.received)}</div>)}
+                        {lastReceipt.payment.change && (<div>Change: {money(lastReceipt.payment.change)}</div>)}
                       </div>
                     )}
-                    {/* NEW: per-rule tax lines, if present */}
-                    {(lastReceipt?.totals?.tax_by_rule || []).map((r: any) => (
-                      <div key={r.rule_id ?? r.code ?? r.name} className="flex justify-between text-sm opacity-90">
-                        <span>{r.name}</span>
-                        <span className="tabular-nums">${r.amount}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between">
-                      <span>Total Taxes</span>
-                      <span className="tabular-nums">${lastReceipt?.totals?.tax || "0.00"}</span>
-                    </div>
-                    {!!lastReceipt?.totals?.fees && (
-                      <div className="flex justify-between">
-                        <span>Fees</span>
-                        <span className="tabular-nums">${lastReceipt?.totals?.fees}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Total</span>
-                      <span className="tabular-nums">${lastReceipt?.totals?.grand_total || "0.00"}</span>
-                    </div>
-                  </div>
-
-                  {lastReceipt?.payment && (
-                    <div className="rounded-lg bg-slate-800 p-3 text-sm">
-                      <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
-                      {lastReceipt.payment.received && (<div>Received: ${lastReceipt.payment.received}</div>)}
-                      {lastReceipt.payment.change && (<div>Change: ${lastReceipt.payment.change}</div>)}
-                    </div>
-                  )}
 
                   {lastQR && (
                     <div className="flex justify-center">
@@ -1475,13 +1562,14 @@ img{display:block;margin:8px auto}
 
 /* ---------------------------- Cash Modal ---------------------------- */
 function CashModal({
-  total, onClose, onSubmit,
-}: { total: number; onClose: () => void; onSubmit: (cashAmount: number) => void; }) {
+  total, onClose, onSubmit, currency,
+}: { total: number; onClose: () => void; onSubmit: (cashAmount: number) => void; currency: CurrencyInfo; }) {
   const [tendered, setTendered] = useState<string>("");
   const amount = parseFloat(tendered || "0");
   const change = Math.max(0, amount - total);
   const exact = Math.abs(amount - total) < 0.005;
   const canPay = amount >= total - 0.005;
+  const m = (v: number) => formatCurrency(v, currency);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
@@ -1495,7 +1583,7 @@ function CashModal({
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span>Total due</span>
-            <span className="font-semibold">${toMoney(total)}</span>
+            <span className="font-semibold">{m(total)}</span>
           </div>
           <label className="block text-sm">
             Cash tendered
@@ -1508,15 +1596,15 @@ function CashModal({
           </label>
           <div className="flex justify-between text-sm">
             <span>Change</span>
-            <span className="font-semibold">${toMoney(change)}</span>
+            <span className="font-semibold">{m(change)}</span>
           </div>
-          {!canPay && (<div className="text-amber-300 text-sm">Insufficient cash. Total is ${toMoney(total)}.</div>)}
+          {!canPay && (<div className="text-amber-300 text-sm">Insufficient cash. Total is {m(total)}.</div>)}
           <div className="pt-2 flex gap-2">
             <button onClick={() => setTendered(toMoney(total))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
-              Exact ${toMoney(total)}
+              Exact {m(total)}
             </button>
             <button onClick={() => setTendered(toMoney(Math.ceil(total)))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
-              Round ↑ ${toMoney(Math.ceil(total))}
+              Round ↑ {m(Math.ceil(total))}
             </button>
           </div>
         </div>
@@ -1534,13 +1622,14 @@ function CashModal({
 
 /* ---------------------------- Card Modal ---------------------------- */
 function CardModal({
-  total, onClose, onSubmit,
-}: { total: number; onClose: () => void; onSubmit: (card: { brand?: string; last4?: string; auth?: string; reference?: string }) => void; }) {
+  total, onClose, onSubmit, currency,
+}: { total: number; onClose: () => void; onSubmit: (card: { brand?: string; last4?: string; auth?: string; reference?: string }) => void; currency: CurrencyInfo; }) {
   const [brand, setBrand] = useState<string>("VISA");
   const [last4, setLast4] = useState<string>("");
   const [auth, setAuth] = useState<string>("");
   const [reference, setReference] = useState<string>("");
   const canPay = /^\d{4}$/.test(last4 || "") && (auth?.length ?? 0) >= 4;
+  const m = (v: number) => formatCurrency(v, currency);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
@@ -1552,7 +1641,7 @@ function CardModal({
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span>Total to charge</span>
-            <span className="font-semibold">${toMoney(total)}</span>
+            <span className="font-semibold">{m(total)}</span>
           </div>
           <label className="block text-sm">
             Card brand
@@ -1812,4 +1901,3 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
     </div>
   );
 };
-

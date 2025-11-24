@@ -11,6 +11,9 @@ class Tenant(TimeStampedModel):
     """
     name = models.CharField(max_length=120)
     code = models.SlugField(unique=True)
+    currency_code = models.CharField(max_length=3, default="USD")
+    currency_symbol = models.CharField(max_length=4, blank=True, null=True)
+    currency_precision = models.PositiveSmallIntegerField(default=2)
     is_active = models.BooleanField(default=True)
 
     class Meta:

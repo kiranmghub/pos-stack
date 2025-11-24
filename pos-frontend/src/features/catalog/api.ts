@@ -10,6 +10,7 @@ import type {
   UpdateVariantDto,
   Variant,
   ID,
+  CurrencyInfo,
 } from "./types";
 
 
@@ -73,7 +74,7 @@ export async function listProducts(params: {
   sort?: "name" | "price_min" | "price_max" | "on_hand" | "active";
   direction?: "asc" | "desc";
   store_id?: string | number;
-}) {
+}): Promise<{ count: number; results: ProductListItem[]; currency?: CurrencyInfo }> {
   const q = new URLSearchParams();
   if (params.page) q.set("page", String(params.page));
   if (params.page_size) q.set("page_size", String(params.page_size));
@@ -305,6 +306,5 @@ export async function listInventoryStores(): Promise<{ id: number; name: string 
   if (data && Array.isArray(data.results)) return data.results;
   return [];
 }
-
 
 

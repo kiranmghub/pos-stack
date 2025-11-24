@@ -27,14 +27,29 @@ import {
 import TransfersPage from "@/features/inventory/TransfersPage";
 import CountsPage from "@/features/inventory/CountsPage";
 
-function toMoney(n: string | number) {
-  const x = typeof n === "string" ? parseFloat(n) : n;
-  return (isNaN(x) ? 0 : x).toFixed(2);
+type CurrencyInfo = { code?: string; symbol?: string | null; precision?: number | null };
+function formatCurrency(n: string | number, currency: CurrencyInfo) {
+  const num = typeof n === "string" ? parseFloat(n) : n;
+  const precision = Number.isFinite(currency?.precision as number) ? Number(currency.precision) : 2;
+  const safe = Number.isFinite(num) ? num : 0;
+  const code = currency?.code || "USD";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(safe);
+  } catch {
+    const sym = currency?.symbol || code;
+    return `${sym}${safe.toFixed(precision)}`;
+  }
 }
 
 export default function InventoryRoute() {
   const [stores, setStores] = useState<StoreLite[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
+  const [currency, setCurrency] = useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
   // NEW: include "transfers" in the union
   const [active, setActive] = useState<"overview" | "stock" | "ledger" | "transfers" | "counts">("stock");
 
@@ -44,6 +59,14 @@ export default function InventoryRoute() {
       const arr = Array.isArray(s) ? s : (s as any).results || [];
       setStores(arr);
       if (!storeId && arr.length) setStoreId(arr[0].id);
+      const current = arr.find((x) => x.id === storeId) || arr[0];
+      if (current) {
+        setCurrency({
+          code: (current as any).currency_code || "USD",
+          symbol: (current as any).currency_symbol || undefined,
+          precision: (current as any).currency_precision ?? 2,
+        });
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -59,7 +82,18 @@ export default function InventoryRoute() {
         <div className="flex items-center gap-2">
           <select
             value={storeId ?? ""}
-            onChange={(e) => setStoreId(Number(e.target.value))}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setStoreId(v);
+              const s = stores.find((x) => x.id === v);
+              if (s) {
+                setCurrency({
+                  code: (s as any).currency_code || "USD",
+                  symbol: (s as any).currency_symbol || undefined,
+                  precision: (s as any).currency_precision ?? 2,
+                });
+              }
+            }}
             className="rounded-lg bg-slate-800 px-3 py-2 outline-none"
           >
             {stores.map((s) => (
@@ -86,7 +120,7 @@ export default function InventoryRoute() {
       {storeId ? (
         <>
           {active === "overview" && <OverviewTab storeId={storeId} />}
-          {active === "stock" && <StockTab storeId={storeId} />}
+          {active === "stock" && <StockTab storeId={storeId} currency={currency} setCurrency={setCurrency} />}
           {active === "ledger" && <LedgerTab storeId={storeId} />}
           {/* NEW: render Transfers page (self-contained) */}
           {active === "transfers" && <TransfersPage />}
@@ -125,7 +159,7 @@ function TabButton({
 
 /* -------------------- Overview -------------------- */
 function OverviewTab({ storeId }: { storeId: number }) {
-  const [data, setData] = useState<{ on_hand_value?: string; low_stock_count?: number; recent?: any[] } | null>(null);
+  const [data, setData] = useState<{ on_hand_value?: string; low_stock_count?: number; recent?: any[]; currency?: CurrencyInfo } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -139,12 +173,12 @@ function OverviewTab({ storeId }: { storeId: number }) {
     })();
   }, [storeId]);
 
-  const { on_hand_value, low_stock_count, recent } = data || {};
+  const { on_hand_value, low_stock_count, recent, currency: cur } = data || {};
 
   return (
     <div className="p-4 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="On-hand value" value={`$${toMoney(on_hand_value || "0")}`} />
+        <KpiCard label="On-hand value" value={formatCurrency(on_hand_value || "0", cur || {})} />
         <KpiCard label="Low-stock items" value={String(low_stock_count ?? 0)} />
       </div>
 
@@ -200,7 +234,7 @@ function KpiCard({ label, value }: { label: string; value: string }) {
 }
 
 /* -------------------- Stock by Store -------------------- */
-function StockTab({ storeId }: { storeId: number }) {
+function StockTab({ storeId, currency, setCurrency }: { storeId: number; currency: CurrencyInfo; setCurrency: (c: CurrencyInfo) => void }) {
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<InvStockRow[]>([]);
   const [count, setCount] = useState(0);
@@ -220,6 +254,14 @@ function StockTab({ storeId }: { storeId: number }) {
       setReasons(rs);
       setRows(st.results);
       setCount(st.count);
+      if ((st as any).currency) {
+        const cur = (st as any).currency as CurrencyInfo;
+        setCurrency({
+          code: cur.code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      }
     } catch (e: any) {
       setMsg(e.message || "Failed to load stock");
       setRows([]);
@@ -298,7 +340,7 @@ function StockTab({ storeId }: { storeId: number }) {
                     {r.on_hand}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-center">${toMoney(r.price || "0.00")}</td>
+                <td className="px-3 py-2 text-center">{formatCurrency(r.price || "0.00", currency)}</td>
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-center gap-2">
                     <button

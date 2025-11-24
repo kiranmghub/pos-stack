@@ -2,6 +2,12 @@
 import { apiFetchJSON } from "@/lib/auth";
 import { ensureAuthedFetch } from "@/components/AppShell";
 
+export type CurrencyInfo = {
+  code: string;
+  symbol?: string | null;
+  precision?: number | null;
+};
+
 export type SaleRow = {
   id: number;
   receipt_no: string;
@@ -14,6 +20,8 @@ export type SaleRow = {
   total: string;
   status: "pending" | "completed" | "void";
   lines_count: number;
+  currency?: CurrencyInfo;
+  currency_code?: string;
 };
 
 export type SaleDetail = {
@@ -30,6 +38,7 @@ export type SaleDetail = {
   fee_total: string;
   total: string;
   receipt_data?: any;
+  currency?: CurrencyInfo;
   lines: Array<{
     id: number;
     product_name?: string | null;
@@ -123,7 +132,7 @@ export async function listSales(params: {
   status?: string;
   date_from?: string;
   date_to?: string;
-}): Promise<{ count: number; results: SaleRow[] }> {
+}): Promise<{ count: number; results: SaleRow[]; currency?: CurrencyInfo }> {
   const url = new URL("/api/v1/orders/", window.location.origin);
   const q = url.searchParams;
   if (params?.page) q.set("page", String(params.page));

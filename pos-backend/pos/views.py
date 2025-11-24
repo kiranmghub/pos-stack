@@ -177,8 +177,12 @@ class POSStoresView(ListAPIView):
         if hasattr(Store, "is_active"):
             qs = qs.filter(is_active=True)
 
-        rows = qs.order_by("id").values("id", "code", "name")
-        return Response(list(rows), status=200)
+        rows = list(qs.order_by("id").values("id", "code", "name"))
+        for r in rows:
+            r["currency_code"] = getattr(tenant, "currency_code", "USD")
+            r["currency_symbol"] = getattr(tenant, "currency_symbol", None)
+            r["currency_precision"] = getattr(tenant, "currency_precision", 2)
+        return Response(rows, status=200)
 
 
 
@@ -262,7 +266,14 @@ class ProductsForPOSView(APIView):
             }
             for v in qs.order_by("product__name")[:120]
         ]
-        return Response(data)
+        return Response({
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
+            "products": data,
+        })
 
 
 
@@ -303,6 +314,9 @@ class POSLookupBarcodeView(APIView):
             "tax_rate": str(getattr(v.tax_category, "rate", Decimal("0.00"))),
             "category": getattr(v.product, "category", "") or "",
             "on_hand": on_hand,
+            "currency_code": getattr(tenant, "currency_code", "USD"),
+            "currency_symbol": getattr(tenant, "currency_symbol", None),
+            "currency_precision": getattr(tenant, "currency_precision", 2),
         }
         return Response(data, status=200)
 
@@ -363,6 +377,7 @@ class POSCheckoutView(APIView):
                     register=register,
                     cashier=user,
                     status="pending",
+                    currency_code=getattr(tenant, "currency_code", "USD"),
                     customer=customer,
                 )
 
@@ -716,6 +731,11 @@ class POSCheckoutView(APIView):
                 # build receipt (add discount field)
                 receipt = {
                     "receipt_no": sale.assign_receipt_no(),
+                    "currency": {
+                        "code": sale.currency_code,
+                        "symbol": getattr(tenant, "currency_symbol", None),
+                        "precision": getattr(tenant, "currency_precision", 2),
+                    },
                     "tenant": {"id": tenant.id, "code": tenant.code, "name": tenant.name},
                     "store": {"id": store.id, "code": store.code, "name": store.name},
                     "register": {"id": register.id},
@@ -811,6 +831,7 @@ class POSCheckoutView(APIView):
                     SalePayment.objects.create(
                         sale=sale,
                         type="CASH",
+                        currency_code=sale.currency_code,
                         amount=sale.total,
                         received=received,
                         change=change,
@@ -838,6 +859,7 @@ class POSCheckoutView(APIView):
                     SalePayment.objects.create(
                         sale=sale,
                         type="CARD",
+                        currency_code=sale.currency_code,
                         amount=amount,
                         meta={
                             "source": "pos",
@@ -907,6 +929,7 @@ class POSCheckoutView(APIView):
                 "receipt_qr_png": sale.receipt_data.get("qr_png_data_url") if isinstance(sale.receipt_data, dict) else None,
                 "change": str(change) if 'change' in locals() else "0.00",
                 "total": str(sale.total),
+                "currency": receipt.get("currency"),
             },
             status=201,
         )
@@ -995,4 +1018,12 @@ class POSQuoteView(APIView):
             ))
 
         ro = compute_receipt(tenant=tenant, store_id=store_id, lines_in=lines_in, coupon_code=cc_list)
-        return Response({"ok": True, "quote": serialize_receipt(ro)})
+        return Response({
+            "ok": True,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
+            "quote": serialize_receipt(ro),
+        })

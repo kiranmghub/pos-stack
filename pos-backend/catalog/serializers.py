@@ -34,6 +34,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     on_hand_sum = serializers.IntegerField(read_only=True)
     variant_count = serializers.IntegerField(read_only=True)
     cover_image = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -41,6 +42,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id", "name", "code", "category", "active",
             "price_min", "price_max", "on_hand_sum", "variant_count",
             "cover_image",
+            "currency",
         ]
 
     def get_cover_image(self, obj):
@@ -52,12 +54,24 @@ class ProductListSerializer(serializers.ModelSerializer):
             return getattr(first_variant.image_file, "url", None)
         return None
 
+    def get_currency(self, obj):
+        tenant = self.context.get("tenant")
+        if tenant is None:
+            request = self.context.get("request")
+            tenant = getattr(request, "tenant", None) if request is not None else None
+        return {
+            "code": getattr(tenant, "currency_code", "USD"),
+            "symbol": getattr(tenant, "currency_symbol", None),
+            "precision": getattr(tenant, "currency_precision", 2),
+        }
+
 class ProductDetailSerializer(serializers.ModelSerializer):
     variants = VariantSerializer(many=True, read_only=True)
     price_min = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     price_max = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     on_hand_sum = serializers.IntegerField(read_only=True)
     variant_count = serializers.IntegerField(read_only=True)
+    currency = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -66,5 +80,17 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "price_min", "price_max", "on_hand_sum", "variant_count",
             "image_file",  # adjust, if you store multiple images use a nested serializer instead
             "variants",
+            "currency",
         ]
         read_only_fields = ["id"]
+
+    def get_currency(self, obj):
+        tenant = self.context.get("tenant")
+        if tenant is None:
+            request = self.context.get("request")
+            tenant = getattr(request, "tenant", None) if request is not None else None
+        return {
+            "code": getattr(tenant, "currency_code", "USD"),
+            "symbol": getattr(tenant, "currency_symbol", None),
+            "precision": getattr(tenant, "currency_precision", 2),
+        }

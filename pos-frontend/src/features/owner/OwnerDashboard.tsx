@@ -26,6 +26,7 @@ import {
   CartesianGrid,
   Legend
 } from "recharts";
+import { getMyStores, type StoreLite } from "@/features/pos/api";
 
 /**
  * OwnerDashboard — a beautiful, data‑dense, tenant‑aware landing page for owners.
@@ -67,6 +68,7 @@ async function readOrMock<T>(res: Response, mock: T | (() => T)): Promise<T> {
 // tiny API helper
 // -----------------------------
 const API_BASE = import.meta.env.VITE_API_BASE || "";
+type CurrencyInfo = { code?: string; symbol?: string | null; precision?: number | null };
 async function api(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});
   const token = localStorage.getItem("access_token");
@@ -76,9 +78,22 @@ async function api(path: string, init: RequestInit = {}) {
   return res;
 }
 
-function currency(n: number) {
-  try { return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(n); }
-  catch { return `$${n.toFixed(2)}`; }
+function formatCurrency(n: number | string, cur: CurrencyInfo) {
+  const num = typeof n === "string" ? Number(n) : n;
+  const precision = Number.isFinite(cur?.precision as number) ? Number(cur.precision) : 2;
+  const code = cur?.code || "USD";
+  const safe = Number.isFinite(num) ? num : 0;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(safe);
+  } catch {
+    const sym = cur?.symbol || code;
+    return `${sym}${safe.toFixed(precision)}`;
+  }
 }
 
 function clsx(...xs: (string | false | null | undefined)[]) { return xs.filter(Boolean).join(" "); }
@@ -122,6 +137,8 @@ export default function OwnerDashboard() {
   const role = localStorage.getItem("role");
   const tenant = localStorage.getItem("tenant_code") || "";
 
+  const [stores, setStores] = useState<StoreLite[]>([]);
+  const [currency, setCurrency] = useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
   const [summary, setSummary] = useState<Summary | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [byStore, setByStore] = useState<StoreRevenue[]>([]);
@@ -134,6 +151,23 @@ export default function OwnerDashboard() {
   useEffect(() => {
     let alive = true;
     (async () => {
+      try {
+        const s = await getMyStores();
+        if (!alive) return;
+        const arr = Array.isArray(s) ? s : (s as any).results || [];
+        setStores(arr);
+        const first = arr[0];
+        if (first) {
+          setCurrency({
+            code: (first as any).currency_code || "USD",
+            symbol: (first as any).currency_symbol || undefined,
+            precision: (first as any).currency_precision ?? 2,
+          });
+        }
+      } catch {
+        /* ignore store fetch errors; fallback to USD */
+      }
+
       try {
         setLoading(true);
         const [s, t, b, p, l, r] = await Promise.all([
@@ -177,6 +211,15 @@ export default function OwnerDashboard() {
             cashier_name: sale.cashier_name ?? sale.cashier ?? "",
           }))
         );
+        // optional: allow API to return currency metadata on summary
+        const curFromSummary = (summaryData as any)?.currency || null;
+        if (curFromSummary) {
+          setCurrency({
+            code: curFromSummary.code || "USD",
+            symbol: curFromSummary.symbol || undefined,
+            precision: curFromSummary.precision ?? currency.precision ?? 2,
+          });
+        }
         setError(null);
       } catch (e: any) {
         setError(e?.message || "Failed to load dashboard");
@@ -249,14 +292,14 @@ export default function OwnerDashboard() {
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* KPI cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <KpiCard title="Revenue (Today)" value={summary ? currency(summary.revenue_today) : "—"} icon={<DollarSign className="h-4 w-4" />} footer={
+          <KpiCard title="Revenue (Today)" value={summary ? formatCurrency(summary.revenue_today, currency) : "—"} icon={<DollarSign className="h-4 w-4" />} footer={
             <span className={clsx("inline-flex items-center gap-1 text-xs", revenueChangeColor)}>
               {((summary?.delta_revenue_pct ?? 0) >= 0) ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />} {Math.abs(summary?.delta_revenue_pct ?? 0)}%
               <span className="text-slate-400"> vs yesterday</span>
             </span>
           } />
           <KpiCard title="Orders (Today)" value={summary?.orders_today?.toString() || "—"} icon={<Package2 className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">All stores</span>} />
-          <KpiCard title="Avg Order Value" value={summary ? currency(summary.aov_today) : "—"} icon={<Percent className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">Today</span>} />
+          <KpiCard title="Avg Order Value" value={summary ? formatCurrency(summary.aov_today, currency) : "—"} icon={<Percent className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">Today</span>} />
           <KpiCard title="Active Stores" value={summary?.active_stores?.toString() || "—"} icon={<Store className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">Online registers</span>} />
         </div>
 
@@ -278,7 +321,7 @@ export default function OwnerDashboard() {
                   <YAxis tickFormatter={(v) => `$${Math.round(v/1000)}k`} tick={{ fill: "#9aa4b2", fontSize: 11 }} />
                   <Tooltip contentStyle={{ background: "rgba(2,6,23,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}
                            labelStyle={{ color: "#cbd5e1" }}
-                           formatter={(v: any, n: any) => [currency(Number(v)), n]} />
+                          formatter={(v: any, n: any) => [formatCurrency(Number(v), currency), n]} />
                   <Area type="monotone" dataKey="revenue" stroke="currentColor" fill="url(#gradRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
@@ -294,7 +337,7 @@ export default function OwnerDashboard() {
                   <YAxis tickFormatter={(v) => `$${Math.round(v/1000)}k`} tick={{ fill: "#9aa4b2", fontSize: 11 }} />
                   <Tooltip contentStyle={{ background: "rgba(2,6,23,0.9)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}
                            labelStyle={{ color: "#cbd5e1" }}
-                           formatter={(v: any, n: any) => [currency(Number(v)), n]} />
+                          formatter={(v: any, n: any) => [formatCurrency(Number(v), currency), n]} />
                   <Legend wrapperStyle={{ color: "#cbd5e1" }} />
                   <Bar dataKey="revenue" name="Revenue" />
                 </BarChart>
@@ -323,7 +366,7 @@ export default function OwnerDashboard() {
                       <td className="py-2 pr-3">{p.name}</td>
                       <td className="py-2 pr-3 text-slate-400">{p.sku}</td>
                       <td className="py-2 pr-3 text-right">{p.qty}</td>
-                      <td className="py-2 text-right">{currency(p.revenue)}</td>
+                      <td className="py-2 text-right">{formatCurrency(p.revenue, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -379,7 +422,7 @@ export default function OwnerDashboard() {
                     <td className="py-2 pr-3">{s.store_name || s.store || "—"}</td>
                     <td className="py-2 pr-3 text-slate-400">{s.cashier_name || s.cashier || "—"}</td>
                     <td className="py-2 pr-3">{new Date(s.created_at).toLocaleString()}</td>
-                    <td className="py-2 text-right">{currency(s.total)}</td>
+                    <td className="py-2 text-right">{formatCurrency(s.total, currency)}</td>
                   </tr>
                 ))}
               </tbody>

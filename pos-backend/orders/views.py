@@ -83,6 +83,7 @@ class RecentSalesView(ListAPIView):
 class SalesListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = SaleListSerializer
+    pagination_class = None
 
     def get_queryset(self):
         tenant = _resolve_request_tenant(self.request)
@@ -159,6 +160,25 @@ class SalesListView(generics.ListAPIView):
         ).order_by("-created_at", "-id")
 
         return qs
+
+    def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        page_size = int(request.query_params.get("page_size") or 20)
+        page = int(request.query_params.get("page") or 1)
+        total = qs.count()
+        start = (page - 1) * page_size
+        rows = qs[start:start + page_size]
+        ser = self.get_serializer(rows, many=True, context={"request": request})
+        tenant = _resolve_request_tenant(request)
+        return Response({
+            "count": total,
+            "results": ser.data,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
+        })
 
 
 class SaleDetailView(generics.RetrieveAPIView):
@@ -402,6 +422,11 @@ class PaymentSummaryView(APIView):
             "total_collected": str(total_collected),
             "total_refunded": str(total_refunded),
             "net_total": str(net_total),
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
         })
 
 
@@ -570,6 +595,11 @@ class DiscountSummaryView(APIView):
         return Response({
             "total_discount": str(total_discount),
             "rules": result,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
         })
 
 
@@ -761,6 +791,11 @@ class TaxSummaryView(APIView):
             "total_tax": str(total_tax),
             "taxed_sales": sales_count,
             "rules": rules,
+            "currency": {
+                "code": getattr(tenant, "currency_code", "USD"),
+                "symbol": getattr(tenant, "currency_symbol", None),
+                "precision": getattr(tenant, "currency_precision", 2),
+            },
         })
 
 

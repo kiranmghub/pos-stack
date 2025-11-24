@@ -48,8 +48,10 @@ class SaleListSerializer(serializers.ModelSerializer):
     tax_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     # we do not include fee_total in list fields by default; add if you plan to show it
     total_returns = serializers.IntegerField(read_only=True)
+    currency = serializers.SerializerMethodField()
+    currency_code = serializers.CharField(read_only=True)
  
-
+ 
     class Meta:
         model = Sale
         fields = [
@@ -59,6 +61,8 @@ class SaleListSerializer(serializers.ModelSerializer):
             "status",  # pending/completed/void
             "lines_count",
             "total_returns",
+            "currency",
+            "currency_code",
         ]
 
     def get_store_name(self, obj):
@@ -72,6 +76,15 @@ class SaleListSerializer(serializers.ModelSerializer):
         # prefer full name if available
         full = (getattr(u, "first_name", "") + " " + getattr(u, "last_name", "")).strip()
         return full or getattr(u, "username", None)
+    
+    def get_currency(self, obj):
+        req = self.context.get("request") if isinstance(self.context, dict) else None
+        tenant = getattr(req, "tenant", None) if req is not None else None
+        return {
+            "code": getattr(obj, "currency_code", None) or getattr(tenant, "currency_code", "USD"),
+            "symbol": getattr(tenant, "currency_symbol", None),
+            "precision": getattr(tenant, "currency_precision", 2),
+        }
 
 class SaleLinePublicSerializer(serializers.ModelSerializer):
     # Keep frontend contract: expose `quantity` and `tender_type` even though
@@ -181,6 +194,8 @@ class SaleDetailSerializer(serializers.ModelSerializer):
     fee_total = serializers.SerializerMethodField()
     refunded_total = serializers.SerializerMethodField()
     total_returns = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
+    currency_code = serializers.CharField(read_only=True)
 
 
     class Meta:
@@ -191,6 +206,7 @@ class SaleDetailSerializer(serializers.ModelSerializer):
             "status",
             "subtotal", "discount_total", "tax_total", "fee_total", "total",
             "refunded_total", "total_returns",
+            "currency", "currency_code",
             "receipt_data",     # JSON; used for printable receipt/tax breakdown
             "lines",
             "payments",
@@ -257,6 +273,15 @@ class SaleDetailSerializer(serializers.ModelSerializer):
 
     def get_total_returns(self, obj):
         return Return.objects.filter(sale=obj).count()
+
+    def get_currency(self, obj):
+        req = self.context.get("request") if isinstance(self.context, dict) else None
+        tenant = getattr(req, "tenant", None) if req is not None else None
+        return {
+            "code": getattr(obj, "currency_code", None) or getattr(tenant, "currency_code", "USD"),
+            "symbol": getattr(tenant, "currency_symbol", None),
+            "precision": getattr(tenant, "currency_precision", 2),
+        }
 
 
 # ---- Returns API ----
@@ -436,6 +461,7 @@ class SalePaymentListSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source="sale.store.name", read_only=True)
     store_code = serializers.CharField(source="sale.store.code", read_only=True)
     cashier_name = serializers.SerializerMethodField()
+    currency_code = serializers.CharField(read_only=True)
 
     class Meta:
         model = SalePayment
@@ -453,6 +479,7 @@ class SalePaymentListSerializer(serializers.ModelSerializer):
             "txn_ref",
             "meta",
             "created_at",
+            "currency_code",
         ]
         read_only_fields = fields
 
@@ -469,6 +496,7 @@ class RefundListSerializer(serializers.ModelSerializer):
     sale_receipt_no = serializers.CharField(source="return_ref.sale.receipt_no", read_only=True)
     store_name = serializers.CharField(source="return_ref.store.name", read_only=True)
     store_code = serializers.CharField(source="return_ref.store.code", read_only=True)
+    currency_code = serializers.CharField(source="return_ref.sale.currency_code", read_only=True)
 
     class Meta:
         model = Refund
@@ -484,6 +512,7 @@ class RefundListSerializer(serializers.ModelSerializer):
             "amount",
             "external_ref",
             "created_at",
+            "currency_code",
         ]
         read_only_fields = fields
 

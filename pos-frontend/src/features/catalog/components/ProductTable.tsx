@@ -1,14 +1,27 @@
 // pos-frontend/src/features/catalog/components/ProductTable.tsx
 import React from "react";
 import { listProducts, getProduct, updateVariant, deleteVariant, deleteProduct, updateProduct, listInventoryStores } from "../api";
-import type { ProductListItem, ProductDetail, Variant } from "../types";
+import type { ProductListItem, ProductDetail, Variant, CurrencyInfo } from "../types";
 import { useNotify } from "@/lib/notify";
 import ExportModal from "./ExportModal";
 import ImportModal from "./ImportModal";
 
 
-const currency = (v: string | number) =>
-  new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(Number(v));
+const formatCurrency = (v: string | number, currency: CurrencyInfo) => {
+  const num = Number(v);
+  const precision = Number.isFinite(currency?.precision as number) ? Number(currency.precision) : 2;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency?.code || "USD",
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(num);
+  } catch {
+    const sym = currency?.symbol || currency?.code || "";
+    return `${sym}${num.toFixed(precision)}`;
+  }
+};
 
 type Props = {
   onEditProduct: (p: ProductListItem | ProductDetail) => void;
@@ -25,6 +38,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
   const [onlyLow, setOnlyLow] = React.useState(false);
   const [rows, setRows] = React.useState<ProductListItem[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [currency, setCurrency] = React.useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
   const [totalCount, setTotalCount] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(20);
@@ -173,6 +187,20 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         store_id: storeId || undefined,
       });
       setRows(data.results || []);
+      if (data.currency) {
+        setCurrency({
+          code: data.currency.code || "USD",
+          symbol: data.currency.symbol || undefined,
+          precision: data.currency.precision ?? currency.precision ?? 2,
+        });
+      } else if ((data.results || []).length && (data.results as any)[0].currency) {
+        const cur = (data.results as any)[0].currency as any;
+        setCurrency({
+          code: cur.code || "USD",
+          symbol: cur.symbol || undefined,
+          precision: cur.precision ?? currency.precision ?? 2,
+        });
+      }
       setTotalCount(Number(data.count || 0));
       const lastPage = Math.max(1, Math.ceil((Number(data.count || 0)) / pageSize));
       if (page > lastPage && lastPage !== page) {
@@ -205,6 +233,14 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         const d = await getProduct(productId, { vsort: vk, vdirection: vdir, store_id: storeId || undefined });
         // update the detail cache so the variants list refreshes
         setDetails((s) => ({ ...s, [productId]: d }));
+        if ((d as any).currency) {
+          const cur = (d as any).currency as CurrencyInfo;
+          setCurrency({
+            code: cur.code || "USD",
+            symbol: cur.symbol || undefined,
+            precision: cur.precision ?? currency.precision ?? 2,
+          });
+        }
         // also patch the summary row (price range, on-hand, variant count) without reloading all rows
         setRows((rows) =>
           rows.map((r) =>
@@ -380,7 +416,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         </div>
 
         {/* Price */}
-        <div className="justify-self-end text-zinc-200">{currency(v.price)}</div>
+        <div className="justify-self-end text-zinc-200">{formatCurrency(v.price, currency)}</div>
 
         {/* On-hand count */}
         <div
@@ -632,7 +668,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                       {p.code}
                     </div>
                     <div className="justify-self-end text-zinc-200">
-                      {currency(p.price_min)} – {currency(p.price_max)}
+                      {formatCurrency(p.price_min, currency)} – {formatCurrency(p.price_max, currency)}
                     </div>
                     <div
                       className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${p.on_hand_sum === 0
@@ -733,7 +769,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                     <div className="space-y-3 bg-zinc-900/40 px-3 pb-4 pt-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-xs text-zinc-400">
-                          Price range {currency(p.price_min)} – {currency(p.price_max)} • {p.on_hand_sum} units on hand
+                          Price range {formatCurrency(p.price_min, currency)} – {formatCurrency(p.price_max, currency)} • {p.on_hand_sum} units on hand
                         </div>
                         <div className="flex gap-2">
                           <button

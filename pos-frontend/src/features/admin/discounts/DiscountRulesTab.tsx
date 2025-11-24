@@ -9,6 +9,26 @@ import { Checkbox } from "@/ui/checkbox";
 import { useNotify } from "@/lib/notify";
 import DiscountRuleModal from "./DiscountRuleModal";
 import { Tag } from "lucide-react";
+import { getMyStores, type StoreLite } from "@/features/pos/api";
+
+type CurrencyInfo = { code?: string; symbol?: string | null; precision?: number | null };
+const formatCurrency = (n: string | number, cur: CurrencyInfo) => {
+  const num = typeof n === "string" ? Number(n) : n;
+  const precision = Number.isFinite(cur?.precision as number) ? Number(cur.precision) : 2;
+  const code = cur?.code || "USD";
+  const safe = Number.isFinite(num) ? num : 0;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: precision,
+      maximumFractionDigits: precision,
+    }).format(safe);
+  } catch {
+    const sym = cur?.symbol || code;
+    return `${sym}${safe.toFixed(precision)}`;
+  }
+};
 
 export default function DiscountRulesTab() {
   const { success, error, info, warn } = useNotify();
@@ -28,6 +48,7 @@ export default function DiscountRulesTab() {
   const [deleting, setDeleting] = React.useState<DiscountRule | null>(null);
   const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
   const [refresh, setRefresh] = React.useState(0);
+  const [currency, setCurrency] = React.useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
 
   React.useEffect(() => {
     let mounted = true;
@@ -39,6 +60,28 @@ export default function DiscountRulesTab() {
       } catch {}
     })();
     return () => { mounted = false; };
+  }, []);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const s = await getMyStores();
+        if (!alive) return;
+        const arr = Array.isArray(s) ? s : (s as any).results || [];
+        const first = arr[0] as StoreLite | undefined;
+        if (first) {
+          setCurrency({
+            code: (first as any).currency_code || "USD",
+            symbol: (first as any).currency_symbol || undefined,
+            precision: (first as any).currency_precision ?? 2,
+          });
+        }
+      } catch {
+        /* ignore; fallback to USD */
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   React.useEffect(() => {
@@ -111,7 +154,7 @@ export default function DiscountRulesTab() {
   const fmtAmt = (v?: string | null) => {
     const n = Number(v);
     if (isNaN(n)) return "—";
-    return `$${n.toFixed(2)}`;
+    return formatCurrency(n, currency);
   };
   const windowLabel = (s?: string | null, e?: string | null) => {
     const ss = s ? s.replace("T"," ").slice(0,16) : "";
@@ -260,7 +303,7 @@ export default function DiscountRulesTab() {
         </div>
       ),
     },
-  ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+  ]), [allChecked, partiallyChecked, selectedIds, expandedIds, currency]);
 
   const renderRowAfter = React.useCallback((r: any) => {
     if (!expandedIds.includes(r.id)) return null;

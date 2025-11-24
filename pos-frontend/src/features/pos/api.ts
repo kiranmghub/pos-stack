@@ -65,6 +65,12 @@ export type PosCustomer = {
   phone?: string;
 };
 
+export type CurrencyInfo = {
+  code: string;
+  symbol?: string | null;
+  precision?: number | null;
+};
+
 export type CreateCustomerInput = {
   first_name?: string;
   last_name?: string;
@@ -207,6 +213,9 @@ export type StoreLite = {
   id: number;
   code: string;
   name: string;
+  currency_code?: string;
+  currency_symbol?: string | null;
+  currency_precision?: number | null;
 };
 
 export type VariantLite = {
@@ -220,7 +229,11 @@ export type VariantLite = {
   on_hand?: number | string | null; // accept number or string
   image_url?: string;
   representative_image_url?: string;
+};
 
+export type ProductsResponse = {
+  currency?: CurrencyInfo;
+  products: VariantLite[];
 };
 
 /** === Calls used by the POS screen === */
@@ -230,11 +243,15 @@ export async function getMyStores(): Promise<StoreLite[]> {
   return jsonOrThrow<StoreLite[]>(res);
 }
 
-export async function searchProducts(params: { store_id: number; query?: string }): Promise<VariantLite[]> {
+export async function searchProducts(params: { store_id: number; query?: string }): Promise<ProductsResponse> {
   const q = new URLSearchParams({ store_id: String(params.store_id) });
   if (params.query) q.set("query", params.query); // note: backend expects "query"
   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/products?${q.toString()}`);
-  return jsonOrThrow<VariantLite[]>(res);
+  const data = await jsonOrThrow<{ currency?: CurrencyInfo; products: VariantLite[] }>(res);
+  return {
+    currency: data?.currency,
+    products: data?.products || [],
+  };
 }
 
 export async function lookupBarcode(store_id: number, barcode: string): Promise<VariantLite | null> {
@@ -260,6 +277,7 @@ export async function checkout(payload: {
   receipt?: any;
   qr_png_data_url?: string;
   receipt_qr_png?: string;
+   currency?: CurrencyInfo;
 }> {
   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/checkout`, {
     method: "POST",
@@ -296,7 +314,7 @@ export async function quoteTotals(payload: {
   lines: QuoteLineIn[];
   coupon_code?: string;      // backward-compat
   coupon_codes?: string[];   // NEW multi-coupon
-}): Promise<QuoteOut> {
+}): Promise<{ quote: QuoteOut; currency?: CurrencyInfo }> {
   const body = { ...payload };
   // prefer coupon_codes if present, else if coupon_code present wrap into array
   if (!body.coupon_codes && body.coupon_code) {
@@ -307,6 +325,6 @@ export async function quoteTotals(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut }>(res);
-  return data.quote;
+  const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut; currency?: CurrencyInfo }>(res);
+  return { quote: data.quote, currency: data.currency };
 }

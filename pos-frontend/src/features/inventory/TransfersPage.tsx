@@ -77,7 +77,7 @@ export default function TransfersPage() {
       }
       setSearching(true);
       try {
-        const results = await searchProducts({ store_id: fromStoreId, query: searchQ.trim() });
+        const { products: results } = await searchProducts({ store_id: fromStoreId, query: searchQ.trim() });
         if (!alive) return;
         // FIX: spread the variant; keep on_hand numeric
         const opts = (results || []).map((v: any) => ({

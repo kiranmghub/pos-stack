@@ -14,6 +14,12 @@ export interface Variant {
   image_file?: string | null;
 }
 
+export interface CurrencyInfo {
+  code: string;
+  symbol?: string | null;
+  precision?: number | null;
+}
+
 export interface ProductListItem {
   id: ID;
   name: string;
@@ -25,12 +31,14 @@ export interface ProductListItem {
   on_hand_sum: number;
   variant_count: number;
   cover_image?: string | null;
+  currency?: CurrencyInfo;
 }
 
 export interface ProductDetail extends Omit<ProductListItem, "cover_image"> {
   description?: string;
   image_file?: string | null;
   variants: Variant[];
+  currency?: CurrencyInfo;
 }
 
 export interface Paginated<T> {

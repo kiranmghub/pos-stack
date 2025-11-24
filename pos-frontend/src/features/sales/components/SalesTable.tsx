@@ -2,9 +2,6 @@
 
 import * as React from "react";
 import type { SaleRow } from "../api";
-import { useMoney } from "../useMoney";
-
-
 export function SalesTable(props: {
   rows: SaleRow[];
   loading: boolean;
@@ -13,9 +10,9 @@ export function SalesTable(props: {
   onPageChange: (n: number) => void;
   onPageSizeChange: (n: number) => void;
   onOpenReturns?: (id: number) => void; // NEW
+  safeMoney: (v: any) => string;
 }) {
-  const { rows, loading, page, pageSize, count, lastPage, onOpenDetail, onPageChange, onPageSizeChange, onOpenReturns } = props;
-  const { safeMoney } = useMoney();
+  const { rows, loading, page, pageSize, count, lastPage, onOpenDetail, onPageChange, onPageSizeChange, onOpenReturns, safeMoney } = props;
 
   return (
     <div className="relative overflow-visible rounded-2xl border border-zinc-800">
