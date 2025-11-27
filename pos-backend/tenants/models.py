@@ -21,6 +21,8 @@ class Tenant(TimeStampedModel):
     currency_code = models.CharField(max_length=3, default="USD")
     currency_symbol = models.CharField(max_length=4, blank=True, null=True)
     currency_precision = models.PositiveSmallIntegerField(default=2)
+    country_code = models.CharField(max_length=2, blank=True, null=True)     # ISO alpha-2
+    default_currency = models.CharField(max_length=3, default="USD")         # ISO 4217
     # business address
     business_street = models.CharField(max_length=255, blank=True, null=True)
     business_city = models.CharField(max_length=120, blank=True, null=True)
@@ -40,6 +42,17 @@ class Tenant(TimeStampedModel):
     logo_url = models.URLField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     additional_details = models.JSONField(default=dict, blank=True)
+    signup_completed_at = models.DateTimeField(blank=True, null=True)
+    onboarding_status = models.CharField(
+        max_length=32,
+        default="not_started",
+        choices=[
+            ("not_started", "Not started"),
+            ("basic_profile", "Basic profile complete"),
+            ("store_setup", "Store setup"),
+            ("live", "Live"),
+        ],
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:

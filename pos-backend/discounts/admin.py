@@ -65,11 +65,11 @@ class DiscountRuleAdmin(admin.ModelAdmin):
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
     list_display = (
-        "code", "name", "tenant", "is_active",
+        "code", "name", "tenant", "is_active", "is_signup_only",
         "rule", "min_subtotal", "max_uses", "used_count",
         "start_at", "end_at"
     )
-    list_filter = ("tenant", "is_active",)
+    list_filter = ("tenant", "is_active", "is_signup_only")
     search_fields = ("code", "name")
     autocomplete_fields = ("rule",)
     ordering = ("tenant", "code")

@@ -11,7 +11,8 @@ class Store(TimeStampedModel):
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE)
     name = models.CharField(max_length=120)
     code = models.SlugField()
-    timezone = models.CharField(max_length=64, default="America/Chicago")
+    timezone = models.CharField(max_length=64, blank=True, default="")
+    region = models.CharField(max_length=100, blank=True, default="")
 
     # normalized, queryable fields
     street = models.CharField(max_length=200)
@@ -23,39 +24,52 @@ class Store(TimeStampedModel):
     # optional extras you won’t query often
     address_meta = models.JSONField(default=dict, blank=True)
 
+    # Contact details
+    phone_number = models.CharField(max_length=20, blank=True, default="")
+    mobile_number = models.CharField(max_length=20, blank=True, default="")
+    fax_number = models.CharField(max_length=20, blank=True, default="")
+    email = models.EmailField(blank=True, default="")
+    contact_person = models.CharField(max_length=120, blank=True, default="")
+
+    # Store metadata
+    landmark = models.CharField(max_length=200, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    metadata = models.JSONField(default=dict, blank=True)
+
+    # Coordinates
+    geo_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geo_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    # Store hours
+    opening_time = models.TimeField(null=True, blank=True)
+    closing_time = models.TimeField(null=True, blank=True)
+
+    # Business/legal
+    tax_id = models.CharField(max_length=50, blank=True, default="")
+    is_primary = models.BooleanField(default=False)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["tenant", "code"],
                 name="unique_store_code_per_tenant")
+            ,
+            models.UniqueConstraint(
+                fields=["tenant"],
+                condition=models.Q(is_primary=True),
+                name="unique_primary_store_per_tenant"
+            )
         ]
         ordering = ["code", "id"]
         indexes = [
             models.Index(fields=["tenant", "code"]),
+            models.Index(fields=["tenant", "is_primary"]),
+            models.Index(fields=["country", "region", "state"]),
         ]
 
 
     def __str__(self):
         return f"{self.tenant.code}:{self.code}"
-
-
-
-# class Register(TimeStampedModel):
-#     store = models.ForeignKey(Store, on_delete=models.CASCADE)
-#     name = models.CharField(max_length=120, blank=True, default="")
-#     code = models.SlugField()
-#     hardware_profile = models.JSONField(default=dict)
-#     access_pin_hash = models.CharField(max_length=256, null=True, blank=True)
-#     last_seen_at = models.DateTimeField(null=True, blank=True)
-#     locked_until = models.DateTimeField(null=True, blank=True)
-#     settings = models.JSONField(default=dict, blank=True)
-#     is_active = models.BooleanField(default=True)
-
-
-#     class Meta:
-#         unique_together = ("store", "code")
-#         ordering = ["code", "id"]
-
 
 
 class Register(TimeStampedModel):

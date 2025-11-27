@@ -12,6 +12,8 @@ import CatalogRoute from "@/features/catalog/CatalogRoute";
 import AdminRoute from "@/features/admin/AdminRoute";
 import SalesRoute from "@/features/sales/SalesRoute";
 import LandingPage from "@/features/landing/LandingPage";
+import SignupRoute from "@/features/auth/signup/SignupRoute";
+import MetricsPage from "@/features/analytics/MetricsPage";
 
 
 
@@ -20,6 +22,7 @@ import "@/index.css";
 import { getRole } from "@/lib/auth";
 
 import InventoryRoute from "@/features/inventory/InventoryRoute";
+import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
 
 
 // ⬇️ NEW: HomePage import
@@ -80,6 +83,15 @@ function OwnerOrAdmin({ children }: { children: JSX.Element }) {
 const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> }, 
   { path: "/login", element: <LoginPage /> },
+  { path: "/signup/*", element: <SignupRoute /> },
+  {
+    path: "/onboarding/*",
+    element: (
+      <ProtectedRoute>
+        <OnboardingRoute />
+      </ProtectedRoute>
+    ),
+  },
 
   // ⬇️ CHANGED: everyone lands on HomePage (inherits AppShell), still protected
   { path: "/home", element: <ProtectedRoute><HomePage /></ProtectedRoute> },
@@ -146,16 +158,27 @@ const router = createBrowserRouter([
     },
 
 
-    {
-      path: "/sales",
-      element: (
-        <ProtectedRoute>
-          <OwnerOnly>
-            <SalesRoute />
-          </OwnerOnly>
-        </ProtectedRoute>
-      ),
-    },
+  {
+    path: "/sales",
+    element: (
+      <ProtectedRoute>
+        <OwnerOnly>
+          <SalesRoute />
+        </OwnerOnly>
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/analytics/metrics",
+    element: (
+      <ProtectedRoute>
+        <OwnerOnly>
+          <MetricsPage />
+        </OwnerOnly>
+      </ProtectedRoute>
+    ),
+  },
 
 
 

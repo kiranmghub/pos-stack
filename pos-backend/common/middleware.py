@@ -10,6 +10,11 @@ AUTH_WHITELIST = (
     "/api/v1/docs",
     "/api/v1/schema",
     "/api/v1/auth",        # allow token/refresh/verify
+    "/api/v1/otp",         # public OTP endpoints
+    "/api/v1/signup",      # public signup endpoints
+    "/api/v1/meta",        # public metadata (geo, etc.)
+    "/api/v1/subscriptions/plans",  # public pricing
+    "/api/v1/subscriptions/tenants/create-trial",  # allow signup trial creation
     "/static/",            # optional: static if served by Django
 )
 

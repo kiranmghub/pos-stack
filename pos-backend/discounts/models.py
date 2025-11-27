@@ -94,6 +94,10 @@ class Coupon(TimeStampedModel):
     name      = models.CharField(max_length=120, blank=True, default="")
     description = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True, db_index=True)
+    is_signup_only = models.BooleanField(default=False, help_text="Limit usage to signup/subscription flow")
+    allowed_plan_codes = models.JSONField(default=list, blank=True, help_text="If set, restrict to these plan codes")
+    allowed_country_codes = models.JSONField(default=list, blank=True, help_text="If set, restrict to these countries (ISO alpha-2)")
+    per_tenant_limit = models.PositiveIntegerField(default=1, help_text="Max times a single tenant can redeem")
 
     # bind to a rule (line or receipt); you can extend to many-to-many later if needed
     rule      = models.ForeignKey(DiscountRule, on_delete=models.CASCADE)

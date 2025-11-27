@@ -3,6 +3,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import AppShell from "@/components/AppShell";
 import { getRole, getUser, getTenantCode } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { fetchOnboardingState } from "@/features/onboarding/api";
 import {
   ShoppingCart,
   Package,
@@ -12,6 +14,7 @@ import {
   Boxes,
   Building2,
   TrendingUp,
+  Flag,
 } from "lucide-react";
 
 function Card({
@@ -63,6 +66,12 @@ export default function HomePage() {
   const canSeeOwnerDash = role === "owner";
   const canSeeTenantAdmin = role === "owner"; // only owners see this
   const canSeeSales = role === "owner" || role === "manager";
+  const canSeeAnalytics = role === "owner";
+
+  const [onboardingStatus, setOnboardingStatus] = useState<string | null>(null);
+  useEffect(() => {
+    fetchOnboardingState().then((res) => setOnboardingStatus(res?.status || null)).catch(() => {});
+  }, []);
 
 
   return (
@@ -79,6 +88,15 @@ export default function HomePage() {
               <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300 ring-1 ring-white/10">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
                 Tenant <span className="font-semibold text-slate-100">{tenantCode}</span>
+              </div>
+            ) : null}
+            {onboardingStatus && onboardingStatus !== "live" ? (
+              <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-200 ring-1 ring-amber-400/30">
+                <Flag className="h-3.5 w-3.5" />
+                Onboarding: {onboardingStatus.replace("_", " ")}
+                <Link to="/onboarding" className="underline text-amber-100 hover:text-white ml-2">
+                  Continue
+                </Link>
               </div>
             ) : null}
           </div>
@@ -143,6 +161,16 @@ export default function HomePage() {
               desc="View reports, analyze trends, and track revenue across all stores."
               icon={<TrendingUp className="h-6 w-6 text-cyan-300" />}
               accent="from-cyan-500 to-blue-500"
+            />
+          )}
+
+        {canSeeAnalytics && (
+            <Card
+              to="/analytics/metrics"
+              title="Analytics / Metrics"
+              desc="Monitor signups, OTPs, subscriptions, and email health."
+              icon={<LayoutDashboard className="h-6 w-6 text-lime-300" />}
+              accent="from-lime-500 to-emerald-500"
             />
           )}
 

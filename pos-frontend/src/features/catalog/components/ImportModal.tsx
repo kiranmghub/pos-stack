@@ -10,9 +10,15 @@ type Mode = "create" | "upsert";
 export default function ImportModal({
     open,
     onClose,
+    scopeOverride,
+    autoCloseOnApply = false,
+    onSuccess,
 }: {
     open: boolean;
     onClose: () => void;
+    scopeOverride?: Scope;
+    autoCloseOnApply?: boolean;
+    onSuccess?: () => void;
 }) {
     const [scope, setScope] = React.useState<Scope>("products");
     const [mode, setMode] = React.useState<Mode>("upsert");
@@ -34,13 +40,13 @@ export default function ImportModal({
 
     React.useEffect(() => {
         if (!open) return;
-        setScope("products");
+        setScope(scopeOverride || "products");
         setMode("upsert");
         setFile(null);
         setBusy(false);
         setError("");
         setResult(null);
-    }, [open]);
+    }, [open, scopeOverride]);
 
     // If the user changes scope, mode, or file after a validation,
     // clear the previous result to avoid stale "Apply" state.
@@ -135,8 +141,11 @@ export default function ImportModal({
             setResult(res);
             // signal the table to refresh; ProductTable listens for this
             window.dispatchEvent(new CustomEvent("catalog:import:applied", { detail: res }));
-            success("Import applied successfully.");
-            onClose();
+            success(scope === "products" ? "Products uploaded successfully." : "Variants uploaded successfully.");
+            if (onSuccess) onSuccess();
+            if (autoCloseOnApply) {
+                onClose();
+            }
         } catch (e: any) {
             setError(e?.message || String(e));
             toastError(e?.message || "Import failed.");
@@ -327,7 +336,7 @@ export default function ImportModal({
                             onClick={onApply}
                             disabled={busy || !file}
                         >
-                            Apply changes
+                            {scope === "products" ? "Upload Products" : "Upload Variants"}
                         </button>
                     ) : null}
                 </div>

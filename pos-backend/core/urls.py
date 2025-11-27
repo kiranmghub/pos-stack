@@ -104,6 +104,10 @@ urlpatterns = [
     path("api/v1/catalog/import", CatalogImportView.as_view(), name="catalog-import"),
     path("api/v1/", include("customers.urls", namespace="customers")),
     path("api/v1/", include("loyalty.urls", namespace="loyalty")),
+    path("api/v1/", include("otp.urls")),
+    path("api/v1/", include("signup.urls")),
+    path("api/v1/subscriptions/", include("subscriptions.urls")),
+    path("api/v1/onboarding/", include("onboarding.urls")),
 
 
 
@@ -111,4 +115,3 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

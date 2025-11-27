@@ -56,6 +56,11 @@ INSTALLED_APPS = [
     "taxes",
     "discounts",
     "tenant_admin",
+    "emails",
+    "otp",
+    "signup",
+    "subscriptions",
+    "onboarding",
 ]
 
 # -----------------------------------------------------------------------------
@@ -74,6 +79,44 @@ if USE_S3_MEDIA:
     AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
     # Optional: public-read by default, etc.
     AWS_QUERYSTRING_AUTH = False  # nicer public URLs if bucket policy allows
+
+# -----------------------------------------------------------------------------
+# Email (console backend by default; switch to SMTP in prod via env)
+# -----------------------------------------------------------------------------
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@example.com")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587")) if os.getenv("EMAIL_PORT") else None
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() == "true"
+
+# -----------------------------------------------------------------------------
+# Signup / subscriptions defaults
+# -----------------------------------------------------------------------------
+DEFAULT_SIGNUP_PLAN_CODE = os.getenv("DEFAULT_SIGNUP_PLAN_CODE", "POS_BASIC")
+DEFAULT_SIGNUP_TRIAL_DAYS = int(os.getenv("DEFAULT_SIGNUP_TRIAL_DAYS", "14"))
+
+# -----------------------------------------------------------------------------
+# OTP rate limits (env-configurable; values are reasonable defaults)
+# -----------------------------------------------------------------------------
+OTP_RATE_SEND_PER_EMAIL = int(os.getenv("OTP_RATE_SEND_PER_EMAIL", "3"))           # requests per window
+OTP_RATE_SEND_EMAIL_WINDOW = int(os.getenv("OTP_RATE_SEND_EMAIL_WINDOW", "300"))  # seconds (5m)
+OTP_RATE_SEND_PER_IP = int(os.getenv("OTP_RATE_SEND_PER_IP", "10"))               # requests per window
+OTP_RATE_SEND_IP_WINDOW = int(os.getenv("OTP_RATE_SEND_IP_WINDOW", "900"))        # seconds (15m)
+OTP_RATE_VERIFY_PER_EMAIL = int(os.getenv("OTP_RATE_VERIFY_PER_EMAIL", "5"))      # attempts per window
+OTP_RATE_VERIFY_EMAIL_WINDOW = int(os.getenv("OTP_RATE_VERIFY_EMAIL_WINDOW", "300"))  # seconds (5m)
+
+# Signup rate limits (per email/IP)
+SIGNUP_RATE_START_PER_EMAIL = int(os.getenv("SIGNUP_RATE_START_PER_EMAIL", "5"))
+SIGNUP_RATE_START_EMAIL_WINDOW = int(os.getenv("SIGNUP_RATE_START_EMAIL_WINDOW", "600"))  # 10m
+SIGNUP_RATE_START_PER_IP = int(os.getenv("SIGNUP_RATE_START_PER_IP", "20"))
+SIGNUP_RATE_START_IP_WINDOW = int(os.getenv("SIGNUP_RATE_START_IP_WINDOW", "900"))       # 15m
+SIGNUP_RATE_VERIFY_PER_EMAIL = int(os.getenv("SIGNUP_RATE_VERIFY_PER_EMAIL", "10"))
+SIGNUP_RATE_VERIFY_EMAIL_WINDOW = int(os.getenv("SIGNUP_RATE_VERIFY_EMAIL_WINDOW", "900"))
+SIGNUP_RATE_COMPLETE_PER_EMAIL = int(os.getenv("SIGNUP_RATE_COMPLETE_PER_EMAIL", "5"))
+SIGNUP_RATE_COMPLETE_EMAIL_WINDOW = int(os.getenv("SIGNUP_RATE_COMPLETE_EMAIL_WINDOW", "900"))
 
 # -----------------------------------------------------------------------------
 # REST / JWT
@@ -194,4 +237,3 @@ USE_TZ = True
 STATIC_ROOT = "/var/www/static"
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
