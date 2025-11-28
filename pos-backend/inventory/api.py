@@ -169,7 +169,7 @@ class InventoryOverviewView(APIView):
                 "recent": recent_data,
                 "summary": summary,  # kept for UI (contains total_skus/total_qty/total_value)
                 "currency": {
-                    "code": getattr(tenant, "currency_code", "USD"),
+                    "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                     "symbol": getattr(tenant, "currency_symbol", None),
                     "precision": getattr(tenant, "currency_precision", 2),
                 },
@@ -245,7 +245,7 @@ class StockByStoreListView(APIView):
             "results": data,
             "count": total,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },

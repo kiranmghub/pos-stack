@@ -16,7 +16,7 @@ class VariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = Variant
         fields = [
-            "id", "name", "sku", "barcode", "price", "cost",
+            "id", "name", "sku", "barcode", "price", "cost", "margin_percentage",
             "on_hand", "active", "image_file",  # adjust image field name
         ]
         read_only_fields = ["id"]
@@ -60,7 +60,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             request = self.context.get("request")
             tenant = getattr(request, "tenant", None) if request is not None else None
         return {
-            "code": getattr(tenant, "currency_code", "USD"),
+            "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
             "symbol": getattr(tenant, "currency_symbol", None),
             "precision": getattr(tenant, "currency_precision", 2),
         }
@@ -90,7 +90,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             request = self.context.get("request")
             tenant = getattr(request, "tenant", None) if request is not None else None
         return {
-            "code": getattr(tenant, "currency_code", "USD"),
+            "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
             "symbol": getattr(tenant, "currency_symbol", None),
             "precision": getattr(tenant, "currency_precision", 2),
         }

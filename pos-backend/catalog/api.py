@@ -247,6 +247,7 @@ class VariantWriteSerializer(serializers.ModelSerializer):
             "barcode",
             "price",
             "cost",
+            "margin_percentage",
             "uom",
             "tax_category",
             "active",
@@ -313,6 +314,41 @@ class VariantWriteSerializer(serializers.ModelSerializer):
                     "barcode": "This barcode already exists within your tenant."
                 })
 
+        # 5) cost/margin/price reconciliation
+        cost = attrs.get("cost")
+        price = attrs.get("price")
+        margin = attrs.get("margin_percentage")
+
+        # fill from instance if not provided
+        if cost is None and self.instance is not None:
+            cost = getattr(self.instance, "cost", None)
+        if price is None and self.instance is not None:
+            price = getattr(self.instance, "price", None)
+
+        # cost guard
+        if cost is not None and Decimal(cost) < 0:
+            raise serializers.ValidationError({"cost": "Cost cannot be negative."})
+
+        def _quant(val, exp="0.01"):
+            return Decimal(val).quantize(Decimal(exp))
+
+        if margin is not None:
+            m = Decimal(margin)
+            if m < Decimal("-99") or m > Decimal("1000"):
+                raise serializers.ValidationError({"margin_percentage": "Margin must be between -99% and 1000%."})
+            if cost is None:
+                raise serializers.ValidationError({"margin_percentage": "Cost is required to apply a margin."})
+            computed_price = _quant(Decimal(cost) * (Decimal("1") + (m / Decimal("100"))))
+            attrs["price"] = computed_price
+            attrs["margin_percentage"] = m.quantize(Decimal("0.0001"))
+        elif price is not None and cost not in (None, 0):
+            # derive margin from price/cost when possible
+            try:
+                margin_calc = ((Decimal(price) - Decimal(cost)) / Decimal(cost)) * Decimal("100")
+                attrs["margin_percentage"] = margin_calc.quantize(Decimal("0.0001"))
+            except Exception:
+                pass
+
         return attrs
 
     def create(self, validated_data):
@@ -373,6 +409,7 @@ class VariantMiniSerializer(serializers.ModelSerializer):
             "barcode",
             "price",
             "cost",
+            "margin_percentage",
             "active",
             "tax_category",
             "tax_rate",
@@ -428,7 +465,7 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variant
-        fields = ("id", "name", "sku", "barcode", "price", "cost", "on_hand", "active", "image_url", "product", "created_at", "updated_at")
+        fields = ("id", "name", "sku", "barcode", "price", "cost", "margin_percentage", "on_hand", "active", "image_url", "product", "created_at", "updated_at")
 
     def get_on_hand(self, obj):
         # Sum inventory from InventoryItem via reverse accessor used elsewhere (inventoryitem)
@@ -718,7 +755,7 @@ class CatalogProductListCreateView(ListCreateAPIView):
             "count": total,
             "results": data,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },
@@ -1217,5 +1254,3 @@ class BarcodeGenerateView(APIView):
             if not Variant.objects.filter(product__tenant=tenant, barcode__iexact=code).exists():
                 return Response({"barcode": code, "type": btype})
         return Response({"detail": "Could not allocate unique barcode"}, status=409)
-
-

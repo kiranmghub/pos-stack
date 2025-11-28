@@ -163,6 +163,7 @@ class Variant(TimeStampedModel):
     barcode = models.CharField(max_length=64, blank=True, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    margin_percentage = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
     tax_category = models.ForeignKey(TaxCategory, null=True, blank=True, on_delete=models.SET_NULL)
     uom = models.CharField(max_length=32, default="each")
     is_active = models.BooleanField(default=True, db_index=True)

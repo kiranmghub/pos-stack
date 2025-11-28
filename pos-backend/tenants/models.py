@@ -98,6 +98,20 @@ class Tenant(TimeStampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def resolved_country(self) -> str:
+        """
+        Preferred country code; falls back to legacy business_country_code.
+        """
+        return (self.country_code or self.business_country_code or "").upper()
+
+    @property
+    def resolved_currency(self) -> str:
+        """
+        Preferred currency code; falls back to legacy currency_code.
+        """
+        return (self.default_currency or self.currency_code or "USD").upper()
+
 
 class TenantDoc(TimeStampedModel):
     """

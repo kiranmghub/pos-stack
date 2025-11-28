@@ -174,7 +174,7 @@ class SalesListView(generics.ListAPIView):
             "count": total,
             "results": ser.data,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },
@@ -423,7 +423,7 @@ class PaymentSummaryView(APIView):
             "total_refunded": str(total_refunded),
             "net_total": str(net_total),
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },
@@ -596,7 +596,7 @@ class DiscountSummaryView(APIView):
             "total_discount": str(total_discount),
             "rules": result,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },
@@ -792,7 +792,7 @@ class TaxSummaryView(APIView):
             "taxed_sales": sales_count,
             "rules": rules,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },

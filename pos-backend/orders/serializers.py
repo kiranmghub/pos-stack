@@ -81,7 +81,9 @@ class SaleListSerializer(serializers.ModelSerializer):
         req = self.context.get("request") if isinstance(self.context, dict) else None
         tenant = getattr(req, "tenant", None) if req is not None else None
         return {
-            "code": getattr(obj, "currency_code", None) or getattr(tenant, "currency_code", "USD"),
+            "code": getattr(obj, "currency_code", None)
+            or getattr(tenant, "resolved_currency", None)
+            or getattr(tenant, "currency_code", "USD"),
             "symbol": getattr(tenant, "currency_symbol", None),
             "precision": getattr(tenant, "currency_precision", 2),
         }
@@ -278,7 +280,9 @@ class SaleDetailSerializer(serializers.ModelSerializer):
         req = self.context.get("request") if isinstance(self.context, dict) else None
         tenant = getattr(req, "tenant", None) if req is not None else None
         return {
-            "code": getattr(obj, "currency_code", None) or getattr(tenant, "currency_code", "USD"),
+            "code": getattr(obj, "currency_code", None)
+            or getattr(tenant, "resolved_currency", None)
+            or getattr(tenant, "currency_code", "USD"),
             "symbol": getattr(tenant, "currency_symbol", None),
             "precision": getattr(tenant, "currency_precision", 2),
         }

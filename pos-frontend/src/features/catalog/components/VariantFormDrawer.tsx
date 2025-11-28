@@ -32,6 +32,7 @@ function emptyVariantForm(productId?: string | number) {
     barcode: "",
     price: 0,
     cost: 0,
+    margin_percentage: null as number | null,
     on_hand: 0,
     active: true,
     image_file: null as File | null,
@@ -64,6 +65,7 @@ export function VariantFormDrawer({
 
   const { error, success, info, warn } = useNotify(); // destructure what you expose in /lib/notify
   const [errors, setErrors] = React.useState<{ [k: string]: string | undefined }>({});
+  const [lastDriver, setLastDriver] = React.useState<"margin" | "price" | null>(null);
 
 
 // All variant fields from models
@@ -80,6 +82,7 @@ const [form, setForm] = React.useState<CreateVariantDto & {
         barcode: variant?.barcode || "",
         price: variant?.price ? Number(variant.price) : 0,
         cost: variant?.cost ? Number(variant.cost) : 0,
+        margin_percentage: (variant as any)?.margin_percentage != null ? Number((variant as any)?.margin_percentage) : null,
         on_hand: (variant as any)?.on_hand || 0,
         active: variant?.active ?? true,
         image_file: null,
@@ -118,6 +121,21 @@ const [form, setForm] = React.useState<CreateVariantDto & {
   const [previewUrl, setPreviewUrl] = React.useState<string>("");
   const [newImage, setNewImage] = React.useState<File | null>(null);
 
+  function quant(val: number | string, places = 2) {
+    const num = Number(val);
+    if (!isFinite(num)) return 0;
+    return Number(num.toFixed(places));
+  }
+
+  function recomputePrice(cost?: number | null, margin?: number | null) {
+    if (cost == null || margin == null) return form.price;
+    return quant(cost * (1 + margin / 100));
+  }
+
+  function recomputeMargin(cost?: number | null, price?: number | null) {
+    if (cost == null || cost === 0 || price == null) return null;
+    return quant(((price - cost) / cost) * 100, 4);
+  }
 
   const [productLabel, setProductLabel] = React.useState<string>("");
 
@@ -179,6 +197,7 @@ React.useEffect(() => {
       barcode: variant?.barcode || "",
       price: variant?.price ? Number(variant.price) : 0,
       cost: variant?.cost ? Number(variant.cost) : 0,
+      margin_percentage: (variant as any)?.margin_percentage != null ? Number((variant as any)?.margin_percentage) : null,
       on_hand: (variant as any)?.on_hand || 0,
       active: variant?.active ?? true,
       image_file: null,
@@ -189,6 +208,17 @@ React.useEffect(() => {
     setNewImage(null);
   }
 }, [variant, productId]);
+
+// If margin is missing but cost/price are set, back-compute margin for display
+React.useEffect(() => {
+  setForm((s) => {
+    if ((s.margin_percentage == null || isNaN(Number(s.margin_percentage))) && s.cost && s.cost !== 0 && s.price != null) {
+      const m = recomputeMargin(s.cost, s.price);
+      return { ...s, margin_percentage: m };
+    }
+    return s;
+  });
+}, [variant]);
 
 // 3c) If productId changes while creating NEW, lock the product field accordingly
 React.useEffect(() => {
@@ -327,8 +357,24 @@ React.useEffect(() => {
         error("Please select a product."); // global, non-blocking
         return;
       }
+      const localErrors: Record<string, string | undefined> = {};
+      if (form.cost != null && form.cost < 0) {
+        localErrors.cost = "Cost cannot be negative.";
+      }
+      if (form.margin_percentage != null) {
+        if (form.cost == null) {
+          localErrors.margin_percentage = "Enter cost before applying margin.";
+        } else if (form.margin_percentage < -99 || form.margin_percentage > 1000) {
+          localErrors.margin_percentage = "Margin must be between -99% and 1000%.";
+        }
+      }
+      if (Object.values(localErrors).some(Boolean)) {
+        setErrors((e) => ({ ...e, ...localErrors }));
+        return;
+      }
       const payload: UpdateVariantDto & any = {
         ...form,
+        margin_percentage: form.margin_percentage ?? null,
         image_file: newImage || null,
       };
       let savedId: ID;
@@ -366,6 +412,8 @@ React.useEffect(() => {
             const skuMsg = Array.isArray(data.sku) ? data.sku[0] : data.sku;
             const nameMsg = Array.isArray(data.name) ? data.name[0] : data.name;
             const barcodeMsg = Array.isArray(data.barcode) ? data.barcode[0] : data.barcode;
+            const marginMsg = Array.isArray(data.margin_percentage) ? data.margin_percentage[0] : data.margin_percentage;
+            const costMsg = Array.isArray(data.cost) ? data.cost[0] : data.cost;
 
             // Infer field messages from set-level errors (DB/DRF unique-together text)
             const inferredSkuMsg =
@@ -387,20 +435,26 @@ React.useEffect(() => {
               sku: skuMsg || inferredSkuMsg,
               name: nameMsg || inferredNameMsg,
               barcode: barcodeMsg || inferredBarcodeMsg,
+              margin_percentage: marginMsg,
+              cost: costMsg,
               _non_field: data.detail || (!inferredSkuMsg && !inferredNameMsg && !inferredBarcodeMsg && nf) || undefined,
             });
-          }
 
-          // Global notify summary (prefer first specific field message)
-          error(
-            (data && (
-              data.detail ||
-              skuMsg || nameMsg || barcodeMsg ||
-              (Array.isArray(data.sku) && data.sku[0]) ||
-              (Array.isArray(data.name) && data.name[0]) ||
-              (Array.isArray(data.barcode) && data.barcode[0])
-            )) || "Could not save variant."
-          );
+            // Global notify summary (prefer first specific field message)
+            error(
+              (data && (
+                data.detail ||
+                skuMsg || nameMsg || barcodeMsg || marginMsg || costMsg ||
+                (Array.isArray(data.sku) && data.sku[0]) ||
+                (Array.isArray(data.name) && data.name[0]) ||
+                (Array.isArray(data.barcode) && data.barcode[0]) ||
+                (Array.isArray(data.margin_percentage) && data.margin_percentage[0]) ||
+                (Array.isArray(data.cost) && data.cost[0])
+              )) || "Could not save variant."
+            );
+          } else {
+            error("Failed to save variant.");
+          }
 
         }
 
@@ -693,27 +747,87 @@ React.useEffect(() => {
             </div>
 
             <div>
+              <label className="mb-1 block text-sm font-medium">Cost</label>
+              <input
+                type="number"
+                step="0.01"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                  errors.cost ? "border-red-500" : "border-zinc-700"
+                }`}
+                value={form.cost ?? 0}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value || "0");
+                  setErrors((e2) => ({ ...e2, cost: undefined, margin_percentage: undefined, _non_field: undefined }));
+                  setForm((s) => {
+                    let nextMargin = s.margin_percentage ?? null;
+                    let nextPrice = s.price;
+                    if (nextMargin != null) {
+                      nextPrice = recomputePrice(val, nextMargin);
+                    } else if (lastDriver === "price" && s.price != null && val > 0) {
+                      nextMargin = recomputeMargin(val, s.price);
+                    }
+                    return { ...s, cost: val, price: nextPrice, margin_percentage: nextMargin };
+                  });
+                }}
+                disabled={isView}
+              />
+              {errors.cost && <div className="mt-1 text-xs text-red-400">{errors.cost}</div>}
+              <p className="mt-1 text-xs text-zinc-400">Enter cost first; margin % is optional.</p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Margin % (optional)</label>
+              <input
+                type="number"
+                step="0.01"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
+                  errors.margin_percentage ? "border-red-500" : "border-zinc-700"
+                }`}
+                value={form.margin_percentage ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const val = raw === "" ? null : parseFloat(raw);
+                  setLastDriver("margin");
+                  setErrors((e2) => ({ ...e2, margin_percentage: undefined, _non_field: undefined }));
+                  setForm((s) => {
+                    if (val === null) {
+                      return { ...s, margin_percentage: null };
+                    }
+                    if (s.cost == null || isNaN(Number(s.cost))) {
+                      setErrors((e2) => ({ ...e2, margin_percentage: "Enter cost to apply a margin." }));
+                      return { ...s, margin_percentage: val };
+                    }
+                    const nextPrice = recomputePrice(s.cost, val);
+                    return { ...s, margin_percentage: val, price: nextPrice };
+                  });
+                }}
+                disabled={isView}
+              />
+              {errors.margin_percentage && <div className="mt-1 text-xs text-red-400">{errors.margin_percentage}</div>}
+            </div>
+
+            <div>
               <label className="mb-1 block text-sm font-medium">Price</label>
               <input
                 type="number"
                 step="0.01"
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
                 value={form.price}
-                onChange={(e) => setForm((s) => ({ ...s, price: parseFloat(e.target.value || "0") }))}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value || "0");
+                  setLastDriver("price");
+                  setErrors((e2) => ({ ...e2, margin_percentage: undefined, _non_field: undefined }));
+                  setForm((s) => {
+                    let nextMargin = s.margin_percentage;
+                    if (s.cost && s.cost !== 0) {
+                      nextMargin = recomputeMargin(s.cost, val);
+                    }
+                    return { ...s, price: val, margin_percentage: nextMargin };
+                  });
+                }}
                 disabled={isView}
               />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium">Cost</label>
-              <input
-                type="number"
-                step="0.01"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
-                value={form.cost || 0}
-                onChange={(e) => setForm((s) => ({ ...s, cost: parseFloat(e.target.value || "0") }))}
-                disabled={isView}
-              />
+              <p className="mt-1 text-xs text-zinc-400">If you edit price directly, margin will auto-update when cost is set.</p>
             </div>
 
             <div>

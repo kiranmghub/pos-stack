@@ -179,7 +179,7 @@ class POSStoresView(ListAPIView):
 
         rows = list(qs.order_by("id").values("id", "code", "name"))
         for r in rows:
-            r["currency_code"] = getattr(tenant, "currency_code", "USD")
+            r["currency_code"] = getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD")
             r["currency_symbol"] = getattr(tenant, "currency_symbol", None)
             r["currency_precision"] = getattr(tenant, "currency_precision", 2)
         return Response(rows, status=200)
@@ -268,7 +268,7 @@ class ProductsForPOSView(APIView):
         ]
         return Response({
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },
@@ -314,7 +314,7 @@ class POSLookupBarcodeView(APIView):
             "tax_rate": str(getattr(v.tax_category, "rate", Decimal("0.00"))),
             "category": getattr(v.product, "category", "") or "",
             "on_hand": on_hand,
-            "currency_code": getattr(tenant, "currency_code", "USD"),
+            "currency_code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
             "currency_symbol": getattr(tenant, "currency_symbol", None),
             "currency_precision": getattr(tenant, "currency_precision", 2),
         }
@@ -377,7 +377,7 @@ class POSCheckoutView(APIView):
                     register=register,
                     cashier=user,
                     status="pending",
-                    currency_code=getattr(tenant, "currency_code", "USD"),
+                    currency_code=getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                     customer=customer,
                 )
 
@@ -1021,7 +1021,7 @@ class POSQuoteView(APIView):
         return Response({
             "ok": True,
             "currency": {
-                "code": getattr(tenant, "currency_code", "USD"),
+                "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                 "symbol": getattr(tenant, "currency_symbol", None),
                 "precision": getattr(tenant, "currency_precision", 2),
             },

@@ -9,6 +9,7 @@ export interface Variant {
   barcode?: string | null;
   price: string | number;
   cost?: string | number | null;
+  margin_percentage?: string | number | null;
   on_hand: number;
   active: boolean;
   image_file?: string | null;
@@ -66,6 +67,7 @@ export type CreateVariantDto = {
   barcode?: string;
   price: number;
   cost?: number;
+  margin_percentage?: number | null;
   on_hand?: number;
   active?: boolean;
   image_file?: File | null;
