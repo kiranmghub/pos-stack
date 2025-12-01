@@ -119,7 +119,7 @@ export default function StoresTab() {
         const open = expandedIds.includes(r.id);
         return (
           <button
-            className="text-slate-300 hover:text-white"
+            className="text-muted-foreground hover:text-white"
             title={open ? "Collapse" : "Expand"}
             onClick={() => toggleExpand(r)}
           >
@@ -156,7 +156,7 @@ export default function StoresTab() {
       key: "is_active",
       header: "Active",
       render: (r: Store) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -188,27 +188,27 @@ export default function StoresTab() {
     const isRegsLoading = !!regLoading[r.id];
     const address = [r.street, r.city, r.state, r.postal_code, r.country].filter(Boolean).join(", ");
     return (
-      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+      <div className="bg-muted/60 rounded-md border border-border p-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-slate-400">Address</div>
+            <div className="text-xs text-muted-foreground">Address</div>
             <button
               className="text-xs text-blue-400 hover:underline"
               onClick={() => { setEditing(r); /* setCreating(false) not required here */ }}
             >
               Edit
             </button>
-            <div className="text-slate-200">{address || "—"}</div>
-            <div className="text-xs text-slate-400 mt-1">Timezone</div>
-            <div className="text-slate-200">{(r as any).timezone || "—"}</div>
+            <div className="text-muted-foreground">{address || "—"}</div>
+            <div className="text-xs text-muted-foreground mt-1">Timezone</div>
+            <div className="text-muted-foreground">{(r as any).timezone || "—"}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400 flex items-center justify-between">
+            <div className="text-xs text-muted-foreground flex items-center justify-between">
               <span>Registers</span>
-              {Array.isArray(regs) ? <span className="text-slate-500">{regs.length}</span> : null}
+              {Array.isArray(regs) ? <span className="text-muted-foreground">{regs.length}</span> : null}
             </div>
             {isRegsLoading ? (
-              <div className="mt-1 inline-flex items-center gap-2 text-slate-400 text-sm">
+              <div className="mt-1 inline-flex items-center gap-2 text-muted-foreground text-sm">
                 <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
@@ -218,16 +218,16 @@ export default function StoresTab() {
             ) : Array.isArray(regs) && regs.length > 0 ? (
               <div className="flex flex-wrap gap-1 mt-1">
                 {regs.slice(0, 8).map((g) => (
-                  <span key={g.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                  <span key={g.id} className="px-2 py-0.5 rounded-full text-[11px] bg-muted/60 text-muted-foreground">
                     {g.code}{g.name ? ` • ${g.name}` : ""}
                   </span>
                 ))}
                 {regs.length > 8 && (
-                  <span className="text-xs text-slate-400">+{regs.length - 8} more</span>
+                  <span className="text-xs text-muted-foreground">+{regs.length - 8} more</span>
                 )}
               </div>
             ) : (
-              <div className="text-slate-400 text-sm">No registers linked.</div>
+              <div className="text-muted-foreground text-sm">No registers linked.</div>
             )}
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function StoresTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search code or name…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select
             value={query.is_active === true ? "true" : query.is_active === false ? "false" : ""}
@@ -254,7 +254,7 @@ export default function StoresTab() {
                 is_active: e.target.value === "" ? undefined : e.target.value === "true",
               }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
           >
             <option value="">All</option>
             <option value="true">Active</option>
@@ -270,7 +270,7 @@ export default function StoresTab() {
               <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
                 className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
               <button onClick={() => setSelectedIds([])}
-                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+                className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}
@@ -326,5 +326,4 @@ export default function StoresTab() {
     </div>
   );
 }
-
 

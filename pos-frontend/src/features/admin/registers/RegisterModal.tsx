@@ -119,8 +119,8 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
-      <div className="w-[640px] rounded-xl border border-slate-800 bg-slate-900">
-        <div className="border-b border-slate-800 p-3">
+      <div className="w-[640px] rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-3">
           <h3 className="font-semibold">{isEdit ? "Edit Register" : "New Register"}</h3>
         </div>
 
@@ -131,7 +131,7 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
               <select
                 value={form.store || 0}
                 onChange={(e) => onChange("store", Number(e.target.value))}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               >
                 <option value={0}>Select a store…</option>
                 {stores.map((s) => (
@@ -144,7 +144,7 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
               <input
                 value={form.code}
                 onChange={(e) => onChange("code", e.target.value)}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Unique code per store"
               />
             </div>
@@ -154,7 +154,7 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
               <input
                 value={form.name || ""}
                 onChange={(e) => onChange("name", e.target.value)}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Give a name to your register"
               />
             </div>
@@ -175,31 +175,31 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
               value={hpText}
               onChange={(e) => setHpText(e.target.value)}
               rows={6}
-              className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none font-mono"
+              className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none font-mono"
               placeholder='{"printer":"star-mc", "drawer":"epson"}'
             />
-            <p className="text-xs text-slate-400 mt-1">Examples: printer, cash drawer, scanner IDs, etc.</p>
+            <p className="text-xs text-muted-foreground mt-1">Examples: printer, cash drawer, scanner IDs, etc.</p>
           </div>
 
           {isEdit && (
-            <div className="rounded-md border border-slate-800 p-3">
+            <div className="rounded-md border border-border p-3">
               <div className="text-sm font-medium">Set / Reset PIN</div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter a numeric PIN to set (6+ digits). Leave blank to clear the PIN.
               </p>
               <input
                 type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full mt-2 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-2 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="New PIN (or leave blank to clear)"
               />
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
-          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Cancel</button>
+        <div className="flex items-center justify-end gap-2 border-t border-border p-3">
+          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">Cancel</button>
           <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
             {saving ? "Saving…" : isEdit ? "Save" : "Create"}
           </button>

@@ -73,7 +73,8 @@ export default function InventoryRoute() {
 
   return (
     <AppShell>
-      <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+      <div className="min-h-[calc(100vh-3rem)] bg-background">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-background">
         <PageHeading
 //           icon={<Package className="h-5 w-5" />}
           title="Inventory"
@@ -94,7 +95,7 @@ export default function InventoryRoute() {
                 });
               }
             }}
-            className="rounded-lg bg-slate-800 px-3 py-2 outline-none"
+            className="rounded-lg bg-muted px-3 py-2 outline-none"
           >
             {stores.map((s) => (
               <option key={s.id} value={s.id}>
@@ -128,8 +129,9 @@ export default function InventoryRoute() {
           {active === "counts" && <CountsPage />}
         </>
       ) : (
-        <div className="p-6 text-slate-400">No stores found.</div>
+        <div className="p-6 text-muted-foreground">No stores found.</div>
       )}
+      </div>
     </AppShell>
   );
 }
@@ -148,7 +150,9 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 ${active ? "bg-white/10" : "bg-transparent hover:bg-white/5"}`}
+      className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+        active ? "bg-surface-raised shadow text-foreground" : "text-muted-foreground hover:bg-muted"
+      }`}
     >
       <span className="inline-flex items-center gap-2">
         {icon} <span>{label}</span>
@@ -182,9 +186,9 @@ function OverviewTab({ storeId }: { storeId: number }) {
         <KpiCard label="Low-stock items" value={String(low_stock_count ?? 0)} />
       </div>
 
-      <div className="rounded-xl border border-slate-800 overflow-hidden">
+      <div className="rounded-xl border border-border overflow-hidden">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-slate-900/70 text-slate-300">
+          <thead className="bg-muted/70 text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left">When</th>
               <th className="px-3 py-2 text-left">Item</th>
@@ -193,7 +197,7 @@ function OverviewTab({ storeId }: { storeId: number }) {
               <th className="px-3 py-2 text-left">Ref</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {(recent || []).map((r) => (
               <tr key={r.id}>
                 <td className="px-3 py-2">{new Date(r.created_at).toLocaleString()}</td>
@@ -210,7 +214,7 @@ function OverviewTab({ storeId }: { storeId: number }) {
             ))}
             {(!data?.recent || data.recent.length === 0) && (
               <tr>
-                <td colSpan={5} className="px-3 py-4 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
                   No recent movements
                 </td>
               </tr>
@@ -219,15 +223,15 @@ function OverviewTab({ storeId }: { storeId: number }) {
         </table>
       </div>
 
-      {msg && <div className="rounded bg-slate-900 border border-slate-800 px-3 py-2 text-sm">{msg}</div>}
+      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
     </div>
   );
 }
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-      <div className="text-slate-400 text-sm">{label}</div>
+    <div className="rounded-xl border border-border bg-card/50 p-4">
+      <div className="text-muted-foreground text-sm">{label}</div>
       <div className="text-2xl font-semibold mt-1">{value}</div>
     </div>
   );
@@ -277,8 +281,8 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 min-w-[260px] flex-1">
-          <Search className="h-4 w-4 text-slate-400" />
+        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 min-w-[260px] flex-1">
+          <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => {
@@ -289,8 +293,8 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
             className="bg-transparent outline-none flex-1"
           />
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2">
-          <span className="text-slate-400 text-sm">Page size</span>
+        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2">
+          <span className="text-muted-foreground text-sm">Page size</span>
           <select
             value={pageSize}
             onChange={(e) => {
@@ -308,9 +312,9 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-800">
+      <div className="overflow-hidden rounded-xl border border-border">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-slate-900/70 text-slate-300">
+          <thead className="bg-muted/70 text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left">Item</th>
               <th className="px-3 py-2">On hand</th>
@@ -318,12 +322,12 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
               <th className="px-3 py-2 w-28"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-slate-900/40">
+              <tr key={r.id} className="hover:bg-muted/40">
                 <td className="px-3 py-2">
                   <div className="font-medium">{r.product_name}</div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-muted-foreground">
                     {r.sku || "—"} {r.barcode ? `• ${r.barcode}` : ""}
                   </div>
                 </td>
@@ -345,7 +349,7 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
                   <div className="flex items-center justify-center gap-2">
                     <button
                       onClick={() => setAdjustFor(r)}
-                      className="rounded bg-slate-800 px-2 py-1 hover:bg-slate-700"
+                      className="rounded bg-muted px-2 py-1 hover:bg-muted"
                       title="Adjust"
                     >
                       <Plus className="h-4 w-4" />
@@ -356,7 +360,7 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
+                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
                   No items
                 </td>
               </tr>
@@ -366,20 +370,20 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 border-t border-slate-800 text-sm">
-            <div className="text-slate-400">Page {page} of {totalPages}</div>
+          <div className="flex items-center justify-between px-3 py-2 border-t border-border text-sm">
+            <div className="text-muted-foreground">Page {page} of {totalPages}</div>
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
               >
                 Prev
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
               >
                 Next
               </button>
@@ -388,7 +392,7 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
         )}
       </div>
 
-      {msg && <div className="rounded bg-slate-900 border border-slate-800 px-3 py-2 text-sm">{msg}</div>}
+      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
 
       {/* Adjust modal */}
       {adjustFor && (
@@ -433,10 +437,10 @@ function AdjustModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-slate-800 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-border p-4">
           <div className="font-semibold">Adjust: {row.product_name}</div>
-          <button onClick={onClose} className="rounded bg-slate-800 px-2 py-1 hover:bg-slate-700">
+          <button onClick={onClose} className="rounded bg-muted px-2 py-1 hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -447,7 +451,7 @@ function AdjustModal({
             <input
               value={qty}
               onChange={(e) => setQty(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
               placeholder="+5 or -2"
             />
           </label>
@@ -457,7 +461,7 @@ function AdjustModal({
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
             >
               {reasons.map((r) => (
                 <option key={r.code} value={r.code}>
@@ -468,8 +472,8 @@ function AdjustModal({
           </label>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-4">
-          <button onClick={onClose} className="rounded-lg px-3 py-2 bg-slate-700 hover:bg-slate-600">
+        <div className="flex items-center justify-end gap-2 border-t border-border p-4">
+          <button onClick={onClose} className="rounded-lg px-3 py-2 bg-muted hover:bg-muted">
             Cancel
           </button>
           <button
@@ -523,8 +527,8 @@ function LedgerTab({ storeId }: { storeId: number }) {
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 min-w-[260px] flex-1">
-          <Search className="h-4 w-4 text-slate-400" />
+        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 min-w-[260px] flex-1">
+          <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => {
@@ -537,9 +541,9 @@ function LedgerTab({ storeId }: { storeId: number }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-800">
+      <div className="overflow-hidden rounded-xl border border-border">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-slate-900/70 text-slate-300">
+          <thead className="bg-muted/70 text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left">When</th>
               <th className="px-3 py-2 text-left">Item</th>
@@ -548,7 +552,7 @@ function LedgerTab({ storeId }: { storeId: number }) {
               <th className="px-3 py-2 text-left">Ref</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-border">
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="px-3 py-2">{new Date(r.created_at).toLocaleString()}</td>
@@ -565,7 +569,7 @@ function LedgerTab({ storeId }: { storeId: number }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-4 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
                   No entries
                 </td>
               </tr>
@@ -574,20 +578,20 @@ function LedgerTab({ storeId }: { storeId: number }) {
         </table>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 border-t border-slate-800 text-sm">
-            <div className="text-slate-400">Page {page} of {totalPages}</div>
+          <div className="flex items-center justify-between px-3 py-2 border-t border-border text-sm">
+            <div className="text-muted-foreground">Page {page} of {totalPages}</div>
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
               >
                 Prev
               </button>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
               >
                 Next
               </button>
@@ -596,7 +600,7 @@ function LedgerTab({ storeId }: { storeId: number }) {
         )}
       </div>
 
-      {msg && <div className="rounded bg-slate-900 border border-slate-800 px-3 py-2 text-sm">{msg}</div>}
+      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
     </div>
   );
 }

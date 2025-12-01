@@ -15,8 +15,8 @@ export function SalesTable(props: {
   const { rows, loading, page, pageSize, count, lastPage, onOpenDetail, onPageChange, onPageSizeChange, onOpenReturns, safeMoney } = props;
 
   return (
-    <div className="relative overflow-visible rounded-2xl border border-zinc-800">
-    <div className="grid grid-cols-[8rem_13rem_minmax(12rem,1fr)_6rem_minmax(3.5rem,auto)_minmax(5.5rem,auto)_minmax(5.5rem,auto)_minmax(5.5rem,auto)_minmax(6rem,auto)] gap-3 bg-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
+    <div className="relative overflow-visible rounded-2xl border border-border">
+    <div className="grid grid-cols-[8rem_13rem_minmax(12rem,1fr)_6rem_minmax(3.5rem,auto)_minmax(5.5rem,auto)_minmax(5.5rem,auto)_minmax(5.5rem,auto)_minmax(6rem,auto)] gap-3 bg-muted px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 
       <div>#</div>
       <div>Date</div>
@@ -30,8 +30,8 @@ export function SalesTable(props: {
     </div>
 
 
-      <div className="divide-y divide-zinc-800">
-        {loading && <div className="p-6 text-sm text-zinc-500">Loading…</div>}
+      <div className="divide-y divide-border">
+        {loading && <div className="p-6 text-sm text-muted-foreground">Loading…</div>}
         {!loading && rows.map(r => (
           <button key={r.id}
             // className="w-full text-left grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-3 py-3 text-sm hover:bg-white/5"
@@ -39,7 +39,7 @@ export function SalesTable(props: {
             onClick={() => onOpenDetail(r.id)}>
             <div className="flex flex-col">
               {/* First line: receipt number */}
-              <div className="font-medium text-zinc-100 leading-tight">
+              <div className="font-medium text-foreground leading-tight">
                 {r.receipt_no || r.id}
               </div>
               {/* Second line: returns indicator (always present if onOpenReturns is available) */}
@@ -57,7 +57,7 @@ export function SalesTable(props: {
                       View returns ({(r as any).total_returns})
                     </button>
                   ) : (
-                    <span className="text-zinc-500">No returns</span>
+                    <span className="text-muted-foreground">No returns</span>
                   )}
                 </div>
               )}
@@ -65,11 +65,11 @@ export function SalesTable(props: {
 
 
 
-            <div className="text-zinc-400">{new Date(r.created_at).toLocaleString()}</div>
-            <div className="truncate text-zinc-300">
-              <span className="text-zinc-100">{r.store_name || "—"}</span>
-              <span className="mx-2 text-zinc-600">•</span>
-              <span className="text-zinc-400">{r.cashier_name || "—"}</span>
+            <div className="text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
+            <div className="truncate text-muted-foreground">
+              <span className="text-foreground">{r.store_name || "—"}</span>
+              <span className="mx-2 text-muted-foreground">•</span>
+              <span className="text-muted-foreground">{r.cashier_name || "—"}</span>
             </div>
             {/* Status chip */}
             <div className="text-center">
@@ -81,40 +81,40 @@ export function SalesTable(props: {
                     ? "bg-amber-500/20 text-amber-300"
                     : r.status === "void"
                     ? "bg-red-600/30 text-red-300"
-                    : "bg-zinc-700/40 text-zinc-300"
+                    : "bg-muted/40 text-muted-foreground"
                 }`}
               >
                 {r.status}
               </span>
             </div>
 
-            <div className="justify-self-end text-zinc-300 tabular-nums">{r.lines_count}</div>
-            <div className="justify-self-end text-zinc-200 tabular-nums">{safeMoney(r.subtotal)}</div>
+            <div className="justify-self-end text-muted-foreground tabular-nums">{r.lines_count}</div>
+            <div className="justify-self-end text-foreground tabular-nums">{safeMoney(r.subtotal)}</div>
             <div className="justify-self-end text-amber-300 tabular-nums">-{safeMoney(r.discount_total)}</div>
             <div className="justify-self-end text-blue-300 tabular-nums">{safeMoney(r.tax_total)}</div>
-            <div className="justify-self-end text-zinc-100 tabular-nums font-semibold">{safeMoney(r.total)}</div>
+            <div className="justify-self-end text-foreground tabular-nums font-semibold">{safeMoney(r.total)}</div>
           </button>
         ))}
-        {!loading && rows.length === 0 && <div className="p-6 text-sm text-zinc-500">No sales found.</div>}
+        {!loading && rows.length === 0 && <div className="p-6 text-sm text-muted-foreground">No sales found.</div>}
       </div>
 
-      <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800 bg-zinc-900/40">
-        <div className="text-xs text-zinc-400">
+      <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/40">
+        <div className="text-xs text-muted-foreground">
           {count === 0 ? "No results" : `Showing ${Math.min((page - 1) * pageSize + 1, count)}–${Math.min(page * pageSize, count)} of ${count}`}
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-xs text-zinc-300">
+          <label className="text-xs text-muted-foreground">
             Rows:&nbsp;
-            <select className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            <select className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
               value={pageSize} onChange={(e) => { onPageSizeChange(Number(e.target.value)); }}>
               {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </label>
           <div className="flex items-center gap-1">
-            <button className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40"
+            <button className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-white/5 disabled:opacity-40"
               onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1}>Prev</button>
-            <div className="min-w-[7rem] text-center text-xs text-zinc-300">Page {page} of {lastPage}</div>
-            <button className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40"
+            <div className="min-w-[7rem] text-center text-xs text-muted-foreground">Page {page} of {lastPage}</div>
+            <button className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-white/5 disabled:opacity-40"
               onClick={() => onPageChange(Math.min(lastPage, page + 1))} disabled={page >= lastPage}>Next</button>
           </div>
         </div>

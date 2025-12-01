@@ -39,7 +39,7 @@ function AutoButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2 py-1 text-xs text-indigo-200 hover:bg-white/5 disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-indigo-200 hover:bg-card disabled:opacity-50"
     >
       <Wand2 className="h-4 w-4" /> Auto-generate
     </button>
@@ -311,14 +311,14 @@ export default function OnboardingWizard() {
   }, [stepIndex]);
 
   if (loading) {
-    return <div className="min-h-screen grid place-items-center bg-slate-950 text-slate-100">Loading…</div>;
+    return <div className="min-h-screen grid place-items-center bg-background text-foreground">Loading…</div>;
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/80 backdrop-blur">
-      <div className="relative w-full max-w-4xl rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur">
+      <div className="relative w-full max-w-4xl rounded-3xl border border-border bg-card p-6 shadow-2xl">
         <button
-          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-white/5"
+          className="absolute right-4 top-4 rounded-full p-2 text-muted-foreground hover:bg-card"
           onClick={() => (window.location.href = "/home")}
         >
           <X className="h-5 w-5" />
@@ -327,9 +327,9 @@ export default function OnboardingWizard() {
         <div className="mb-6 flex items-center gap-3">
           <Sparkles className="h-6 w-6 text-indigo-300" />
           <div>
-            <div className="text-sm text-slate-300/70">Onboarding</div>
-            <div className="text-xl font-semibold text-white">{current.title}</div>
-            <div className="text-slate-300/70 text-sm">{current.desc}</div>
+            <div className="text-sm text-muted-foreground">Onboarding</div>
+            <div className="text-xl font-semibold text-foreground">{current.title}</div>
+            <div className="text-muted-foreground text-sm">{current.desc}</div>
           </div>
         </div>
 
@@ -346,19 +346,19 @@ export default function OnboardingWizard() {
           >
             {current.key === "store" && (
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Store name
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.name}
                     onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Store code
                   <div className="flex items-center gap-2">
                     <input
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                       value={storeForm.code}
                       onChange={(e) => {
                         setStoreForm({ ...storeForm, code: e.target.value });
@@ -368,10 +368,10 @@ export default function OnboardingWizard() {
                     <AutoButton onClick={() => handleGenerate("store", storeForm.name, (code) => setStoreForm({ ...storeForm, code }))} />
                   </div>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Country
                   <select
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.country}
                     onChange={(e) => setStoreForm({ ...storeForm, country: e.target.value, city: "" })}
                   >
@@ -382,11 +382,11 @@ export default function OnboardingWizard() {
                     ))}
                   </select>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   City
                   <input
                     list="city-list"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.city}
                     onChange={(e) => setStoreForm({ ...storeForm, city: e.target.value })}
                   />
@@ -396,42 +396,42 @@ export default function OnboardingWizard() {
                     ))}
                   </datalist>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Street
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.street}
                     onChange={(e) => setStoreForm({ ...storeForm, street: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   State/Province
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.state}
                     onChange={(e) => setStoreForm({ ...storeForm, state: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Postal code
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.postal_code}
                     onChange={(e) => setStoreForm({ ...storeForm, postal_code: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Phone
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.phone_number}
                     onChange={(e) => setStoreForm({ ...storeForm, phone_number: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Email
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={storeForm.email}
                     onChange={(e) => setStoreForm({ ...storeForm, email: e.target.value })}
                   />
@@ -439,7 +439,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleStoreNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Save & Next
                   </button>
@@ -449,19 +449,19 @@ export default function OnboardingWizard() {
 
             {current.key === "register" && (
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Register name
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={registerForm.name}
                     onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Register code
                     <div className="flex items-center gap-2">
                       <input
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                         value={registerForm.code}
                         onChange={(e) => {
                           setRegisterForm({ ...registerForm, code: e.target.value });
@@ -471,10 +471,10 @@ export default function OnboardingWizard() {
                       <AutoButton onClick={() => handleGenerate("register", registerForm.name, (code) => setRegisterForm({ ...registerForm, code }))} />
                     </div>
                   </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   PIN (optional)
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={registerForm.pin}
                     onChange={(e) => setRegisterForm({ ...registerForm, pin: e.target.value })}
                   />
@@ -482,7 +482,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleRegisterNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Save & Next
                   </button>
@@ -492,22 +492,22 @@ export default function OnboardingWizard() {
 
             {current.key === "tax_category" && (
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="md:col-span-2 text-sm text-slate-300/80">
+                <div className="md:col-span-2 text-sm text-muted-foreground">
                   Examples: “Food Tax”, “Alcohol Tax”, “Standard VAT”. Enter a percentage (e.g., 8.25) or decimal (0.0825).
                 </div>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Tax category name
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={taxCatForm.name}
                     onChange={(e) => setTaxCatForm({ ...taxCatForm, name: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Code
                   <div className="flex items-center gap-2">
                     <input
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                       value={taxCatForm.code}
                       onChange={(e) => {
                         setTaxCatForm({ ...taxCatForm, code: e.target.value });
@@ -517,10 +517,10 @@ export default function OnboardingWizard() {
                     <AutoButton onClick={() => handleGenerate("taxcategory", taxCatForm.name, (code) => setTaxCatForm({ ...taxCatForm, code }))} />
                   </div>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Rate
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={taxCatForm.rate}
                     onChange={(e) => setTaxCatForm({ ...taxCatForm, rate: e.target.value })}
                   />
@@ -528,7 +528,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleTaxCatNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Save & Next
                   </button>
@@ -538,19 +538,19 @@ export default function OnboardingWizard() {
 
             {current.key === "tax_rule" && (
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Tax rule name
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={taxRuleForm.name}
                     onChange={(e) => setTaxRuleForm({ ...taxRuleForm, name: e.target.value })}
                   />
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Code
                   <div className="flex items-center gap-2">
                     <input
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                       value={taxRuleForm.code}
                       onChange={(e) => {
                         setTaxRuleForm({ ...taxRuleForm, code: e.target.value });
@@ -560,10 +560,10 @@ export default function OnboardingWizard() {
                     <AutoButton onClick={() => handleGenerate("taxrule", taxRuleForm.name, (code) => setTaxRuleForm({ ...taxRuleForm, code }))} />
                   </div>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Basis
                   <select
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={taxRuleForm.basis}
                     onChange={(e) => setTaxRuleForm({ ...taxRuleForm, basis: e.target.value })}
                   >
@@ -571,10 +571,10 @@ export default function OnboardingWizard() {
                     <option value="FLAT">Flat</option>
                   </select>
                 </label>
-                <label className="space-y-1 text-sm text-slate-200">
+                <label className="space-y-1 text-sm text-muted-foreground">
                   Rate/Amount
                   <input
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-slate-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-foreground"
                     value={taxRuleForm.basis === "PCT" ? taxRuleForm.rate : taxRuleForm.amount}
                     onChange={(e) =>
                       setTaxRuleForm({
@@ -588,7 +588,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleTaxRuleNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Save & Next
                   </button>
@@ -598,10 +598,10 @@ export default function OnboardingWizard() {
 
             {current.key === "catalog" && (
               <div className="space-y-4">
-                <p className="text-sm text-slate-300/80">Import products using the CSV/Excel template. Validate before importing.</p>
+                <p className="text-sm text-muted-foreground">Import products using the CSV/Excel template. Validate before importing.</p>
                 <button
                   onClick={() => setShowImport({ open: true, scope: "products" })}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                 >
                   <Upload className="h-4 w-4" /> Import Products
                 </button>
@@ -617,13 +617,13 @@ export default function OnboardingWizard() {
                         setError(err?.message || "Failed to skip");
                       }
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-white"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground"
                   >
                     Skip for now
                   </button>
                   <button
                     onClick={() => setStepIndex((i) => i + 1)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Next
                   </button>
@@ -633,10 +633,10 @@ export default function OnboardingWizard() {
 
             {current.key === "variants" && (
               <div className="space-y-4">
-                <p className="text-sm text-slate-300/80">Import variants using the CSV/Excel template. Validate before importing.</p>
+                <p className="text-sm text-muted-foreground">Import variants using the CSV/Excel template. Validate before importing.</p>
                 <button
                   onClick={() => setShowImport({ open: true, scope: "variants" })}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                 >
                   <Upload className="h-4 w-4" /> Import Variants
                 </button>
@@ -652,13 +652,13 @@ export default function OnboardingWizard() {
                         setError(err?.message || "Failed to skip");
                       }
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-white"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground"
                   >
                     Skip for now
                   </button>
                   <button
                     onClick={() => setStepIndex((i) => i + 1)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-600/30"
+                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
                   >
                     Next
                   </button>
@@ -667,17 +667,17 @@ export default function OnboardingWizard() {
             )}
 
             {current.key === "done" && (
-              <div className="space-y-4 text-slate-200">
+              <div className="space-y-4 text-muted-foreground">
                 <p>Onboarding complete. You can now use POS, catalog, and admin features.</p>
                 <button
                   onClick={handleFinish}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow shadow-emerald-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-emerald-600/30"
                 >
                   Mark Live
                 </button>
                 <button
                   onClick={() => (window.location.href = "/home")}
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-white"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground"
                 >
                   Go to Home
                 </button>

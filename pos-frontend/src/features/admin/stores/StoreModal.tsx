@@ -90,26 +90,26 @@ export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
-      <div className="w-[640px] rounded-xl border border-slate-800 bg-slate-900">
-        <div className="border-b border-slate-800 p-3">
+      <div className="w-[640px] rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-3">
           <h3 className="font-semibold">{isEdit ? "Edit Store" : "New Store"}</h3>
         </div>
 
         <div className="p-4 grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm">Code *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.code} onChange={(e) => onChange("code", e.target.value)} placeholder="Unique code" />
           </div>
           <div>
             <label className="text-sm">Name *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.name} onChange={(e) => onChange("name", e.target.value)} />
           </div>
 
           <div>
             <label className="text-sm">Timezone *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.timezone} onChange={(e) => onChange("timezone", e.target.value)} placeholder="e.g. America/Chicago" />
           </div>
           <label className="flex items-center gap-2 mt-6">
@@ -119,34 +119,34 @@ export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
 
           <div className="col-span-2">
             <label className="text-sm">Street *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.street} onChange={(e) => onChange("street", e.target.value)} />
           </div>
 
           <div>
             <label className="text-sm">City *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.city} onChange={(e) => onChange("city", e.target.value)} />
           </div>
           <div>
             <label className="text-sm">State/Province *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.state} onChange={(e) => onChange("state", e.target.value)} />
           </div>
           <div>
             <label className="text-sm">Postal Code *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.postal_code} onChange={(e) => onChange("postal_code", e.target.value)} />
           </div>
           <div>
             <label className="text-sm">Country *</label>
-            <input className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            <input className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               value={form.country} onChange={(e) => onChange("country", e.target.value)} />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
-          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Cancel</button>
+        <div className="flex items-center justify-end gap-2 border-t border-border p-3">
+          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">Cancel</button>
           <button onClick={submit} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
             {saving ? "Saving…" : isEdit ? "Save" : "Create"}
           </button>

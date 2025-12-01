@@ -32,26 +32,26 @@ export default function SignupVerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur"
+        className="w-full max-w-lg rounded-3xl border border-border bg-card p-8 shadow-2xl backdrop-blur"
       >
         <h1 className="text-3xl font-semibold mb-2">Verify your email</h1>
-        <p className="text-slate-300/80 mb-6">We sent a 6-digit code to <b>{email}</b>. Enter it to continue.</p>
+        <p className="text-muted-foreground mb-6">We sent a 6-digit code to <b>{email}</b>. Enter it to continue.</p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
-            <span className="text-sm text-slate-200">OTP code</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-              <ShieldCheck className="h-4 w-4 text-slate-300/80" />
+            <span className="text-sm text-muted-foreground">OTP code</span>
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                 placeholder="123456"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -61,7 +61,7 @@ export default function SignupVerifyPage() {
 
           {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
 
-          <div className="flex items-center justify-between text-sm text-slate-300/80">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="inline-flex items-center gap-1">
               <Clock className="h-4 w-4" /> Code expires in 10 minutes
             </div>
@@ -77,7 +77,7 @@ export default function SignupVerifyPage() {
           <button
             type="submit"
             disabled={code.length < 4 || loading}
-            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Verifying..." : "Verify and continue"}
           </button>

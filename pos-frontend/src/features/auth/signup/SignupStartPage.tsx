@@ -62,25 +62,25 @@ export default function SignupStartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur"
+        className="w-full max-w-xl rounded-3xl border border-border bg-card p-8 shadow-2xl backdrop-blur"
       >
         <h1 className="text-3xl font-semibold mb-2">Create your account</h1>
-        <p className="text-slate-300/80 mb-6">Start with your email, country, and currency. We’ll send you a verification code.</p>
+        <p className="text-muted-foreground mb-6">Start with your email, country, and currency. We’ll send you a verification code.</p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
-            <span className="text-sm text-slate-200">Email</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-              <Mail className="h-4 w-4 text-slate-300/80" />
+            <span className="text-sm text-muted-foreground">Email</span>
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+              <Mail className="h-4 w-4 text-muted-foreground" />
               <input
                 type="email"
                 required
-                className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -90,11 +90,11 @@ export default function SignupStartPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="block space-y-2">
-              <span className="text-sm text-slate-200">Country</span>
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-                <Globe2 className="h-4 w-4 text-slate-300/80" />
+              <span className="text-sm text-muted-foreground">Country</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+                <Globe2 className="h-4 w-4 text-muted-foreground" />
                 <select
-                  className="w-full bg-transparent py-2 text-slate-100 focus:outline-none"
+                  className="w-full bg-transparent py-2 text-foreground focus:outline-none"
                 value={country}
                 onChange={(e) => {
                   const next = e.target.value;
@@ -108,7 +108,7 @@ export default function SignupStartPage() {
                 }}
               >
                   {countries.map((c) => (
-                    <option key={c.code} value={c.code} className="text-slate-900">
+                    <option key={c.code} value={c.code} className="text-foreground">
                       {c.label}
                     </option>
                   ))}
@@ -117,11 +117,11 @@ export default function SignupStartPage() {
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm text-slate-200">Preferred currency</span>
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-                <DollarSign className="h-4 w-4 text-slate-300/80" />
+              <span className="text-sm text-muted-foreground">Preferred currency</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <select
-                  className="w-full bg-transparent py-2 text-slate-100 focus:outline-none"
+                  className="w-full bg-transparent py-2 text-foreground focus:outline-none"
                   value={currency}
                   onChange={(e) => {
                     setCurrency(e.target.value);
@@ -129,7 +129,7 @@ export default function SignupStartPage() {
                   }}
                 >
                   {[...new Set(countries.map((c) => c.currency || c.code))].map((ccy) => (
-                    <option key={ccy} value={ccy} className="text-slate-900">
+                    <option key={ccy} value={ccy} className="text-foreground">
                       {ccy}
                     </option>
                   ))}
@@ -145,7 +145,7 @@ export default function SignupStartPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="inline-flex items-center rounded-lg bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/15"
+                  className="inline-flex items-center rounded-lg bg-muted px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted/70"
                 >
                   Go to Sign In
                 </button>
@@ -156,7 +156,7 @@ export default function SignupStartPage() {
           <button
             type="submit"
             disabled={!canSubmit || loading}
-            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Sending code..." : "Send verification code"}
           </button>

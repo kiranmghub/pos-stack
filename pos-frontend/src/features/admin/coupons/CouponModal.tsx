@@ -113,8 +113,8 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
-      <div className="w-[760px] rounded-xl border border-slate-800 bg-slate-900">
-        <div className="border-b border-slate-800 p-3">
+      <div className="w-[760px] rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-3">
           <h3 className="font-semibold">{isEdit ? "Edit Coupon" : "New Coupon"}</h3>
         </div>
 
@@ -125,7 +125,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Unique coupon code"
               />
             </div>
@@ -134,7 +134,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Display name"
               />
             </div>
@@ -145,7 +145,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Brief description or usage note"
               />
             </div>
@@ -162,7 +162,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
               <select
                 value={ruleId || 0}
                 onChange={(e) => setRuleId(Number(e.target.value))}
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
               >
                 <option value={0}>Select a discount rule…</option>
                 {rules.map(r => (
@@ -179,7 +179,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
                 value={minSubtotal}
                 onChange={(e) => setMinSubtotal(e.target.value)}
                 inputMode="decimal"
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="e.g., 25.00"
               />
             </div>
@@ -190,7 +190,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
                 value={maxUses}
                 onChange={(e) => setMaxUses(e.target.value)}
                 inputMode="numeric"
-                className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="e.g., 100"
               />
             </div>
@@ -202,7 +202,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
                   type="datetime-local"
                   value={startAt || ""}
                   onChange={(e) => setStartAt(e.target.value)}
-                  className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                  className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 />
               </div>
               <div>
@@ -211,15 +211,15 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
                   type="datetime-local"
                   value={endAt || ""}
                   onChange={(e) => setEndAt(e.target.value)}
-                  className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                  className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
-          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">
+        <div className="flex items-center justify-end gap-2 border-t border-border p-3">
+          <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">
             Cancel
           </button>
           <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">

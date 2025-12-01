@@ -848,9 +848,10 @@ export default function SalesPage() {
   const refundLastPage = Math.max(1, Math.ceil(refundCount / refundPageSize));
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-[calc(100vh-3rem)] bg-background">
+    <div className="space-y-4 px-4 py-6">
       {/* Main tabs per roadmap */}
-      <div className="flex flex-wrap gap-1 rounded-xl border border-zinc-800 bg-zinc-950/70 p-1">
+      <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-background/70 p-1">
         {[
           { id: "overview", label: "Overview", ready: true },
           { id: "returns", label: "Returns", ready: true },
@@ -871,8 +872,8 @@ export default function SalesPage() {
             className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${mainTab === tab.id
               ? "bg-blue-600 text-white shadow"
               : tab.ready
-                ? "text-zinc-300 hover:bg-white/5"
-                : "text-zinc-600 cursor-not-allowed"
+                ? "text-muted-foreground hover:bg-white/5"
+                : "text-muted-foreground cursor-not-allowed"
               }`}
             disabled={!tab.ready}
           >
@@ -898,23 +899,23 @@ export default function SalesPage() {
           />
 
           {rows.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-muted/60 border border-border rounded-xl p-4">
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Sales</div>
-                <div className="text-lg font-semibold text-zinc-100">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Sales</div>
+                <div className="text-lg font-semibold text-foreground">
                   {safeMoney(rows.reduce((sum, r) => sum + Number(r.total || 0), 0))}
                 </div>
               </div>
 
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Tax</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Tax</div>
                 <div className="text-lg font-semibold text-blue-300">
                   {safeMoney(rows.reduce((sum, r) => sum + Number(r.tax_total || 0), 0))}
                 </div>
               </div>
 
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-400">Total Refunded</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Refunded</div>
                 <div className="text-lg font-semibold text-amber-300">
                   {safeMoney(
                     rows.reduce((sum, r) => sum + (r.total_returns > 0 ? 1 : 0), 0)
@@ -923,8 +924,8 @@ export default function SalesPage() {
               </div>
 
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-400">Receipts</div>
-                <div className="text-lg font-semibold text-zinc-100">{rows.length}</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Receipts</div>
+                <div className="text-lg font-semibold text-foreground">{rows.length}</div>
               </div>
             </div>
           )}
@@ -947,21 +948,21 @@ export default function SalesPage() {
 
       {mainTab === "returns" && (
         <div className="space-y-3">
-          <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center text-sm text-zinc-300 md:grid-cols-4">
+          <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground md:grid-cols-4">
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Drafts (page)</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Drafts (page)</div>
               <div className="mt-1 text-2xl font-semibold text-amber-200 tabular-nums">{returnDraftCount}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Finalized (page)</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Finalized (page)</div>
               <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">{returnFinalizedCount}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Void (page)</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Void (page)</div>
               <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">{returnVoidCount}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-zinc-500">Refund total (page)</div>
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Refund total (page)</div>
               <div className="mt-1 text-2xl font-semibold text-blue-200 tabular-nums">{safeMoney(returnRefundTotal)}</div>
             </div>
           </div>
@@ -994,7 +995,7 @@ export default function SalesPage() {
                   onClick={() => setReturnStatus(chip.value)}
                   className={`rounded-full px-3 py-1 font-medium ${returnStatus === chip.value
                     ? "bg-blue-600 text-white"
-                    : "bg-zinc-900 text-zinc-300 border border-zinc-700 hover:bg-white/5"
+                    : "bg-card text-muted-foreground border border-border hover:bg-white/5"
                     }`}
                 >
                   {chip.label}
@@ -1011,7 +1012,7 @@ export default function SalesPage() {
             {latestDraft && (
               <button
                 type="button"
-                className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-amber-400"
+                className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-amber-400"
                 onClick={() => handleResumeDraft(latestDraft)}
               >
                 Resume latest draft
@@ -1042,27 +1043,27 @@ export default function SalesPage() {
       {mainTab === "payments" && (
         canViewPayments ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center text-sm text-zinc-300 md:grid-cols-4">
+            <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground md:grid-cols-4">
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Collected (page)</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Collected (page)</div>
                 <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">
                   {loadingPaymentSummary ? "…" : safeMoney(paymentTotalCollected)}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Refunded (page)</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Refunded (page)</div>
                 <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">
                   {loadingPaymentSummary ? "…" : safeMoney(refundTotalAmount)}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Net (page)</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Net (page)</div>
                 <div className={`mt-1 text-2xl font-semibold tabular-nums ${netPaymentTotal >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
                   {loadingPaymentSummary ? "…" : safeMoney(netPaymentTotal)}
                 </div>
               </div>
               <div className="text-left">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">By method (page)</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">By method (page)</div>
                 <div className="mt-1 flex flex-wrap gap-2 text-xs">
                   {["CASH", "CARD", "STORE_CREDIT", "OTHER"].map((method) => {
                     const amount = paymentTotalsByMethod[method] || 0;
@@ -1077,7 +1078,7 @@ export default function SalesPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-zinc-500">Exports:</span>
+              <span className="text-muted-foreground">Exports:</span>
               <button
                 type="button"
                 className="rounded-md border border-white/20 px-3 py-1 text-white hover:bg-white/10"
@@ -1166,16 +1167,16 @@ export default function SalesPage() {
       {mainTab === "discounts" && (
         canViewDiscounts ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-300 md:grid-cols-3">
+            <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground md:grid-cols-3">
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Total discount</div>
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total discount</div>
                 <div className="mt-1 text-2xl font-semibold text-amber-200 tabular-nums">
                   {loadingDiscountSummary ? "…" : safeMoney(totalDiscountAmount)}
                 </div>
               </div>
               <div className="text-center md:col-span-2">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">Top rules</div>
-                <div className="mt-1 flex flex-wrap justify-center gap-2 text-xs text-zinc-200">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top rules</div>
+                <div className="mt-1 flex flex-wrap justify-center gap-2 text-xs text-foreground">
                   {(discountSummary?.rules || []).slice(0, 3).map((rule) => (
                     <span key={rule.code} className="rounded-full border border-amber-500/30 px-2 py-0.5 text-amber-100">
                       {rule.name} · {safeMoney(Number(rule.total_discount_amount || 0))}
@@ -1197,7 +1198,7 @@ export default function SalesPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <input
-                className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm text-zinc-100 placeholder:text-zinc-500"
+                className="rounded-md border border-border bg-card px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground"
                 placeholder="Search rule by name or code"
                 value={discountSearch}
                 onChange={(e) => setDiscountSearch(e.target.value)}
@@ -1222,7 +1223,7 @@ export default function SalesPage() {
 
             {selectedDiscountRule && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-zinc-300">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <div>
                     Sales using <span className="font-semibold">{selectedDiscountRule.name}</span>
                   </div>
@@ -1234,7 +1235,7 @@ export default function SalesPage() {
                     Clear selection
                   </button>
                 </div>
-                <div className="flex items-center justify-between text-xs text-zinc-400">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span></span>
                   <button
                     type="button"
@@ -1281,7 +1282,7 @@ export default function SalesPage() {
       {mainTab === "taxes" && (
         canViewTaxes ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-950 to-slate-900/60 px-4 py-3 text-sm text-cyan-100 md:grid-cols-3">
+            <div className="grid gap-3 rounded-2xl border border-cyan-500/30 bg-card px-4 py-3 text-sm text-cyan-100 md:grid-cols-3">
               <div className="text-center">
                 <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Total tax</div>
                 <div className="mt-2 text-3xl font-bold text-cyan-300 tabular-nums">
@@ -1364,7 +1365,7 @@ export default function SalesPage() {
       {mainTab === "audit" && (
         canViewAudit ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-2xl border border-fuchsia-500/40 bg-gradient-to-r from-slate-950 to-slate-900/80 px-4 py-3 text-sm text-fuchsia-100 md:grid-cols-3">
+            <div className="grid gap-3 rounded-2xl border border-fuchsia-500/40 bg-card px-4 py-3 text-sm text-fuchsia-100 md:grid-cols-3">
               <div className="text-center">
                 <div className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200/70">Events</div>
                 <div className="mt-2 text-3xl font-bold text-white tabular-nums">{auditCount}</div>
@@ -1499,6 +1500,7 @@ export default function SalesPage() {
 
 
 
+    </div>
     </div>
   );
 }

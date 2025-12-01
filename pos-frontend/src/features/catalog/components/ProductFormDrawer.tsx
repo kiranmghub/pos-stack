@@ -33,10 +33,10 @@ function Drawer({
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div
-        className="absolute right-0 top-0 h-full bg-zinc-900 text-zinc-100 shadow-2xl border-l border-zinc-800"
+        className="absolute right-0 top-0 h-full bg-card text-foreground shadow-2xl border-l border-border"
         style={{ width }}
       >
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="text-lg font-semibold">{title}</h3>
           <div className="flex items-center gap-2">
             {headerRight}
@@ -377,7 +377,7 @@ export function ProductFormDrawer({
 
           {/* Full-width clickable image preview */}
           <div
-            className="relative h-56 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800 hover:bg-zinc-700/50 transition-colors"
+            className="relative h-56 w-full overflow-hidden rounded-xl border border-border bg-muted hover:bg-muted/50 transition-colors"
             onClick={() => {
               if (isView) return;
               if (!previewUrl) fileInputRef.current?.click();
@@ -390,7 +390,7 @@ export function ProductFormDrawer({
                 alt="Product preview"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center cursor-pointer text-4xl text-zinc-500">
+              <div className="flex h-full w-full items-center justify-center cursor-pointer text-4xl text-muted-foreground">
                 +
               </div>
             )}
@@ -400,7 +400,7 @@ export function ProductFormDrawer({
               <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
                 <button
                   type="button"
-                  className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-indigo-600 hover:text-white transition"
+                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-indigo-600 hover:text-white transition"
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
@@ -410,7 +410,7 @@ export function ProductFormDrawer({
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-zinc-900/80 px-3 py-1 text-sm text-zinc-100 hover:bg-red-600 hover:text-white transition"
+                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-red-600 hover:text-white transition"
                   onClick={(e) => {
                     e.stopPropagation();
                     setNewImage(null);
@@ -446,8 +446,8 @@ export function ProductFormDrawer({
           <div>
             <label className="mb-1 block text-sm font-medium">Name</label>
             <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                errors.name ? "border-red-500" : "border-zinc-700"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                errors.name ? "border-red-500" : "border-border"
               }`}
               value={form.name}
               onChange={(e) => {
@@ -479,8 +479,8 @@ export function ProductFormDrawer({
               )}
             </div>
             <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                errors.code ? "border-red-500" : "border-zinc-700"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                errors.code ? "border-red-500" : "border-border"
               }`}
               value={form.code || ""}
               onChange={(e) => {
@@ -495,7 +495,7 @@ export function ProductFormDrawer({
           <div>
             <label className="mb-1 block text-sm font-medium">Category</label>
             <input
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
               value={form.category}
               onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
               placeholder="e.g., Electronics"
@@ -524,7 +524,7 @@ export function ProductFormDrawer({
             <label className="mb-1 block text-sm font-medium">Tax Category</label>
             {taxes ? (
               <select
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
                 value={String(form.tax_category || "")}
                 onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value || "" }))}
                 disabled={isView}
@@ -539,13 +539,13 @@ export function ProductFormDrawer({
             ) : (
               <div className="space-y-2">
                 <input
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
                   placeholder="Tax Category ID (optional)"
                   value={String(form.tax_category || "")}
                   onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
                   disabled={isView}
                 />
-                {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
+                {taxFetchError && <div className="text-xs text-muted-foreground">{taxFetchError}</div>}
               </div>
             )}
           </div>
@@ -556,7 +556,7 @@ export function ProductFormDrawer({
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-medium">Description</label>
             <textarea
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
               rows={4}
               value={form.description || ""}
               onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
@@ -567,7 +567,7 @@ export function ProductFormDrawer({
           <div className="md:col-span-2">
             <label className="mb-1 block text-sm font-medium">Attributes (JSON)</label>
             <textarea
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-xs text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
               rows={6}
               placeholder='e.g. {"brand":"Acme","color":"black"}'
               value={form.attributes || ""}
@@ -578,15 +578,15 @@ export function ProductFormDrawer({
         </section>
 
         {isView && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 text-sm">
+          <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-              <div className="text-zinc-400">
+              <div className="text-muted-foreground">
                 <div className="text-xs uppercase tracking-wide">Created</div>
-                <div className="text-zinc-200">{fmt(meta.created_at)}</div>
+                <div className="text-foreground">{fmt(meta.created_at)}</div>
               </div>
-              <div className="text-zinc-400">
+              <div className="text-muted-foreground">
                 <div className="text-xs uppercase tracking-wide">Updated</div>
-                <div className="text-zinc-200">{fmt(meta.updated_at)}</div>
+                <div className="text-foreground">{fmt(meta.updated_at)}</div>
               </div>
             </div>
           </div>
@@ -596,7 +596,7 @@ export function ProductFormDrawer({
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              className="rounded-xl border border-zinc-700 px-4 py-2 text-sm hover:bg-white/5"
+              className="rounded-xl border border-border px-4 py-2 text-sm hover:bg-white/5"
               onClick={handleClose}
             >
               Cancel

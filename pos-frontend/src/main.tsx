@@ -20,6 +20,7 @@ import MetricsPage from "@/features/analytics/MetricsPage";
 
 import "@/index.css";
 import { getRole } from "@/lib/auth";
+import { ThemeProvider } from "@/lib/theme";
 
 import InventoryRoute from "@/features/inventory/InventoryRoute";
 import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
@@ -27,9 +28,6 @@ import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
 
 // ⬇️ NEW: HomePage import
 import HomePage from "@/features/home/HomePage";
-
-document.documentElement.classList.add("dark");
-
 
 /** LandingRouter sends users to the right home based on role
  *  (kept for reference; no longer used as "/" now shows HomePage) */
@@ -44,10 +42,10 @@ function LandingRouter() {
 /** Optional: a friendly page if someone hits a protected route with wrong role */
 function Restricted({ role }: { role?: string | null }) {
   return (
-    <div className="min-h-screen grid place-items-center bg-slate-950 text-slate-100">
-      <div className="max-w-md text-center p-6 rounded-xl border border-white/10 bg-white/5">
+    <div className="min-h-screen grid place-items-center bg-background text-foreground">
+      <div className="max-w-md text-center p-6 rounded-xl border border-border bg-card">
         <h1 className="text-2xl font-semibold mb-2">Restricted</h1>
-        <p className="text-slate-300">
+        <p className="text-muted-foreground">
           You don’t have access to this page.
           {role ? <> Your role: <b>{role}</b>.</> : null}
         </p>
@@ -189,6 +187,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </React.StrictMode>
 );

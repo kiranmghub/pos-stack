@@ -35,8 +35,8 @@
 //             onClick={() => setActive(t.key)}
 //             className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm
 //               ${active === t.key
-//                 ? "bg-slate-800 border-slate-700 text-white"
-//                 : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/50"}`}
+//                 ? "bg-muted border-border text-white"
+//                 : "bg-card border-border text-muted-foreground hover:bg-muted/50"}`}
 //           >
 //             {t.icon} {t.label}
 //           </button>
@@ -141,8 +141,8 @@ export default function AdminPage() {
             aria-current={ariaFor[t.key]}
             className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm
               ${active === t.key
-                ? "bg-slate-800 border-slate-700 text-white"
-                : "bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800/50"}`}
+                ? "bg-muted border-border text-white"
+                : "bg-card border-border text-muted-foreground hover:bg-muted/50"}`}
           >
             {t.icon} {t.label}
           </button>
@@ -152,7 +152,7 @@ export default function AdminPage() {
       {/* Content (lazy) */}
       <Suspense
         fallback={
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
+          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
             Loading…
           </div>
         }

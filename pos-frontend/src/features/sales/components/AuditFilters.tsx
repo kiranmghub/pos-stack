@@ -22,10 +22,10 @@ export function AuditFilters({
   setDateTo,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-fuchsia-500/20 bg-gradient-to-r from-slate-950 to-slate-900/70 p-4 shadow-lg shadow-fuchsia-900/20">
+    <div className="rounded-2xl border border-fuchsia-500/20 bg-card p-4 shadow-lg shadow-fuchsia-900/20">
       <div className="grid gap-3 md:grid-cols-4">
         <select
-          className="rounded-xl border border-fuchsia-500/40 bg-slate-950 px-3 py-2 text-sm text-fuchsia-100"
+          className="rounded-xl border border-fuchsia-500/40 bg-background px-3 py-2 text-sm text-fuchsia-100"
           value={action}
           onChange={(e) => setAction(e.target.value)}
         >
@@ -36,7 +36,7 @@ export function AuditFilters({
           <option value="RETURN_VOIDED">Return voided</option>
         </select>
         <select
-          className="rounded-xl border border-fuchsia-500/40 bg-slate-950 px-3 py-2 text-sm text-fuchsia-100"
+          className="rounded-xl border border-fuchsia-500/40 bg-background px-3 py-2 text-sm text-fuchsia-100"
           value={severity}
           onChange={(e) => setSeverity(e.target.value)}
         >
@@ -47,13 +47,13 @@ export function AuditFilters({
         </select>
         <input
           type="date"
-          className="rounded-xl border border-fuchsia-500/40 bg-slate-950 px-3 py-2 text-sm text-fuchsia-100"
+          className="rounded-xl border border-fuchsia-500/40 bg-background px-3 py-2 text-sm text-fuchsia-100"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
         />
         <input
           type="date"
-          className="rounded-xl border border-fuchsia-500/40 bg-slate-950 px-3 py-2 text-sm text-fuchsia-100"
+          className="rounded-xl border border-fuchsia-500/40 bg-background px-3 py-2 text-sm text-fuchsia-100"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
         />

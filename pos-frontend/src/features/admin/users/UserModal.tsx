@@ -122,49 +122,49 @@ const handleSubmit = async () => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-      <div className="w-[30rem] rounded-2xl bg-slate-900 border border-slate-700 shadow-xl p-6 space-y-4">
+      <div className="w-[30rem] rounded-2xl bg-card border border-border shadow-xl p-6 space-y-4">
         <h2 className="text-lg font-semibold text-white">
           {isEdit ? "Edit User" : "New User"}
         </h2>
 
         {/* Username */}
         <div>
-          <label className="block text-sm font-medium text-slate-200">Username</label>
+          <label className="block text-sm font-medium text-muted-foreground">Username</label>
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
             placeholder="Enter username"
           />
-          <p className="text-xs text-slate-400 mt-1">Unique username for login.</p>
+          <p className="text-xs text-muted-foreground mt-1">Unique username for login.</p>
         </div>
 
         {/* Email */}
         <div>
-          <label className="block text-sm font-medium text-slate-200">Email</label>
+          <label className="block text-sm font-medium text-muted-foreground">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
             placeholder="user@example.com"
           />
-          <p className="text-xs text-slate-400 mt-1">Used for notifications and identification.</p>
+          <p className="text-xs text-muted-foreground mt-1">Used for notifications and identification.</p>
         </div>
 
         {/* Password (optional on edit) */}
         <div>
-        <label className="block text-sm font-medium text-slate-200">
-            Password {isEdit ? <span className="text-slate-400 font-normal">(leave blank to keep)</span> : null}
+        <label className="block text-sm font-medium text-muted-foreground">
+            Password {isEdit ? <span className="text-muted-foreground font-normal">(leave blank to keep)</span> : null}
         </label>
         <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
             placeholder={isEdit ? "••••••••" : "Set an initial password"}
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
             {isEdit ? "Only set if you need to change this user's password." : "Required for new users."}
         </p>
         </div>
@@ -172,11 +172,11 @@ const handleSubmit = async () => {
 
         {/* Role */}
         <div>
-          <label className="block text-sm font-medium text-slate-200">Role</label>
+          <label className="block text-sm font-medium text-muted-foreground">Role</label>
             <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+            className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
             >
             {roleOptions.map((r) => (
                 <option key={r.value} value={r.value}>
@@ -185,18 +185,18 @@ const handleSubmit = async () => {
             ))}
             </select>
 
-          <p className="text-xs text-slate-400 mt-1">Select user’s permission level.</p>
+          <p className="text-xs text-muted-foreground mt-1">Select user’s permission level.</p>
         </div>
 
         {/* Stores */}
         <div>
-          <label className="block text-sm font-medium text-slate-200">Stores</label>
+          <label className="block text-sm font-medium text-muted-foreground">Stores</label>
           {loading ? (
-            <p className="text-sm text-slate-400">Loading stores…</p>
+            <p className="text-sm text-muted-foreground">Loading stores…</p>
           ) : (
-            <div className="space-y-1 max-h-32 overflow-auto border border-slate-700 rounded-md p-2">
+            <div className="space-y-1 max-h-32 overflow-auto border border-border rounded-md p-2">
               {storeList.map((s) => (
-                <label key={s.id} className="flex items-center gap-2 text-sm text-slate-300">
+                <label key={s.id} className="flex items-center gap-2 text-sm text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={stores.includes(s.id)}
@@ -211,7 +211,7 @@ const handleSubmit = async () => {
               ))}
             </div>
           )}
-          <p className="text-xs text-slate-400 mt-1">Assign one or more stores to this user.</p>
+          <p className="text-xs text-muted-foreground mt-1">Assign one or more stores to this user.</p>
         </div>
 
         {/* Active */}
@@ -221,14 +221,14 @@ const handleSubmit = async () => {
             checked={isActive}
             onChange={(e) => setIsActive(e.target.checked)}
           />
-          <label className="text-sm text-slate-200">Active user</label>
+          <label className="text-sm text-muted-foreground">Active user</label>
         </div>
 
         {/* Buttons */}
         <div className="flex justify-end gap-2 pt-4">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200"
+            className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-muted-foreground"
           >
             Cancel
           </button>

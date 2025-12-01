@@ -125,7 +125,7 @@ export default function PosScreen() {
   const LineToggle: React.FC<{ open: boolean; onClick: () => void }> = ({ open, onClick }) => (
     <button
       onClick={onClick}
-      className="text-xs rounded px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-100"
+      className="text-xs rounded px-2 py-1 bg-muted hover:bg-muted text-foreground"
       title={open ? "Hide details" : "Show details"}
     >
       {open ? "Hide details" : "Details"}
@@ -760,10 +760,10 @@ img{display:block;margin:8px auto}
   return (
     <>
       {stores.length === 0 && (
-        <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100 p-6">
-          <div className="max-w-lg w-full rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow">
+        <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center bg-background text-foreground p-6">
+          <div className="max-w-lg w-full rounded-2xl border border-border bg-card p-6 text-center shadow">
             <h2 className="text-xl font-semibold mb-2">No store access</h2>
-            <p className="text-slate-300">
+            <p className="text-muted-foreground">
               You are not assigned to any store. Please contact your store administrator.
             </p>
           </div>
@@ -771,13 +771,13 @@ img{display:block;margin:8px auto}
       )}
 
       {stores.length > 0 && (
-        <div className="flex h-screen bg-slate-950 text-slate-100">
+        <div className="flex min-h-[calc(100vh-3rem)] bg-background text-foreground">
           {/* Left: Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 border-r border-slate-800 p-4">
+          <div className="flex-1 flex flex-col min-h-0 border-r border-border p-4">
             {/* Store selector + Search */}
             <div className="mb-3 flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
-                <Store className="h-4 w-4 text-slate-400" />
+              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+                <Store className="h-4 w-4 text-muted-foreground" />
                 <select
                   value={storeId ?? ""}
                   onChange={(e) => {
@@ -801,18 +801,18 @@ img{display:block;margin:8px auto}
                 </select>
               </div>
 
-              <div className="flex flex-1 items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
-                <Search className="h-5 w-5 text-slate-400" />
+              <div className="flex flex-1 items-center gap-2 rounded-lg bg-muted px-3 py-2">
+                <Search className="h-5 w-5 text-muted-foreground" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search name / SKU / barcode…"
-                  className="flex-1 bg-transparent placeholder:text-slate-400 focus:outline-none"
+                  className="flex-1 bg-transparent placeholder:text-muted-foreground focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+            <div className="p-4 border-b border-border flex items-center gap-2">
               <input
                 value={coupon}
                 onChange={(e) => {
@@ -821,7 +821,7 @@ img{display:block;margin:8px auto}
                   setCouponMsg(null);
                 }}
                 placeholder="Coupon code"
-                className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                className="flex-1 rounded-lg bg-muted px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
               <button
                 onClick={async () => {
@@ -869,7 +869,7 @@ img{display:block;margin:8px auto}
                   }
                 }}
                 disabled={!coupon.trim()}
-                className="rounded bg-slate-700 px-3 py-2 hover:bg-slate-600 disabled:opacity-50"
+                className="rounded bg-muted px-3 py-2 hover:bg-muted disabled:opacity-50"
               >
                 Apply
               </button>
@@ -879,7 +879,7 @@ img{display:block;margin:8px auto}
             {appliedCoupons.length > 0 && (
               <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {appliedCoupons.map((ac) => (
-                  <span key={ac.code} className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-1 text-sm">
+                  <span key={ac.code} className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm">
                     <span>{ac.name || ac.code}</span>
                     <button
                       onClick={async () => {
@@ -922,7 +922,7 @@ img{display:block;margin:8px auto}
                           }
                         }
                       }}
-                      className="rounded bg-slate-700 px-1.5 py-0.5 text-xs hover:bg-slate-600"
+                      className="rounded bg-muted px-1.5 py-0.5 text-xs hover:bg-muted"
                       title="Remove"
                     >
                       ×
@@ -953,8 +953,8 @@ img{display:block;margin:8px auto}
                       onClick={() => addToCart(p)}
                       disabled={disabled}
                       className={`relative rounded-xl p-3 text-left transition-colors ${disabled
-                        ? "bg-slate-800/60 cursor-not-allowed opacity-60"
-                        : "bg-slate-800 hover:bg-slate-700"
+                        ? "bg-muted/60 cursor-not-allowed opacity-60"
+                        : "bg-muted hover:bg-muted"
                         }`}
                       title={disabled ? "Out of stock" : "Add to cart"}
                     >
@@ -972,7 +972,7 @@ img{display:block;margin:8px auto}
                               <span
                                 key={b.id}
                                 className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow max-w-[14rem] truncate
-                                              ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-slate-900"}`}
+                                              ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-foreground"}`}
                                 title={b.label}   // full on native hover as well
                               >
                                 {b.label}
@@ -981,13 +981,13 @@ img{display:block;margin:8px auto}
 
                             {extra > 0 && (
                               <div className="relative group pointer-events-auto">
-                                <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-slate-800 text-slate-200 shadow">
+                                <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold bg-muted text-muted-foreground shadow">
                                   +{extra} more
                                 </span>
                                 {/* Hover tooltip */}
                                 <div
                                   className="absolute left-0 top-full mt-1 hidden group-hover:block z-20
-                                              max-w-[16rem] rounded-md border border-slate-700 bg-slate-900 p-2 text-xs text-slate-200 shadow-lg"
+                                              max-w-[16rem] rounded-md border border-border bg-card p-2 text-xs text-muted-foreground shadow-lg"
                                 >
                                   <ul className="space-y-1">
                                     {list.slice(shown.length).map(b => (
@@ -1006,7 +1006,7 @@ img{display:block;margin:8px auto}
                       })()}
 
 
-                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-slate-700/40 rounded-lg mb-2 overflow-hidden">
+                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-muted/40 rounded-lg mb-2 overflow-hidden">
                         {imgFor(p) ? (
                           <img
                             src={imgFor(p)}
@@ -1015,7 +1015,7 @@ img{display:block;margin:8px auto}
                             onError={(e) => { e.currentTarget.style.display = "none"; }}
                           />
                         ) : (
-                          <span className="text-slate-400">🛒</span>
+                          <span className="text-muted-foreground">🛒</span>
                         )}
                       </div>
 
@@ -1025,14 +1025,14 @@ img{display:block;margin:8px auto}
 
 
                       <div className="font-medium truncate">{p.name}</div>
-                      <div className="text-xs text-slate-300 mt-0.5 truncate">
+                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
                         {(p as any).variant_name || p.sku || ""}
                       </div>
-                      {/* <div className="text-sm text-slate-400">${toMoney(p.price)}</div> */}
+                      {/* <div className="text-sm text-muted-foreground">${toMoney(p.price)}</div> */}
                       {(() => {
                         const pv = pricePreviewForVariant(p, autoDiscRules, couponDiscRules);
                         if (!pv) {
-                          return <div className="text-sm text-slate-400">{money(p.price)}</div>;
+                          return <div className="text-sm text-muted-foreground">{money(p.price)}</div>;
                         }
                         const orig = toMoney(pv.orig);
                         const fin = toMoney(pv.final);
@@ -1040,17 +1040,17 @@ img{display:block;margin:8px auto}
                           <div className="text-sm">
                             {pv.final < pv.orig ? (
                               <>
-                                <span className="text-slate-400 line-through mr-2">{money(orig)}</span>
+                                <span className="text-muted-foreground line-through mr-2">{money(orig)}</span>
                                 <span className="text-emerald-300 font-semibold">{money(fin)}</span>
                                 {pv.hasReceipt && (
-                                  <span className="ml-2 text-xs text-slate-400">(more at checkout)</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">(more at checkout)</span>
                                 )}
                               </>
                             ) : (
                               <>
-                                <span className="text-slate-200">{money(orig)}</span>
+                                <span className="text-muted-foreground">{money(orig)}</span>
                                 {pv.hasReceipt && (
-                                  <span className="ml-2 text-xs text-slate-400">(savings at checkout)</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">(savings at checkout)</span>
                                 )}
                               </>
                             )}
@@ -1063,7 +1063,7 @@ img{display:block;margin:8px auto}
                   );
                 })}
                 {products.length === 0 && (
-                  <div className="col-span-full text-slate-400">No products</div>
+                  <div className="col-span-full text-muted-foreground">No products</div>
                 )}
               </div>
             </div>
@@ -1071,7 +1071,7 @@ img{display:block;margin:8px auto}
 
           {/* Right: Cart */}
           <div className="w-[30rem] h-screen flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800">
+            <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="flex items-center gap-2 font-semibold">
                 <span className="relative inline-block" aria-label={`Cart (${cartCount} items)`}>
                   <ShoppingCart className="h-5 w-5" />
@@ -1080,8 +1080,8 @@ img{display:block;margin:8px auto}
                       className="
                     absolute -top-2 -right-2 min-w-[1.1rem] h-[1.1rem]
                     rounded-full bg-emerald-500 px-1 text-[0.70rem] leading-[1.1rem]
-                    text-slate-900 font-bold text-center shadow
-                    ring-2 ring-slate-950
+                    text-foreground font-bold text-center shadow
+                    ring-2 ring-background
                     animate-[pop_150ms_ease-in-out]
                   "
                     >
@@ -1095,9 +1095,9 @@ img{display:block;margin:8px auto}
               <button
                 type="button"
                 onClick={() => setCustomerModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs font-medium text-slate-100 hover:bg-slate-700"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground hover:bg-muted"
               >
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-[11px] uppercase">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[11px] uppercase">
                   {customer?.name
                     ? customer.name.charAt(0)
                     : "👤"}
@@ -1109,14 +1109,14 @@ img{display:block;margin:8px auto}
             </div>
 
             {/* Barcode */}
-            <form onSubmit={onBarcodeSubmit} className="p-4 border-b border-slate-800 flex items-center gap-2">
-              <ScanLine className="h-5 w-5 text-slate-400" />
+            <form onSubmit={onBarcodeSubmit} className="p-4 border-b border-border flex items-center gap-2">
+              <ScanLine className="h-5 w-5 text-muted-foreground" />
               <input
                 ref={barcodeRef}
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 placeholder="Scan barcode then Enter"
-                className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                className="flex-1 rounded-lg bg-muted px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </form>
 
@@ -1132,22 +1132,22 @@ img{display:block;margin:8px auto}
                   key={l.variant.id}
                   data-vid={l.variant.id}
                   style={{ scrollMarginBottom: footerH ? footerH + 16 : undefined }}
-                  className={`flex flex-col gap-2 rounded-xl p-4 shadow-sm border border-slate-700 bg-slate-800/90 transition-colors
+                  className={`flex flex-col gap-2 rounded-xl p-4 shadow-sm border border-border bg-muted/90 transition-colors
                               ${l.variant.id === lastAddedId && flashToken
                       ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
-                      : "bg-slate-800"
+                      : "bg-muted"
                     }`}
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-medium leading-snug break-words whitespace-normal">
                       {l.variant.name}
                     </div>
-                    <div className="text-xs text-slate-400 break-words whitespace-normal">
+                    <div className="text-xs text-muted-foreground break-words whitespace-normal">
                       {(l.variant as any).variant_name || l.variant.sku || ""}
                     </div>
 
-                    <hr className="border-slate-700/60 my-1" />
-                    <div className="text-sm text-slate-400">
+                    <hr className="border-border/60 my-1" />
+                    <div className="text-sm text-muted-foreground">
                       {money(l.variant.price)} × {l.qty}
                       {(() => {
                         const qLine = quote?.lines?.find(
@@ -1197,10 +1197,10 @@ img{display:block;margin:8px auto}
                         const hasDisc = Array.isArray(qLine.discounts) && qLine.discounts.length > 0;
                         const hasTax = Array.isArray(qLine.taxes) && qLine.taxes.length > 0;
                         if (!hasDisc && !hasTax)
-                          return <div className="text-xs text-slate-400">No adjustments on this line.</div>;
+                          return <div className="text-xs text-muted-foreground">No adjustments on this line.</div>;
 
                         return (
-                          <div className="rounded-lg bg-slate-900/80 border border-slate-700 p-3 shadow-inner space-y-1">
+                          <div className="rounded-lg bg-muted/80 border border-border p-3 shadow-inner space-y-1">
                             {hasDisc && (
                               <>
                                 <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1">
@@ -1247,7 +1247,7 @@ img{display:block;margin:8px auto}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => changeQty(l.variant.id, -1)}
-                      className="rounded bg-slate-700 p-1 hover:bg-slate-600"
+                      className="rounded bg-muted p-1 hover:bg-muted"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
@@ -1266,11 +1266,11 @@ img{display:block;margin:8px auto}
                             changeQty(l.variant.id, delta);
                           }
                         }}
-                        className="w-14 rounded bg-slate-900 px-1.5 py-1 text-center text-sm tabular-nums border border-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-14 rounded bg-card px-1.5 py-1 text-center text-sm tabular-nums border border-border focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                     <button
                       onClick={() => changeQty(l.variant.id, +1)}
-                      className="rounded bg-slate-700 p-1 hover:bg-slate-600"
+                      className="rounded bg-muted p-1 hover:bg-muted"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -1293,13 +1293,13 @@ img{display:block;margin:8px auto}
 
                 </div>
               ))}
-              {cart.length === 0 && <div className="text-center text-slate-400">No items yet</div>}
+              {cart.length === 0 && <div className="text-center text-muted-foreground">No items yet</div>}
             </div>
 
             {/* Totals + actions */}
             <div
               ref={cartTotalsRef}
-              className="border-t border-slate-800 p-4 space-y-2 sticky bottom-0 bg-slate-950"
+              className="border-t border-border p-4 space-y-2 sticky bottom-0 bg-background"
             >
               {/* Optional error from quote */}
               {quoteError && (
@@ -1377,7 +1377,7 @@ img{display:block;margin:8px auto}
                 </button>
               </div>
 
-              {msg && <div className="mt-3 rounded-lg bg-slate-800 p-2 text-sm text-slate-200">{msg}</div>}
+              {msg && <div className="mt-3 rounded-lg bg-muted p-2 text-sm text-muted-foreground">{msg}</div>}
             </div>
           </div>
 
@@ -1432,46 +1432,46 @@ img{display:block;margin:8px auto}
               onClick={() => setReceiptOpen(false)}
             >
               <div
-                className="w-[520px] max-w-[90vw] rounded-xl bg-slate-900 text-slate-100 shadow-2xl ring-1 ring-slate-700"
+                className="w-[520px] max-w-[90vw] rounded-xl bg-card text-foreground shadow-2xl ring-1 ring-border"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between border-b border-slate-800 p-4">
+                <div className="flex items-center justify-between border-b border-border p-4">
                   <div className="font-semibold">Receipt #{lastReceipt?.receipt_no}</div>
-                  <div className="text-slate-400 text-sm">
+                  <div className="text-muted-foreground text-sm">
                     {lastReceipt?.store?.code} — {lastReceipt?.store?.name}
                   </div>
                 </div>
 
                 <div className="max-h-[70vh] overflow-y-auto p-4 space-y-3">
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-muted-foreground">
                     {new Date(lastReceipt?.created_at || Date.now()).toLocaleString()}
                   </div>
 
                   {lastReceipt?.customer && (
-                    <div className="text-sm text-slate-300">
+                    <div className="text-sm text-muted-foreground">
                       Customer:{" "}
                       <span className="font-medium">
                         {lastReceipt.customer.name || `#${lastReceipt.customer.id}`}
                       </span>
                       {lastReceipt.customer.email && (
-                        <span className="text-slate-400"> • {lastReceipt.customer.email}</span>
+                        <span className="text-muted-foreground"> • {lastReceipt.customer.email}</span>
                       )}
                       {lastReceipt.customer.phone && (
-                        <span className="text-slate-400"> • {lastReceipt.customer.phone}</span>
+                        <span className="text-muted-foreground"> • {lastReceipt.customer.phone}</span>
                       )}
                     </div>
                   )}
 
 
-                  <div className="rounded-lg bg-slate-800 p-3">
+                  <div className="rounded-lg bg-muted p-3">
                     {(lastReceipt?.lines || []).map((l: any) => (
                       <div key={`${l.variant_id}-${l.sku}-${l.name}`} className="flex items-center justify-between py-1">
                         <div className="min-w-0 pr-2">
                           <div className="truncate">{l.name}</div>
-                          <div className="text-xs text-slate-400">{l.sku || "-"}</div>
+                          <div className="text-xs text-muted-foreground">{l.sku || "-"}</div>
                         </div>
                         <div className="tabular-nums text-right">
-                          <div className="text-slate-400">{l.qty} × {money(l.unit_price)}</div>
+                          <div className="text-muted-foreground">{l.qty} × {money(l.unit_price)}</div>
                           <div className="font-medium">{money(l.line_subtotal ?? l.line_total ?? l.line_net)}</div>
                         </div>
                       </div>
@@ -1520,7 +1520,7 @@ img{display:block;margin:8px auto}
                     </div>
 
                     {lastReceipt?.payment && (
-                      <div className="rounded-lg bg-slate-800 p-3 text-sm">
+                      <div className="rounded-lg bg-muted p-3 text-sm">
                         <div>Payment: <span className="font-medium">{lastReceipt.payment.type}</span></div>
                         {lastReceipt.payment.received && (<div>Received: {money(lastReceipt.payment.received)}</div>)}
                         {lastReceipt.payment.change && (<div>Change: {money(lastReceipt.payment.change)}</div>)}
@@ -1534,7 +1534,7 @@ img{display:block;margin:8px auto}
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-3">
+                <div className="flex items-center justify-end gap-2 border-t border-border p-3">
                   <button
                     onClick={() => {
                       const html = buildReceiptHtml(lastReceipt, lastQR);
@@ -1546,7 +1546,7 @@ img{display:block;margin:8px auto}
                   </button>
                   <button
                     onClick={() => setReceiptOpen(false)}
-                    className="rounded-lg bg-slate-700 px-3 py-2 font-medium hover:bg-slate-600"
+                    className="rounded-lg bg-muted px-3 py-2 font-medium hover:bg-muted"
                   >
                     Close
                   </button>
@@ -1572,11 +1572,11 @@ function CashModal({
   const m = (v: number) => formatCurrency(v, currency);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-xl">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="font-semibold">Cash Payment</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+          <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -1591,7 +1591,7 @@ function CashModal({
               autoFocus inputMode="decimal" value={tendered}
               onChange={(e) => setTendered(e.target.value)}
               placeholder="0.00"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
             />
           </label>
           <div className="flex justify-between text-sm">
@@ -1600,16 +1600,16 @@ function CashModal({
           </div>
           {!canPay && (<div className="text-amber-300 text-sm">Insufficient cash. Total is {m(total)}.</div>)}
           <div className="pt-2 flex gap-2">
-            <button onClick={() => setTendered(toMoney(total))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
+            <button onClick={() => setTendered(toMoney(total))} className="rounded-lg bg-muted px-3 py-2 text-sm">
               Exact {m(total)}
             </button>
-            <button onClick={() => setTendered(toMoney(Math.ceil(total)))} className="rounded-lg bg-slate-700 px-3 py-2 text-sm">
+            <button onClick={() => setTendered(toMoney(Math.ceil(total)))} className="rounded-lg bg-muted px-3 py-2 text-sm">
               Round ↑ {m(Math.ceil(total))}
             </button>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-slate-800 p-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">Cancel</button>
+        <div className="flex justify-end gap-2 border-t border-border p-4">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-muted hover:bg-muted">Cancel</button>
           <button onClick={() => canPay && onSubmit(amount)} disabled={!canPay}
             className="rounded-lg px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50">
             Take Cash
@@ -1632,11 +1632,11 @@ function CardModal({
   const m = (v: number) => formatCurrency(v, currency);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-xl">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="font-semibold">Card Payment</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground"><X className="h-5 w-5" /></button>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
@@ -1646,7 +1646,7 @@ function CardModal({
           <label className="block text-sm">
             Card brand
             <select value={brand} onChange={(e) => setBrand(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none">
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none">
               <option>VISA</option><option>MASTERCARD</option><option>AMEX</option><option>DISCOVER</option>
               <option value="">Other / Unknown</option>
             </select>
@@ -1655,26 +1655,26 @@ function CardModal({
             Last 4 digits
             <input inputMode="numeric" maxLength={4} value={last4}
               onChange={(e) => setLast4(e.target.value.replace(/\D/g, ""))}
-              placeholder="1234" className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
+              placeholder="1234" className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none" />
           </label>
           <label className="block text-sm">
             Auth code
             <input value={auth} onChange={(e) => setAuth(e.target.value)}
               placeholder="Gateway auth code"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none" />
           </label>
           <label className="block text-sm">
             Reference (optional)
             <input value={reference} onChange={(e) => setReference(e.target.value)}
               placeholder="Transaction reference"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none" />
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none" />
           </label>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             (This UI assumes you’ve already authorized the card on a terminal and are recording the result here.)
           </p>
         </div>
-        <div className="flex justify-end gap-2 border-t border-slate-800 p-4">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-slate-700 hover:bg-slate-600">Cancel</button>
+        <div className="flex justify-end gap-2 border-t border-border p-4">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 bg-muted hover:bg-muted">Cancel</button>
           <button onClick={() => canPay && onSubmit({ brand, last4, auth, reference })}
             disabled={!canPay} className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50">
             Charge Card
@@ -1789,11 +1789,11 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-700 shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-800 p-4">
-          <h3 className="font-semibold text-slate-100">Select customer</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-background/70 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-card border border-border shadow-xl">
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <h3 className="font-semibold text-foreground">Select customer</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-muted-foreground">
             ×
           </button>
         </div>
@@ -1803,16 +1803,16 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, or phone…"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+            className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           {errorMsg && (
             <div className="rounded-md border border-red-500/40 bg-red-900/20 px-3 py-2 text-xs text-red-200">
               {errorMsg}
             </div>
           )}
-          {loading && <div className="text-sm text-slate-400">Searching…</div>}
+          {loading && <div className="text-sm text-muted-foreground">Searching…</div>}
           {!loading && results.length === 0 && query.trim().length >= 2 && !errorMsg && (
-            <div className="text-sm text-slate-500">No customers found for “{query.trim()}”.</div>
+            <div className="text-sm text-muted-foreground">No customers found for “{query.trim()}”.</div>
           )}
           <div className="max-h-64 overflow-y-auto space-y-1">
             {results.map(c => (
@@ -1820,15 +1820,15 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
                 key={c.id}
                 type="button"
                 onClick={() => { onSelect(c); onClose(); }}
-                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-slate-800 text-left"
+                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-sm hover:bg-muted text-left"
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-medium text-slate-200">
+                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground">
                     {String(c.name || c.email || c.phone || "?").trim().charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="font-medium text-slate-100 truncate">{c.name || "Unnamed"}</div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="font-medium text-foreground truncate">{c.name || "Unnamed"}</div>
+                    <div className="text-[11px] text-muted-foreground">
                       {c.email || c.phone || "No contact on file"}
                     </div>
                   </div>
@@ -1838,8 +1838,8 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
           </div>
 
           {/* Quick create section */}
-          <div className="pt-3 mt-2 border-t border-slate-800 space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <div className="pt-3 mt-2 border-t border-border space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Quick create
             </div>
             <form onSubmit={handleCreate} className="space-y-2">
@@ -1847,20 +1847,20 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Full name"
-                className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+                className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
               />
               <div className="flex gap-2">
                 <input
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="Email (optional)"
-                  className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+                  className="flex-1 rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
                 />
                 <input
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   placeholder="Phone (optional)"
-                  className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 outline-none"
+                  className="flex-1 rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
                 />
               </div>
               {createError && (
@@ -1872,7 +1872,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
                 <button
                   type="submit"
                   disabled={creating}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-slate-50 hover:bg-emerald-500 disabled:opacity-50"
+                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
                 >
                   {creating ? "Creating…" : "Create & select"}
                 </button>
@@ -1881,18 +1881,18 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
           </div>
 
         </div>
-        <div className="flex items-center justify-between border-t border-slate-800 p-3">
+        <div className="flex items-center justify-between border-t border-border p-3">
           <button
             type="button"
             onClick={() => { onSelect(null); onClose(); }}
-            className="text-xs text-slate-300 hover:underline"
+            className="text-xs text-muted-foreground hover:underline"
           >
             Clear selection
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md bg-slate-700 px-3 py-1.5 text-sm text-slate-100 hover:bg-slate-600"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-muted"
           >
             Close
           </button>

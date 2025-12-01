@@ -39,11 +39,11 @@ export function ReturnsManagementTable({
   safeMoney,
 }: Props) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70">
+    <div className="rounded-xl border border-border bg-background/70">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
-            <tr className="border-b border-zinc-800 text-left text-[11px] uppercase tracking-wide text-zinc-500">
+            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
               <th className="px-3 py-2">Return</th>
               <th className="px-3 py-2">Sale</th>
               <th className="px-3 py-2">Store</th>
@@ -54,10 +54,10 @@ export function ReturnsManagementTable({
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-900">
+          <tbody className="divide-y divide-border">
             {loading && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-zinc-400">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                   Loading returns…
                 </td>
               </tr>
@@ -65,7 +65,7 @@ export function ReturnsManagementTable({
 
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                   No returns match the current filters.
                 </td>
               </tr>
@@ -76,8 +76,8 @@ export function ReturnsManagementTable({
                 <tr key={row.id} className="hover:bg-white/5">
                   <td className="px-3 py-3">
                     <div className="flex flex-col gap-1">
-                      <div className="text-sm font-semibold text-zinc-100">{row.return_no || `Return #${row.id}`}</div>
-                      <div className="flex items-center gap-2 text-xs text-zinc-400">
+                      <div className="text-sm font-semibold text-foreground">{row.return_no || `Return #${row.id}`}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span
                           className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusColors[row.status]}`}
                         >
@@ -88,23 +88,23 @@ export function ReturnsManagementTable({
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="text-sm text-zinc-100">{row.sale_receipt_no || `Sale #${row.sale}`}</div>
-                    <div className="text-xs text-zinc-500">{row.cashier_name || "—"}</div>
+                    <div className="text-sm text-foreground">{row.sale_receipt_no || `Sale #${row.sale}`}</div>
+                    <div className="text-xs text-muted-foreground">{row.cashier_name || "—"}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="text-sm text-zinc-100">{row.store_name || "—"}</div>
-                    <div className="text-xs text-zinc-500">{row.store_code || " "}</div>
+                    <div className="text-sm text-foreground">{row.store_name || "—"}</div>
+                    <div className="text-xs text-muted-foreground">{row.store_code || " "}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="text-sm text-zinc-100">{row.processed_by_name || "—"}</div>
+                    <div className="text-sm text-foreground">{row.processed_by_name || "—"}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="text-sm text-zinc-200">{row.reason_summary || row.reason_code || "—"}</div>
+                    <div className="text-sm text-foreground">{row.reason_summary || row.reason_code || "—"}</div>
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-zinc-100">
+                  <td className="px-3 py-3 text-right tabular-nums text-foreground">
                     {safeMoney(Number(row.refund_total || 0))}
                   </td>
-                  <td className="px-3 py-3 text-center tabular-nums text-zinc-200">{row.items_count ?? 0}</td>
+                  <td className="px-3 py-3 text-center tabular-nums text-foreground">{row.items_count ?? 0}</td>
                   <td className="px-3 py-3 text-right">
                     <div className="flex flex-col gap-2 text-xs">
                       <button
@@ -118,7 +118,7 @@ export function ReturnsManagementTable({
                         <>
                           <button
                             type="button"
-                            className="rounded-md border border-zinc-600 px-3 py-1 text-zinc-200 hover:bg-white/5"
+                            className="rounded-md border border-border px-3 py-1 text-foreground hover:bg-white/5"
                             onClick={() => onResumeDraft(row)}
                           >
                             Resume
@@ -149,11 +149,11 @@ export function ReturnsManagementTable({
         </table>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-zinc-800 px-3 py-2 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-2 border-t border-border px-3 py-2 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md border border-zinc-700 px-2 py-1 text-xs disabled:opacity-40"
+            className="rounded-md border border-border px-2 py-1 text-xs disabled:opacity-40"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page <= 1}
           >
@@ -161,13 +161,13 @@ export function ReturnsManagementTable({
           </button>
           <button
             type="button"
-            className="rounded-md border border-zinc-700 px-2 py-1 text-xs disabled:opacity-40"
+            className="rounded-md border border-border px-2 py-1 text-xs disabled:opacity-40"
             onClick={() => onPageChange(Math.min(lastPage, page + 1))}
             disabled={page >= lastPage}
           >
             Next
           </button>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-muted-foreground">
             Page {page} of {lastPage}
           </div>
         </div>
@@ -175,7 +175,7 @@ export function ReturnsManagementTable({
         <div className="flex items-center gap-2 text-xs">
           <span>Rows per page</span>
           <select
-            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+            className="rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
           >
@@ -185,7 +185,7 @@ export function ReturnsManagementTable({
               </option>
             ))}
           </select>
-          <span className="text-zinc-500">
+          <span className="text-muted-foreground">
             {Math.min((page - 1) * pageSize + 1, count)}–
             {Math.min(page * pageSize, count)} of {count}
           </span>

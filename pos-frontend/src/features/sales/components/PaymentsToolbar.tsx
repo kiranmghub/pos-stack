@@ -28,11 +28,11 @@ export function PaymentsToolbar({
   setDateTo,
 }: Props) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 space-y-2">
-      {title ? <div className="text-xs uppercase tracking-wide text-zinc-500">{title}</div> : null}
+    <div className="rounded-xl border border-border bg-background/70 p-3 space-y-2">
+      {title ? <div className="text-xs uppercase tracking-wide text-muted-foreground">{title}</div> : null}
       <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto]">
         <select
-          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={storeId}
           onChange={(e) => setStoreId(e.target.value)}
         >
@@ -46,7 +46,7 @@ export function PaymentsToolbar({
         </select>
 
         <select
-          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={method}
           onChange={(e) => setMethod(e.target.value)}
         >
@@ -60,13 +60,13 @@ export function PaymentsToolbar({
         <div className="flex items-center gap-2">
           <input
             type="date"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            className="w-full rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
           />
           <input
             type="date"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            className="w-full rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />

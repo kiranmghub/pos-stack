@@ -211,8 +211,8 @@ export default function TransfersPage() {
   return (
     <div className="grid lg:grid-cols-2 gap-4">
       {/* Left: Create / Send */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40">
-        <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+      <div className="rounded-2xl border border-border bg-muted/40">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <PackagePlus className="h-5 w-5 text-indigo-300" />
           <div className="font-semibold">Create transfer</div>
         </div>
@@ -224,7 +224,7 @@ export default function TransfersPage() {
               <select
                 value={fromStoreId ?? ""}
                 onChange={(e) => setFromStoreId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+                className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
               >
                 <option value="">—</option>
                 {stores.map((s) => (
@@ -240,7 +240,7 @@ export default function TransfersPage() {
               <select
                 value={toStoreId ?? ""}
                 onChange={(e) => setToStoreId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+                className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
               >
                 <option value="">—</option>
                 {stores
@@ -259,26 +259,26 @@ export default function TransfersPage() {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 outline-none"
+              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
               placeholder="Reason or reference…"
             />
           </label>
 
           {/* Autocomplete */}
           <div className="relative">
-            <div className="flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2">
-              <Search className="h-4 w-4 text-slate-400" />
+            <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
                 disabled={!fromStoreId}
                 placeholder={fromStoreId ? "Search by name / SKU / barcode…" : "Choose a source store first"}
-                className="flex-1 bg-transparent outline-none placeholder:text-slate-500"
+                className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               />
-              {searching && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+              {searching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
             {options.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-xl border border-slate-800 bg-slate-900/95 backdrop-blur">
+              <div className="absolute z-10 mt-1 w-full rounded-xl border border-border bg-card/95 backdrop-blur">
                 {options.slice(0, 10).map((v) => (
                   <button
                     key={v.id}
@@ -286,7 +286,7 @@ export default function TransfersPage() {
                     className="w-full px-3 py-2 text-left hover:bg-white/5"
                   >
                     <div className="font-medium">{v.product?.name || v.product_name || v.sku}</div>
-                    <div className="text-xs text-slate-400 flex items-center gap-2">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
                       <span>{v.sku || "—"}</span>
                       {typeof v.on_hand === "number" && (
                         <span className={`px-1.5 py-0.5 rounded ring-1 ring-inset text-[11px] ${
@@ -307,28 +307,28 @@ export default function TransfersPage() {
           </div>
 
           {/* Lines */}
-          <div className="rounded-xl border border-slate-800 overflow-hidden">
+          <div className="rounded-xl border border-border overflow-hidden">
             <table className="w-full border-collapse text-sm">
-              <thead className="bg-slate-900/70 text-slate-300">
+              <thead className="bg-muted/70 text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 text-left">Item</th>
                   <th className="px-3 py-2">Qty</th>
                   <th className="px-3 py-2 w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {lines.map((ln) => (
                   <tr key={ln.v.id}>
                     <td className="px-3 py-2">
                       <div className="font-medium">{ln.v.product?.name || ln.v.product_name || ln.v.sku}</div>
-                      <div className="text-xs text-slate-400">{ln.v.sku || "—"}</div>
+                      <div className="text-xs text-muted-foreground">{ln.v.sku || "—"}</div>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <input
                         type="number"
                         value={ln.qty}
                         onChange={(e) => setQty(ln.v.id, Math.max(0, toInt(e.target.value, 0)))}
-                        className="w-24 rounded bg-slate-800 px-2 py-1 text-center outline-none"
+                        className="w-24 rounded bg-muted px-2 py-1 text-center outline-none"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -343,7 +343,7 @@ export default function TransfersPage() {
                 ))}
                 {lines.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-3 py-6 text-center text-slate-400">
+                    <td colSpan={3} className="px-3 py-6 text-center text-muted-foreground">
                       Add items using the search above
                     </td>
                   </tr>
@@ -357,7 +357,7 @@ export default function TransfersPage() {
             <button
               disabled={saving || !fromStoreId || !toStoreId || fromStoreId === toStoreId || lines.length === 0}
               onClick={() => onCreate(false)}
-              className="rounded bg-slate-800 px-3 py-2 hover:bg-slate-700 disabled:opacity-50"
+              className="rounded bg-muted px-3 py-2 hover:bg-muted disabled:opacity-50"
             >
               Save Draft
             </button>
@@ -370,19 +370,19 @@ export default function TransfersPage() {
             </button>
           </div>
 
-          {msg && <div className="mt-3 rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm">{msg}</div>}
+          {msg && <div className="mt-3 rounded-lg bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
         </div>
       </div>
 
       {/* Right: List / Receive */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/40">
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+      <div className="rounded-2xl border border-border bg-muted/40">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="font-semibold">Transfers</div>
           <div className="flex items-center gap-2">
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value as any); setPage(1); }}
-              className="rounded bg-slate-800 px-2 py-1 text-sm outline-none"
+              className="rounded bg-muted px-2 py-1 text-sm outline-none"
             >
               <option value="">All</option>
               <option value="DRAFT">Draft</option>
@@ -393,15 +393,15 @@ export default function TransfersPage() {
               value={q}
               onChange={(e) => { setQ(e.target.value); setPage(1); }}
               placeholder="Search…"
-              className="rounded bg-slate-800 px-2 py-1 text-sm outline-none"
+              className="rounded bg-muted px-2 py-1 text-sm outline-none"
             />
           </div>
         </div>
 
         <div className="p-3">
-          <div className="overflow-hidden rounded-xl border border-slate-800">
+          <div className="overflow-hidden rounded-xl border border-border">
             <table className="w-full border-collapse text-sm">
-              <thead className="bg-slate-900/70 text-slate-300">
+              <thead className="bg-muted/70 text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 text-left">Transfer</th>
                   <th className="px-3 py-2 text-left">Created</th>
@@ -411,12 +411,12 @@ export default function TransfersPage() {
                   <th className="px-3 py-2 w-40"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {loading && (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Loading…</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Loading…</td></tr>
                 )}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">No transfers</td></tr>
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No transfers</td></tr>
                 )}
                 {!loading && rows.map((t) => (
                   <tr key={t.id}>
@@ -430,7 +430,7 @@ export default function TransfersPage() {
                           ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
                           : t.status === "SENT"
                           ? "bg-amber-500/20 text-amber-300 ring-amber-500/30"
-                          : "bg-slate-700/40 text-slate-300 ring-slate-600/40"
+                          : "bg-muted/40 text-muted-foreground ring-border/30"
                       }`}>
                         {t.status}
                       </span>
@@ -462,20 +462,20 @@ export default function TransfersPage() {
 
             {/* pagination */}
             {Math.max(1, Math.ceil(count / pageSize)) > 1 && (
-              <div className="flex items-center justify-between px-3 py-2 border-t border-slate-800 text-sm">
-                <div className="text-slate-400">Page {page} of {Math.max(1, Math.ceil(count / pageSize))}</div>
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border text-sm">
+                <div className="text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(count / pageSize))}</div>
                 <div className="flex items-center gap-2">
                   <button
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                    className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
                   >
                     Prev
                   </button>
                   <button
                     disabled={page >= Math.max(1, Math.ceil(count / pageSize))}
                     onClick={() => setPage((p) => Math.min(Math.max(1, Math.ceil(count / pageSize)), p + 1))}
-                    className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50 hover:bg-slate-700"
+                    className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
                   >
                     Next
                   </button>
@@ -484,36 +484,36 @@ export default function TransfersPage() {
             )}
           </div>
 
-          {msg && <div className="mt-3 rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm">{msg}</div>}
+          {msg && <div className="mt-3 rounded-lg bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
         </div>
       </div>
 
       {/* Receive modal */}
       {recvOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setRecvOpen(null)}>
-          <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-800 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-card border border-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border p-4">
               <div className="font-semibold">{recvOpen.title}</div>
-              <button onClick={() => setRecvOpen(null)} className="rounded bg-slate-800 px-2 py-1 hover:bg-slate-700">
+              <button onClick={() => setRecvOpen(null)} className="rounded bg-muted px-2 py-1 hover:bg-muted">
                 Close
               </button>
             </div>
 
             <div className="max-h-[70vh] overflow-y-auto p-4 space-y-3">
-              <div className="rounded-xl border border-slate-800 overflow-hidden">
+              <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full border-collapse text-sm">
-                  <thead className="bg-slate-900/70 text-slate-300">
+                  <thead className="bg-muted/70 text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 text-left">Item</th>
                       <th className="px-3 py-2">Receive Qty</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-border">
                     {recvLines.map((ln, i) => (
                       <tr key={ln.variant_id}>
                         <td className="px-3 py-2">
                           <div className="font-medium">{ln.product_name || ln.sku || `#${ln.variant_id}`}</div>
-                          <div className="text-xs text-slate-400">{ln.sku || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{ln.sku || "—"}</div>
                         </td>
                         <td className="px-3 py-2 text-center">
                           <input
@@ -524,14 +524,14 @@ export default function TransfersPage() {
                               next[i] = { ...next[i], qty: Math.max(0, toInt(e.target.value, 0)) };
                               setRecvLines(next);
                             }}
-                            className="w-28 rounded bg-slate-800 px-2 py-1 text-center outline-none"
+                            className="w-28 rounded bg-muted px-2 py-1 text-center outline-none"
                           />
                         </td>
                       </tr>
                     ))}
                     {recvLines.length === 0 && (
                       <tr>
-                        <td colSpan={2} className="px-3 py-6 text-center text-slate-400">No lines</td>
+                        <td colSpan={2} className="px-3 py-6 text-center text-muted-foreground">No lines</td>
                       </tr>
                     )}
                   </tbody>
@@ -539,8 +539,8 @@ export default function TransfersPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-800 p-4">
-              <button onClick={() => setRecvOpen(null)} className="rounded-lg px-3 py-2 bg-slate-700 hover:bg-slate-600">Cancel</button>
+            <div className="flex items-center justify-end gap-2 border-t border-border p-4">
+              <button onClick={() => setRecvOpen(null)} className="rounded-lg px-3 py-2 bg-muted hover:bg-muted">Cancel</button>
               <button
                 disabled={recvSaving}
                 onClick={doReceive}

@@ -1,10 +1,11 @@
 // pos-frontend/src/components/AppShell.tsx
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Home, LogOut, Store } from "lucide-react";
+import { Home, LogOut, Store, Moon, Sun } from "lucide-react";
 import { getTenantCode, logout, getUser, refreshAccessIfNeeded, authHeaders } from "@/lib/auth";
 import { Toaster } from "@/ui/toast"; // global toast container
 import { ToastBridgeProvider } from "@/lib/notify";
+import { useTheme } from "@/lib/theme";
 
 
 type AppShellProps = {
@@ -28,36 +29,48 @@ export default function AppShell({ children, title, contained, actions, subtitle
   const user = getUser();
   const tenantCode = getTenantCode();
   const displayName = user?.username || user?.email || "User";
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur border-b border-slate-800">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface-panel shadow">
         <div className="h-12 px-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Link to="/home" className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-2 py-1 hover:bg-slate-700">
+            <Link
+              to="/home"
+              className="inline-flex items-center gap-2 rounded-lg bg-secondary px-2 py-1 text-secondary-foreground transition-colors hover:bg-secondary/80"
+            >
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Home</span>
             </Link>
           </div>
 
           {/* Center: Tenant → Store (store shown by each page) */}
-          <div className="hidden sm:flex items-center gap-2 text-sm text-slate-300">
-            <div className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-1.5">
-              <Store className="h-4 w-4 text-slate-400" />
-              <span className="uppercase tracking-wider font-semibold">{tenantCode || "—"}</span>
-              <span className="text-slate-500">→</span>
-              <span id="appshell-store-name" className="font-medium truncate max-w-[240px]">
+          <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
+              <Store className="h-4 w-4 text-muted-foreground" />
+              <span className="uppercase tracking-wider font-semibold text-foreground">{tenantCode || "—"}</span>
+              <span className="text-muted-foreground">→</span>
+              <span id="appshell-store-name" className="font-medium truncate text-foreground max-w-[240px]">
                 {/* pages can update this span's textContent if they manage store selection */}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-300">{displayName}</span>
+            <span className="text-sm text-muted-foreground">{displayName}</span>
+            <button
+              onClick={toggleTheme}
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-foreground transition-colors hover:bg-muted"
+            >
+              {isDark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              {isDark ? "Light" : "Dark"}
+            </button>
             <button
               onClick={logout}
-              className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-2 py-1 hover:bg-red-500"
+              className="inline-flex items-center gap-1 rounded-lg bg-destructive px-2 py-1 text-destructive-foreground transition-colors hover:bg-destructive/90"
             >
               <LogOut className="h-4 w-4" /> Logout
             </button>
@@ -66,7 +79,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
       </header>
 
       {/* Page body */}
-      <main>
+      <main className="bg-background min-h-[calc(100vh-3rem)]">
         <ToastBridgeProvider>
         {children}
         </ToastBridgeProvider>
@@ -139,10 +152,10 @@ export function PageHeading({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="border-b border-slate-800 px-4 py-4 flex items-center justify-between">
+    <div className="border-b border-border px-4 py-4 flex items-center justify-between">
       <div>
         <h1 className="text-lg font-semibold">{title}</h1>
-        {subtitle ? <div className="text-sm text-slate-400">{subtitle}</div> : null}
+        {subtitle ? <div className="text-sm text-muted-foreground">{subtitle}</div> : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </div>

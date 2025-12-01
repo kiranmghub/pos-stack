@@ -171,7 +171,7 @@ export default function DiscountRulesTab() {
       render: (r: DiscountRule) => {
         const open = expandedIds.includes(r.id);
         return (
-          <button className="text-slate-300 hover:text-white" title={open ? "Collapse" : "Expand"} onClick={() => toggleExpand(r)}>
+          <button className="text-muted-foreground hover:text-white" title={open ? "Collapse" : "Expand"} onClick={() => toggleExpand(r)}>
             <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -288,7 +288,7 @@ export default function DiscountRulesTab() {
       key: "is_active",
       header: "Active",
       render: (r: DiscountRule) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -313,17 +313,17 @@ export default function DiscountRulesTab() {
         : "All Stores";
 
     return (
-      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+      <div className="bg-muted/60 rounded-md border border-border p-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-slate-400">Description</div>
-            <div className="text-slate-200 break-words">{r.description || "—"}</div>
-            <div className="text-xs text-slate-400 mt-2">Scope</div>
-            <div className="text-slate-200">{r.scope} • {scopeLabel}</div>
-            <div className="text-xs text-slate-400 mt-2">Apply</div>
-            <div className="text-slate-200">{r.apply_scope}</div>
-            <div className="text-xs text-slate-400 mt-2">Target</div>
-            <div className="text-slate-200">
+            <div className="text-xs text-muted-foreground">Description</div>
+            <div className="text-muted-foreground break-words">{r.description || "—"}</div>
+            <div className="text-xs text-muted-foreground mt-2">Scope</div>
+            <div className="text-muted-foreground">{r.scope} • {scopeLabel}</div>
+            <div className="text-xs text-muted-foreground mt-2">Apply</div>
+            <div className="text-muted-foreground">{r.apply_scope}</div>
+            <div className="text-xs text-muted-foreground mt-2">Target</div>
+            <div className="text-muted-foreground">
               {r.target === "CATEGORY" && r.category_names?.length
                 ? r.category_names.join(", ")
                 : r.target === "PRODUCT" && r.product_names?.length
@@ -340,17 +340,17 @@ export default function DiscountRulesTab() {
             </div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Basis</div>
-            <div className="text-slate-200">{basisLabel}</div>
-            <div className="text-xs text-slate-400 mt-2">Priority</div>
-            <div className="text-slate-200">{r.priority}</div>
-            <div className="text-xs text-slate-400 mt-2">Window</div>
-            <div className="text-slate-200">{windowLabel(r.start_at, r.end_at)}</div>
+            <div className="text-xs text-muted-foreground">Basis</div>
+            <div className="text-muted-foreground">{basisLabel}</div>
+            <div className="text-xs text-muted-foreground mt-2">Priority</div>
+            <div className="text-muted-foreground">{r.priority}</div>
+            <div className="text-xs text-muted-foreground mt-2">Window</div>
+            <div className="text-muted-foreground">{windowLabel(r.start_at, r.end_at)}</div>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <div className="text-xs text-slate-400">
-            {r.is_active ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
+          <div className="text-xs text-muted-foreground">
+            {r.is_active ? <span className="text-emerald-300">Active</span> : <span className="text-muted-foreground">Inactive</span>}
           </div>
           <div>
             <button className="text-xs text-blue-400 hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
@@ -371,27 +371,27 @@ export default function DiscountRulesTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search code, name, description…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select value={(query as any).scope || ""} onChange={(e) => setQuery((p) => ({ ...p, scope: e.target.value || undefined }))}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none" title="Scope">
+                  className="rounded-md bg-muted px-2 py-1 text-sm outline-none" title="Scope">
             <option value="">All scopes</option><option value="GLOBAL">Global</option><option value="STORE">Store</option>
           </select>
           <select value={(query as any).basis || ""} onChange={(e) => setQuery((p) => ({ ...p, basis: e.target.value || undefined }))}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none" title="Basis">
+                  className="rounded-md bg-muted px-2 py-1 text-sm outline-none" title="Basis">
             <option value="">All basis</option><option value="PCT">Percent</option><option value="FLAT">Flat</option>
           </select>
           <select value={(query as any).apply_scope || ""} onChange={(e) => setQuery((p) => ({ ...p, apply_scope: e.target.value || undefined }))}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none" title="Apply scope">
+                  className="rounded-md bg-muted px-2 py-1 text-sm outline-none" title="Apply scope">
             <option value="">Apply to</option><option value="LINE">Line</option><option value="RECEIPT">Receipt</option>
           </select>
           <select value={(query as any).target || ""} onChange={(e) => setQuery((p) => ({ ...p, target: e.target.value || undefined }))}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none" title="Target">
+                  className="rounded-md bg-muted px-2 py-1 text-sm outline-none" title="Target">
             <option value="">All targets</option>
             <option value="ALL">All</option><option value="CATEGORY">Category</option><option value="PRODUCT">Product</option><option value="VARIANT">Variant</option>
           </select>
           <select value={(query as any).store || ""} onChange={(e) => setQuery((p) => ({ ...p, store: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                  className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none" title="Filter by store">
+                  className="rounded-md bg-muted px-2 py-1 text-sm outline-none" title="Filter by store">
             <option value="">All stores</option>
             {stores.map(s => (<option key={s.id} value={s.id}>{s.name} ({s.code})</option>))}
           </select>
@@ -400,7 +400,7 @@ export default function DiscountRulesTab() {
             onChange={(e) =>
               setQuery((p) => ({ ...p, is_active: e.target.value === "" ? undefined : e.target.value === "true" }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Active"
           >
             <option value="">All</option><option value="true">Active</option><option value="false">Inactive</option>
@@ -415,7 +415,7 @@ export default function DiscountRulesTab() {
               <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
                       className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
               <button onClick={() => setSelectedIds([])}
-                      className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+                      className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}

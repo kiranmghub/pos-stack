@@ -19,11 +19,11 @@ export function TaxRuleTable({ rows, loading, onSelect, searchQuery, setSearchQu
   }, [rows, searchQuery]);
 
   return (
-    <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/70">
+    <div className="rounded-2xl border border-cyan-500/20 bg-background/70">
       <div className="flex items-center justify-between border-b border-white/5 px-4 py-2">
         <div className="text-sm uppercase tracking-[0.3em] text-cyan-200/70">Tax rules</div>
         <input
-          className="rounded-md border border-cyan-500/30 bg-slate-950 px-3 py-1 text-xs text-cyan-100 placeholder:text-cyan-200/50"
+          className="rounded-md border border-cyan-500/30 bg-background px-3 py-1 text-xs text-cyan-100 placeholder:text-cyan-200/50"
           placeholder="Search rule or code"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

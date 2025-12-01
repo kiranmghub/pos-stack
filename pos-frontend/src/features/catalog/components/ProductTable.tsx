@@ -389,11 +389,11 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
     // locate the product detail using pid
     // In this scope we can close over p via the render below; so we won't use pid here.
     return (
-      <div className="relative grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm">
+      <div className="relative grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm">
 
         {/* Image */}
         <div className="w-10">
-          <div className="h-10 w-10 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-800">
+          <div className="h-10 w-10 overflow-hidden rounded-lg border border-border bg-muted">
             {(v as any).image_url ? (
               <img
                 src={(v as any).image_url}
@@ -407,16 +407,16 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
         {/* Name + SKU stacked on left */}
         <div className="min-w-0">
-          <div className="truncate font-medium text-zinc-100" title={v.name}>
+          <div className="truncate font-medium text-foreground" title={v.name}>
             {v.name}
           </div>
-          <div className="truncate text-xs text-zinc-400" title={v.sku}>
+          <div className="truncate text-xs text-muted-foreground" title={v.sku}>
             {v.sku}
           </div>
         </div>
 
         {/* Price */}
-        <div className="justify-self-end text-zinc-200">{formatCurrency(v.price, currency)}</div>
+        <div className="justify-self-end text-foreground">{formatCurrency(v.price, currency)}</div>
 
         {/* On-hand count */}
         <div
@@ -433,7 +433,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         {/* Status */}
         <div className="justify-self-end">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs ${(v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
+            className={`rounded-full px-2 py-0.5 text-xs ${(v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-muted/20 text-muted-foreground"
               }`}
           >
             {(v as any).active ? "Active" : "Inactive"}
@@ -443,7 +443,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         {/* Kebab */}
         <div className="relative justify-self-end">
           <button
-            className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5"
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-white/5"
             onClick={() => setOpenMenu((m) => (m === v.id ? null : v.id))}
             aria-haspopup="menu"
             aria-expanded={openMenu === v.id}
@@ -452,23 +452,23 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
           </button>
           {openMenu === v.id && (
             <div
-              className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl"
+              className="absolute right-0 z-30 mt-2 w-40 rounded-lg border border-border bg-card py-1 shadow-xl"
               role="menu"
             >
               {/* View Details */}
               <button
-                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                className="block w-full px-3 py-1 text-left text-sm text-foreground hover:bg-white/5"
                 onClick={() => { setOpenMenu(null); }}
                 data-action="view"
               >
                 View Details
               </button>
 
-              <div className="my-1 h-px bg-zinc-800" />
+              <div className="my-1 h-px bg-muted" />
 
               {/* Edit */}
               <button
-                className="block w-full px-3 py-1 text-left text-sm text-zinc-200"
+                className="block w-full px-3 py-1 text-left text-sm text-foreground"
                 onClick={() => { setOpenMenu(null); }}
                 data-action="edit"
               >
@@ -477,7 +477,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
               {/* Activate / Deactivate (variant) */}
               <button
-                className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                className="block w-full px-3 py-1 text-left text-sm text-foreground hover:bg-white/5"
                 onClick={() => { setOpenMenu(null); }}
                 data-action={(v as any).active ? "deactivate" : "activate"}
               >
@@ -487,7 +487,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
               {/* Show Delete ONLY when inactive (variant) */}
               {!(v as any).active && (
                 <>
-                  <div className="my-1 h-px bg-zinc-800" />
+                  <div className="my-1 h-px bg-muted" />
                   <button
                     className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
                     onClick={() => { setOpenMenu(null); }}
@@ -514,18 +514,18 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto]">
           <input
-            className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+            className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
             placeholder="Search name, code, SKU, category…"
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
           />
           <input
-            className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+            className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
             placeholder="Category"
             value={category}
             onChange={(e) => { setCategory(e.target.value); setPage(1); }}
           />
-          <label className="flex items-center gap-2 text-sm text-zinc-300">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" checked={onlyLow}
               onChange={(e) => { setOnlyLow(e.target.checked); setPage(1); }}
             />
@@ -534,9 +534,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
           {/* Product order */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-300">Product&nbsp;order</label>
+            <label className="text-xs text-muted-foreground">Product&nbsp;order</label>
             <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
               value={productOrder}
               onChange={(e) => { setProductOrder(e.target.value as any); setPage(1); }}
             >
@@ -552,9 +552,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
           </div>
           {/* Variant order */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-300">Variant&nbsp;order</label>
+            <label className="text-xs text-muted-foreground">Variant&nbsp;order</label>
             <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
               value={variantOrder}
               onChange={(e) => setVariantOrder(e.target.value as any)}
             >
@@ -572,9 +572,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
           {/* Store selector */}
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-zinc-300">Store</label>
+            <label className="text-xs text-muted-foreground">Store</label>
             <select
-              className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+              className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
               value={storeId}
               onChange={(e) => { setStoreId(e.target.value); setPage(1); }}
             >
@@ -587,13 +587,13 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
           <div className="flex items-center gap-2">
             <button
-              className="rounded-xl border border-zinc-700 px-2 py-1 text-sm text-zinc-100 hover:bg-white/5"
+              className="rounded-xl border border-border px-2 py-1 text-sm text-foreground hover:bg-white/5"
               onClick={() => setShowExport(true)}
             >
               Export
             </button>
             <button
-              className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-100 hover:bg-white/5"
+              className="rounded-xl border border-border px-3 py-2 text-sm text-foreground hover:bg-white/5"
               onClick={() => setShowImport(true)}
             >
               Import
@@ -604,7 +604,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         </div>
         <div className="flex gap-2">
           <button
-            className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-100 hover:bg-white/5"
+            className="rounded-xl border border-border px-3 py-2 text-sm text-foreground hover:bg-white/5"
             onClick={() => onNewVariant(undefined)}
           >
             + New Variant
@@ -619,9 +619,9 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
       </div>
 
       {/* Table */}
-      {/* <div ref={tableRef} className="overflow-hidden rounded-2xl border border-zinc-800 relative"> */}
-      <div ref={tableRef} className="relative overflow-visible rounded-2xl border border-zinc-800">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 bg-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-300">
+      {/* <div ref={tableRef} className="overflow-hidden rounded-2xl border border-border relative"> */}
+      <div ref={tableRef} className="relative overflow-visible rounded-2xl border border-border">
+        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 bg-muted px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <div className="w-12">Image</div>
           <div>Product</div>
           <div>Category</div>
@@ -632,17 +632,17 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         </div>
 
         <div className="divide-y divide-zinc-800">
-          {loading && <div className="p-6 text-sm text-zinc-500">Loading…</div>}
+          {loading && <div className="p-6 text-sm text-muted-foreground">Loading…</div>}
           {!loading &&
             filtered.map((p) => {
               const isOpen = !!expanded[p.id];
               const d = details[p.id];
               return (
-                <div key={p.id} className="bg-zinc-950">
+                <div key={p.id} className="bg-background">
                   {/* master row */}
                   <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] items-center gap-3 px-3 py-3 text-sm hover:bg-white/5 transition-colors">
                     <div className="w-12">
-                      <div className="h-12 w-12 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-800">
+                      <div className="h-12 w-12 overflow-hidden rounded-xl border border-border bg-muted">
                         {p.cover_image ? <img src={p.cover_image} className="h-full w-full object-cover" /> : null}
                       </div>
                     </div>
@@ -650,24 +650,24 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <button
-                          className="rounded-lg px-1 text-left font-medium text-zinc-100 hover:bg-white/5"
+                          className="rounded-lg px-1 text-left font-medium text-foreground hover:bg-white/5"
                           onClick={() => toggleExpand(p)}
                         >
                           {p.name}
                         </button>
-                        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           {(details[p.id]?.variants?.length ?? p.variant_count)} variants
                         </span>
                       </div>
                     </div>
 
-                    <div className="truncate text-zinc-400" title={p.category}>
+                    <div className="truncate text-muted-foreground" title={p.category}>
                       {p.category}
                     </div>
-                    <div className="truncate text-zinc-400" title={p.code}>
+                    <div className="truncate text-muted-foreground" title={p.code}>
                       {p.code}
                     </div>
-                    <div className="justify-self-end text-zinc-200">
+                    <div className="justify-self-end text-foreground">
                       {formatCurrency(p.price_min, currency)} – {formatCurrency(p.price_max, currency)}
                     </div>
                     <div
@@ -682,14 +682,14 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                     </div>
                     <div className="justify-self-end flex items-center gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${p.active ? "bg-indigo-500/15 text-indigo-300" : "bg-zinc-600/20 text-zinc-300"
+                        className={`rounded-full px-2 py-0.5 text-xs ${p.active ? "bg-indigo-500/15 text-indigo-300" : "bg-muted/20 text-muted-foreground"
                           }`}
                       >
                         {p.active ? "Active" : "Inactive"}
                       </span>
                       <div className="relative">
                         <button
-                          className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5"
+                          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-white/5"
                           onClick={(e) => {
                             const buttonRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                             const containerRect = tableRef.current?.getBoundingClientRect();
@@ -707,13 +707,13 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                         </button>
                         {openProdMenu === p.id && (
                           <div
-                            className={`absolute right-0 z-30 w-40 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl ${menuDirection === "up" ? "-translate-y-2 bottom-full" : "translate-y-2 top-full"
+                            className={`absolute right-0 z-30 w-40 rounded-lg border border-border bg-card py-1 shadow-xl ${menuDirection === "up" ? "-translate-y-2 bottom-full" : "translate-y-2 top-full"
                               }`}
                             role="menu"
                           >
                             {/* View Details */}
                             <button
-                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              className="block w-full px-3 py-1 text-left text-sm text-foreground hover:bg-white/5"
                               onClick={() => { setOpenProdMenu(null); onViewProduct(d ?? (p as any)); }}
                             >
                               View Details
@@ -721,7 +721,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
                             {/* Edit */}
                             <button
-                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              className="block w-full px-3 py-1 text-left text-sm text-foreground hover:bg-white/5"
                               onClick={() => { setOpenProdMenu(null); onEditProduct(d ?? (p as any)); }}
                             >
                               Edit
@@ -729,7 +729,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
                             {/* Activate / Deactivate (product) */}
                             <button
-                              className="block w-full px-3 py-1 text-left text-sm text-zinc-200 hover:bg-white/5"
+                              className="block w-full px-3 py-1 text-left text-sm text-foreground hover:bg-white/5"
                               onClick={() => { setOpenProdMenu(null); toggleProductActive(d ?? (p as any)); }}
                             >
                               {(p as any).active ? "Deactivate" : "Activate"}
@@ -738,7 +738,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                             {/* Show Delete ONLY when inactive (product) */}
                             {!(p as any).active && (
                               <>
-                                <div className="my-1 h-px bg-zinc-800" />
+                                <div className="my-1 h-px bg-muted" />
                                 <button
                                   className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
                                   title="Only allowed if not used in sales"
@@ -766,20 +766,20 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
                   {/* expanded area */}
                   {isOpen && (
-                    <div className="space-y-3 bg-zinc-900/40 px-3 pb-4 pt-2">
+                    <div className="space-y-3 bg-muted/40 px-3 pb-4 pt-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-xs text-zinc-400">
+                        <div className="text-xs text-muted-foreground">
                           Price range {formatCurrency(p.price_min, currency)} – {formatCurrency(p.price_max, currency)} • {p.on_hand_sum} units on hand
                         </div>
                         <div className="flex gap-2">
                           <button
-                            className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs text-zinc-100 hover:bg-white/5"
+                            className="rounded-xl border border-border px-3 py-1.5 text-xs text-foreground hover:bg-white/5"
                             onClick={() => onNewVariant(d ?? (p as any))}
                           >
                             + New Variant
                           </button>
                           <button
-                            className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs text-zinc-100 hover:bg-white/5"
+                            className="rounded-xl border border-border px-3 py-1.5 text-xs text-foreground hover:bg-white/5"
                             onClick={() => window.alert("Open Media Gallery")}
                           >
                             Media
@@ -787,7 +787,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                         </div>
                       </div>
 
-                      {loadingRow[p.id] && <div className="text-xs text-zinc-500">Loading variants…</div>}
+                      {loadingRow[p.id] && <div className="text-xs text-muted-foreground">Loading variants…</div>}
 
                       {d?.variants && (
                         <div className="grid gap-2">
@@ -827,23 +827,23 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
             })}
 
           {!loading && filtered.length === 0 && (
-            <div className="p-6 text-sm text-zinc-500">No products found.</div>
+            <div className="p-6 text-sm text-muted-foreground">No products found.</div>
           )}
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-zinc-800 bg-zinc-900/40">
-          <div className="text-xs text-zinc-400">
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/40">
+          <div className="text-xs text-muted-foreground">
             {totalCount === 0
               ? "No results"
               : `Showing ${Math.min((page - 1) * pageSize + 1, totalCount)}–${Math.min(page * pageSize, totalCount)} of ${totalCount}`}
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-xs text-zinc-300">
+            <label className="text-xs text-muted-foreground">
               Rows per page:&nbsp;
               <select
-                className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+                className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
               >
@@ -853,17 +853,17 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
 
             <div className="flex items-center gap-1">
               <button
-                className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
               >
                 Prev
               </button>
-              <div className="min-w-[7rem] text-center text-xs text-zinc-300">
+              <div className="min-w-[7rem] text-center text-xs text-muted-foreground">
                 Page {page} of {lastPage}
               </div>
               <button
-                className="rounded-md px-2 py-1 text-xs text-zinc-200 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="rounded-md px-2 py-1 text-xs text-foreground hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={() => {
                   const last = Math.max(1, Math.ceil(totalCount / pageSize));
                   setPage((p) => Math.min(last, p + 1));

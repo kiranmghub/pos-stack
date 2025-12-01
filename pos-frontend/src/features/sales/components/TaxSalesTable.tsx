@@ -25,7 +25,7 @@ export function TaxSalesTable({
   onOpenSale,
 }: Props) {
   return (
-    <div className="rounded-2xl border border-cyan-500/20 bg-slate-950/80">
+    <div className="rounded-2xl border border-cyan-500/20 bg-background/80">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -99,7 +99,7 @@ export function TaxSalesTable({
         <div className="flex items-center gap-2">
           <span>Rows per page</span>
           <select
-            className="rounded-md border border-cyan-500/40 bg-slate-950 px-2 py-1 text-cyan-100"
+            className="rounded-md border border-cyan-500/40 bg-background px-2 py-1 text-cyan-100"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
           >

@@ -56,20 +56,20 @@ function StatCard({
   icon: React.ReactNode;
   accent?: string;
 }) {
-  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-rose-300" : "text-slate-300";
+  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-rose-300" : "text-muted-foreground";
   const deltaSign = delta === undefined ? "" : delta > 0 ? "▲" : delta < 0 ? "▼" : "■";
   const deltaText = delta === undefined ? "" : `${deltaSign} ${Math.abs(delta).toFixed(1)}% vs prev`;
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="relative overflow-hidden rounded-2xl border border-border bg-white/[0.03] p-4">
       <div className={`pointer-events-none absolute inset-x-0 -top-20 h-32 bg-gradient-to-b ${accent} opacity-20 blur-2xl`} />
       <div className="relative flex items-center gap-3">
-        <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/5 ring-1 ring-white/10 text-slate-100">
+        <div className="grid h-11 w-11 place-items-center rounded-xl bg-card ring-1 ring-border/20 text-foreground">
           {icon}
         </div>
         <div className="min-w-0">
-          <div className="text-sm text-slate-300/80">{title}</div>
-          <div className="text-xl font-semibold text-slate-100">{typeof value === "number" ? formatNumber(value) : value}</div>
-          {subtitle ? <div className="text-xs text-slate-400">{subtitle}</div> : null}
+          <div className="text-sm text-muted-foreground">{title}</div>
+          <div className="text-xl font-semibold text-foreground">{typeof value === "number" ? formatNumber(value) : value}</div>
+          {subtitle ? <div className="text-xs text-muted-foreground">{subtitle}</div> : null}
           {delta !== undefined ? <div className={`text-[11px] ${deltaColor}`}>{deltaText}</div> : null}
         </div>
       </div>
@@ -104,7 +104,7 @@ function BarSpark({
   return (
     <div className="space-y-2">
       {legend ? (
-        <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           {keys.map((k) => (
             <div key={k} className="inline-flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-sm" style={{ backgroundColor: colors[k] || "rgba(255,255,255,0.6)" }} />
@@ -128,7 +128,7 @@ function BarSpark({
                 />
               );
             })}
-            <div className="text-[10px] text-slate-400 truncate text-center">{(row.date as string).slice(5)}</div>
+            <div className="text-[10px] text-muted-foreground truncate text-center">{(row.date as string).slice(5)}</div>
           </div>
         ))}
       </div>
@@ -187,26 +187,26 @@ export default function MetricsPage() {
       <div className="px-4 py-6 space-y-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-sm text-slate-400">Observability</div>
-            <div className="text-2xl font-semibold text-slate-100">Signups, OTPs, Subscriptions, Emails</div>
+            <div className="text-sm text-muted-foreground">Observability</div>
+            <div className="text-2xl font-semibold text-foreground">Signups, OTPs, Subscriptions, Emails</div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <CalendarRange className="h-4 w-4 text-slate-300" />
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+              <CalendarRange className="h-4 w-4 text-muted-foreground" />
               <input
                 type="date"
                 value={start}
                 max={end}
                 onChange={(e) => setStart(e.target.value)}
-                className="bg-transparent text-sm text-slate-100 focus:outline-none"
+                className="bg-transparent text-sm text-foreground focus:outline-none"
               />
-              <span className="text-slate-500">to</span>
+              <span className="text-muted-foreground">to</span>
               <input
                 type="date"
                 value={end}
                 min={start}
                 onChange={(e) => setEnd(e.target.value)}
-                className="bg-transparent text-sm text-slate-100 focus:outline-none"
+                className="bg-transparent text-sm text-foreground focus:outline-none"
               />
             </div>
           </div>
@@ -221,10 +221,10 @@ export default function MetricsPage() {
         {loading && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
-                <div className="h-5 w-24 rounded bg-white/10" />
-                <div className="h-6 w-16 rounded bg-white/10" />
-                <div className="h-4 w-32 rounded bg-white/5" />
+              <div key={i} className="animate-pulse rounded-2xl border border-border bg-white/[0.03] p-4 space-y-3">
+                <div className="h-5 w-24 rounded bg-muted" />
+                <div className="h-6 w-16 rounded bg-muted" />
+                <div className="h-4 w-32 rounded bg-card" />
               </div>
             ))}
           </div>
@@ -232,13 +232,13 @@ export default function MetricsPage() {
 
         {!loading && metrics && (
           <>
-            <div className="text-sm text-slate-400">
+            <div className="text-sm text-muted-foreground">
               Range: {metrics.range.start} → {metrics.range.end}
               {metrics.range.timezone ? ` • Timezone: ${metrics.range.timezone}` : ""}
             </div>
 
             {!hasData && (
-              <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-slate-300">
+              <div className="mt-3 rounded-2xl border border-border bg-white/[0.03] p-4 text-muted-foreground">
                 No metrics in this range. Try expanding the date range or generating new activity.
               </div>
             )}
@@ -297,11 +297,11 @@ export default function MetricsPage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="rounded-2xl border border-border bg-white/[0.03] p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-sm text-slate-400">OTP</div>
-                        <div className="text-lg font-semibold text-slate-100">Sends vs Failures</div>
+                        <div className="text-sm text-muted-foreground">OTP</div>
+                        <div className="text-lg font-semibold text-foreground">Sends vs Failures</div>
                       </div>
                     </div>
                     <BarSpark
@@ -312,11 +312,11 @@ export default function MetricsPage() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="rounded-2xl border border-border bg-white/[0.03] p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-sm text-slate-400">Signup</div>
-                        <div className="text-lg font-semibold text-slate-100">Start → Verify → Complete</div>
+                        <div className="text-sm text-muted-foreground">Signup</div>
+                        <div className="text-lg font-semibold text-foreground">Start → Verify → Complete</div>
                       </div>
                     </div>
                     <BarSpark
@@ -331,13 +331,13 @@ export default function MetricsPage() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="rounded-2xl border border-border bg-white/[0.03] p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-sm text-slate-400">Subscriptions</div>
-                        <div className="text-lg font-semibold text-slate-100">Created & Status Changes</div>
+                        <div className="text-sm text-muted-foreground">Subscriptions</div>
+                        <div className="text-lg font-semibold text-foreground">Created & Status Changes</div>
                       </div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-muted-foreground">
                         Status:{" "}
                         {Object.entries(metrics.subscriptions.status_counts || {})
                           .map(([k, v]) => `${k}: ${v}`)
@@ -352,11 +352,11 @@ export default function MetricsPage() {
                     />
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="rounded-2xl border border-border bg-white/[0.03] p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-sm text-slate-400">Emails</div>
-                        <div className="text-lg font-semibold text-slate-100">Sent vs Failed</div>
+                        <div className="text-sm text-muted-foreground">Emails</div>
+                        <div className="text-lg font-semibold text-foreground">Sent vs Failed</div>
                       </div>
                     </div>
                     <BarSpark

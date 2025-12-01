@@ -9,7 +9,7 @@ type PushArgs = { kind: Kind; msg: string; duration?: number };
 const styleByKind: Record<Kind, string> = {
   success: "bg-emerald-900/80 border border-emerald-600 text-emerald-50",
   error:   "bg-red-900/80 border border-red-600 text-red-50",
-  info:    "bg-slate-800/90 border border-slate-600 text-slate-100",
+  info:    "bg-muted/80 border border-border text-foreground",
   warn:    "bg-amber-900/80 border border-amber-600 text-amber-50",
 };
 

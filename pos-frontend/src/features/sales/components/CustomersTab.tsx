@@ -88,38 +88,38 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 md:grid-cols-4">
+      <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 md:grid-cols-4">
         <div className="md:col-span-2">
-          <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+          <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
             Search customers
           </label>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, email, or phone"
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none"
+            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+          <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
             From
           </label>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+          <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
             To
           </label>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+            className="mt-1 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none"
           />
         </div>
       </div>

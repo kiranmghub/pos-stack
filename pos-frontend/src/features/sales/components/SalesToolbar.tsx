@@ -17,13 +17,13 @@ export function SalesToolbar(props: {
     <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
       <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto_auto]">
         <input
-          className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+          className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
           placeholder="Search receipt #, cashier, product, SKU…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <select
-          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={storeId}
           onChange={(e) => { setStoreId(e.target.value); }}
         >
@@ -34,7 +34,7 @@ export function SalesToolbar(props: {
             </option>
           ))}
         </select>
-        <select className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+        <select className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={status} onChange={(e) => { setStatus(e.target.value); }}>
           <option value="">Any status</option>
           <option value="pending">Pending</option>
@@ -42,9 +42,9 @@ export function SalesToolbar(props: {
           <option value="void">Void</option>
         </select>
         <div className="flex items-center gap-2">
-          <input type="date" className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          <input type="date" className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); }} />
-          <input type="date" className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          <input type="date" className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateTo} onChange={(e) => { setDateTo(e.target.value); }} />
         </div>
       </div>

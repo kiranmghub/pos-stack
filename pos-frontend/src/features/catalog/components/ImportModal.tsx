@@ -184,12 +184,12 @@ export default function ImportModal({
             {/* backdrop */}
             <div className="absolute inset-0 bg-black/60" onClick={onClose} />
             {/* modal */}
-            <div className="relative w-full max-w-2xl rounded-2xl bg-zinc-900 text-zinc-100 shadow-2xl border border-zinc-800">
-                <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+            <div className="relative w-full max-w-2xl rounded-2xl bg-card text-foreground shadow-2xl border border-border">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                     <h2 className="text-lg font-semibold">Import Catalog</h2>
                     <div className="flex items-center gap-2">
                         <button
-                            className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-3 py-1.5 text-sm text-zinc-100 hover:bg-white/5"
+                            className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-1.5 text-sm text-foreground hover:bg-white/5"
                             onClick={onDownloadTemplate}
                             disabled={busy}
                             title="Download CSV template"
@@ -198,7 +198,7 @@ export default function ImportModal({
                             Template
                         </button>
                         <button className="p-1 rounded hover:bg-white/5" onClick={onClose} aria-label="Close">
-                            <X className="w-5 h-5 text-zinc-300" />
+                            <X className="w-5 h-5 text-muted-foreground" />
                         </button>
                     </div>
                 </div>
@@ -206,9 +206,9 @@ export default function ImportModal({
                 <div className="px-5 py-4 space-y-4">
                     <div className="grid gap-3 md:grid-cols-2">
                         <label className="flex flex-col gap-1">
-                            <span className="text-sm text-zinc-400">Scope</span>
+                            <span className="text-sm text-muted-foreground">Scope</span>
                             <select
-                                className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                                className="rounded-md px-2 py-1 bg-card border border-border text-foreground"
                                 value={scope}
                                 onChange={(e) => setScope(e.target.value as Scope)}
                                 disabled={busy}
@@ -219,9 +219,9 @@ export default function ImportModal({
                         </label>
 
                         <label className="flex flex-col gap-1">
-                            <span className="text-sm text-zinc-400">Mode</span>
+                            <span className="text-sm text-muted-foreground">Mode</span>
                             <select
-                                className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                                className="rounded-md px-2 py-1 bg-card border border-border text-foreground"
                                 value={mode}
                                 onChange={(e) => setMode(e.target.value as Mode)}
                                 disabled={busy}
@@ -234,15 +234,15 @@ export default function ImportModal({
 
 
                     <label className="flex flex-col gap-1">
-                        <span className="text-sm text-zinc-400">Upload CSV</span>
+                        <span className="text-sm text-muted-foreground">Upload CSV</span>
                         <input
                             type="file"
                             accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            className="text-sm file:mr-3 file:rounded-md file:border file:border-zinc-700 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:text-zinc-100 hover:file:bg-white/5"
+                            className="text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-card file:px-3 file:py-1.5 file:text-sm file:text-foreground hover:file:bg-white/5"
                             onChange={(e) => setFile(e.target.files?.[0] || null)}
                             disabled={busy}
                         />
-                        <span className="text-xs text-zinc-500">
+                        <span className="text-xs text-muted-foreground">
                             CSV supported now. If a field contains commas, wrap it in double quotes.
                             XLSX will be enabled when backend parsing is added.
                         </span>
@@ -255,8 +255,8 @@ export default function ImportModal({
                     )}
 
                     {result && (
-                        <div className="rounded-md border border-zinc-800 bg-zinc-950">
-                            <div className="px-3 py-2 border-b border-zinc-800 text-sm text-zinc-300">
+                        <div className="rounded-md border border-border bg-background">
+                            <div className="px-3 py-2 border-b border-border text-sm text-muted-foreground">
                                 Validation summary{result.dry_run ? " (dry run)" : ""}:
                             </div>
                             <div className="p-3 grid grid-cols-2 gap-2 text-sm">
@@ -268,11 +268,11 @@ export default function ImportModal({
                             {result.errors?.length ? (
                                 <div className="p-3" ref={errorsRef}>
                                     <div className="flex items-center justify-between mb-1">
-                                        <div className="text-sm text-zinc-300">
+                                        <div className="text-sm text-muted-foreground">
                                             Errors <span className="ml-1 rounded-md bg-red-500/20 px-2 py-0.5 text-xs text-red-300">{result.errors.length}</span>
                                         </div>
                                         <button
-                                            className="rounded-xl border border-zinc-700 px-3 py-1.5 text-xs text-zinc-100 hover:bg-white/5"
+                                            className="rounded-xl border border-border px-3 py-1.5 text-xs text-foreground hover:bg-white/5"
                                             onClick={downloadErrorsCsv}
                                             disabled={!result.errors.length || busy}
                                             title="Download errors as CSV"
@@ -280,12 +280,12 @@ export default function ImportModal({
                                             Download errors CSV
                                         </button>
                                     </div>
-                                    <div className="max-h-56 overflow-auto rounded border border-zinc-800">
+                                    <div className="max-h-56 overflow-auto rounded border border-border">
                                         <table className="w-full text-sm">
-                                            <thead className="bg-zinc-900 text-zinc-300">
+                                            <thead className="bg-card text-muted-foreground">
                                                 <tr>
-                                                    <th className="text-left px-2 py-1 border-b border-zinc-800 w-20">Row</th>
-                                                    <th className="text-left px-2 py-1 border-b border-zinc-800">Message</th>
+                                                    <th className="text-left px-2 py-1 border-b border-border w-20">Row</th>
+                                                    <th className="text-left px-2 py-1 border-b border-border">Message</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -297,9 +297,9 @@ export default function ImportModal({
                                                             : "border-l-2 border-amber-500 bg-amber-500/5";
                                                     return (
                                                         <tr key={idx} className={`${rowColor}`}>
-                                                            <td className="px-2 py-1 align-top border-b border-zinc-800 text-zinc-200">{e.row}</td>
-                                                            <td className="px-2 py-1 align-top border-b border-zinc-800">
-                                                                <pre className="whitespace-pre-wrap break-words text-xs text-zinc-100">
+                                                            <td className="px-2 py-1 align-top border-b border-border text-foreground">{e.row}</td>
+                                                            <td className="px-2 py-1 align-top border-b border-border">
+                                                                <pre className="whitespace-pre-wrap break-words text-xs text-foreground">
                                                                     {typeof e.message === "string" ? e.message : JSON.stringify(e.message, null, 2)}
                                                                 </pre>
                                                             </td>
@@ -315,13 +315,13 @@ export default function ImportModal({
                     )}
                 </div>
 
-                <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-800">
-                    <button className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-100 hover:bg-white/5" onClick={onClose} disabled={busy}>
+                <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
+                    <button className="rounded-xl border border-border px-3 py-2 text-sm text-foreground hover:bg-white/5" onClick={onClose} disabled={busy}>
                         Close
                     </button>
                     {/* Single Validate button (works for initial or re-validate) */}
                     <button
-                        className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-zinc-900 hover:bg-zinc-200 disabled:opacity-60"
+                        className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-foreground hover:bg-zinc-200 disabled:opacity-60"
                         onClick={onValidate}
                         disabled={busy || !file}
                         title={!file ? "Choose a CSV file first" : undefined}
@@ -332,7 +332,7 @@ export default function ImportModal({
                     {/* Apply only when there are no errors AND there is work to do */}
                     {canApply ? (
                         <button
-                            className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-zinc-900 hover:bg-zinc-200 disabled:opacity-60"
+                            className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-foreground hover:bg-zinc-200 disabled:opacity-60"
                             onClick={onApply}
                             disabled={busy || !file}
                         >

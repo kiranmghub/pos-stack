@@ -41,7 +41,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const colorMap = {
     success: "bg-emerald-900/80 border-emerald-600 text-emerald-50",
     error: "bg-red-900/80 border-red-600 text-red-50",
-    info: "bg-slate-800/90 border-slate-600 text-slate-100",
+    info: "bg-muted/90 border-border text-foreground",
     warn: "bg-amber-900/80 border-amber-600 text-amber-50",
   } as const;
 

@@ -44,25 +44,25 @@ export default function SignupProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur"
+        className="w-full max-w-xl rounded-3xl border border-border bg-card p-8 shadow-2xl backdrop-blur"
       >
         <h1 className="text-3xl font-semibold mb-2">Business profile</h1>
-        <p className="text-slate-300/80 mb-6">Tell us about your business and the admin user we’re creating.</p>
+        <p className="text-muted-foreground mb-6">Tell us about your business and the admin user we’re creating.</p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
-            <span className="text-sm text-slate-200">Business / tenant name</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-              <Store className="h-4 w-4 text-slate-300/80" />
+            <span className="text-sm text-muted-foreground">Business / tenant name</span>
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+              <Store className="h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 required
-                className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                 placeholder="Alice Mart"
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
@@ -72,13 +72,13 @@ export default function SignupProfilePage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="block space-y-2">
-              <span className="text-sm text-slate-200">First name</span>
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-                <User className="h-4 w-4 text-slate-300/80" />
+              <span className="text-sm text-muted-foreground">First name</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+                <User className="h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   required
-                  className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                  className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                 />
@@ -86,12 +86,12 @@ export default function SignupProfilePage() {
             </label>
 
             <label className="block space-y-2">
-              <span className="text-sm text-slate-200">Last name</span>
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-                <User className="h-4 w-4 text-slate-300/80" />
+              <span className="text-sm text-muted-foreground">Last name</span>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+                <User className="h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
-                  className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                  className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
@@ -100,13 +100,13 @@ export default function SignupProfilePage() {
           </div>
 
           <label className="block space-y-2">
-            <span className="text-sm text-slate-200">Password</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
-              <Lock className="h-4 w-4 text-slate-300/80" />
+            <span className="text-sm text-muted-foreground">Password</span>
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-black/30 px-3 py-2">
+              <Lock className="h-4 w-4 text-muted-foreground" />
               <input
                 type="password"
                 required
-                className="w-full bg-transparent py-2 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                className="w-full bg-transparent py-2 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                 placeholder="StrongPass123!"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -119,7 +119,7 @@ export default function SignupProfilePage() {
           <button
             type="submit"
             disabled={loading || !tenantName || !firstName || password.length < 6}
-            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creating..." : "Continue to plans"}
           </button>

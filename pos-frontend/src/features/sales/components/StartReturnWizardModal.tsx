@@ -6,8 +6,8 @@ type RefundLine = { method: "CASH" | "CARD" | "STORE_CREDIT" | "OTHER"; amount: 
 
 function StepPill({ n, active, label }: { n: number; active: boolean; label: string }) {
     return (
-        <div className={`flex items-center gap-2 text-xs ${active ? "text-white" : "text-zinc-400"}`}>
-            <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-blue-600" : "bg-zinc-700"}`}>{n}</div>
+        <div className={`flex items-center gap-2 text-xs ${active ? "text-white" : "text-muted-foreground"}`}>
+            <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-blue-600" : "bg-muted"}`}>{n}</div>
             <div>{label}</div>
         </div>
     );
@@ -254,11 +254,11 @@ export default function StartReturnWizardModal({
         <div className="fixed inset-0 z-[75]">
             {/* full-screen sheet */}
             <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-            <div className="absolute inset-0 flex flex-col bg-zinc-900">
+            <div className="absolute inset-0 flex flex-col bg-card">
                 {/* Header */}
-                <div className="border-b border-zinc-800 px-5 py-3 flex items-center justify-between">
+                <div className="border-b border-border px-5 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="text-base font-semibold text-zinc-100">
+                        <div className="text-base font-semibold text-foreground">
                             Return for {saleDetail?.receipt_no || `#${saleDetail?.id}`}
                         </div>
                         <div className="hidden md:flex items-center gap-4">
@@ -266,27 +266,27 @@ export default function StartReturnWizardModal({
                             <StepPill n={2} active={step === 2} label="Refund" />
                         </div>
                     </div>
-                    <button className="rounded-md px-2 py-1 text-xs text-zinc-300 hover:bg-white/5" onClick={onClose}>Close</button>
+                    <button className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-white/5" onClick={onClose}>Close</button>
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-auto p-5 space-y-4">
                     {/* Sale summary */}
-                    <div className="grid grid-cols-2 gap-3 rounded-lg border border-zinc-800 p-3 text-sm">
-                        <div><span className="text-zinc-400">Store:</span> {saleDetail.store_name || "—"}</div>
-                        <div><span className="text-zinc-400">Cashier:</span> {saleDetail.cashier_name || "—"}</div>
-                        <div><span className="text-zinc-400">Date:</span> {saleDetail.created_at ? new Date(saleDetail.created_at).toLocaleString() : "—"}</div>
-                        <div><span className="text-zinc-400">Total:</span> {safeMoney(saleDetail.total)}</div>
+                    <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 text-sm">
+                        <div><span className="text-muted-foreground">Store:</span> {saleDetail.store_name || "—"}</div>
+                        <div><span className="text-muted-foreground">Cashier:</span> {saleDetail.cashier_name || "—"}</div>
+                        <div><span className="text-muted-foreground">Date:</span> {saleDetail.created_at ? new Date(saleDetail.created_at).toLocaleString() : "—"}</div>
+                        <div><span className="text-muted-foreground">Total:</span> {safeMoney(saleDetail.total)}</div>
                     </div>
 
                     {step === 1 && (
                         <>
-                            <div className="text-sm text-zinc-300">Select items to return and specify a reason for each.</div>
+                            <div className="text-sm text-muted-foreground">Select items to return and specify a reason for each.</div>
                             <div className="grid md:grid-cols-[2fr_1fr] gap-4">
                                 {/* Left: items list */}
-                                <div className="rounded-xl border border-zinc-800">
+                                <div className="rounded-xl border border-border">
                                     {/* Sticky header */}
-                                    <div className="sticky top-0 z-10 grid grid-cols-[1fr_12rem_6rem] items-center gap-3 bg-zinc-900/80 backdrop-blur border-b border-zinc-800 px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-400">
+                                    <div className="sticky top-0 z-10 grid grid-cols-[1fr_12rem_6rem] items-center gap-3 bg-muted/80 backdrop-blur border-b border-border px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                                         <div>Item</div>
                                         <div className="grid grid-cols-3 gap-2 text-center">
                                             <div>Sold</div>
@@ -299,7 +299,7 @@ export default function StartReturnWizardModal({
 
 
                                     {/* Rows */}
-                                    <div className="divide-y divide-zinc-800">
+                                    <div className="divide-y divide-border">
                                         {saleDetail.lines.map((ln: any) => {
                                             const qty = Number(lineQty[ln.id] || 0);
                                             const isActive = activeLineId === ln.id || qty > 0;
@@ -318,7 +318,7 @@ export default function StartReturnWizardModal({
                                                 // <div key={ln.id} className="px-3 py-2">
                                                 <div
                                                     key={ln.id}
-                                                    className="px-3 py-2 transition-colors hover:bg-zinc-800/40 cursor-pointer rounded-md"
+                                                    className="px-3 py-2 transition-colors hover:bg-muted/40 cursor-pointer rounded-md"
                                                 >
 
                                                     {/* Row grid */}
@@ -326,7 +326,7 @@ export default function StartReturnWizardModal({
                                                         {/* Item */}
                                                         <div className="min-w-0 flex items-center gap-2">
                                                         {/* Avatar */}
-                                                        <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-[11px] font-medium text-zinc-300">
+                                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-muted-foreground">
                                                             {((ln.product_name || ln.variant_name || ln.sku || "?") as string)
                                                             .trim()
                                                             .charAt(0)
@@ -334,10 +334,10 @@ export default function StartReturnWizardModal({
                                                         </div>
                                                         {/* Text */}
                                                         <div className="min-w-0">
-                                                            <div className="text-zinc-100 truncate">
+                                                            <div className="text-foreground truncate">
                                                             {ln.product_name || "Item"}
                                                             </div>
-                                                            <div className="text-xs text-zinc-400 truncate">
+                                                            <div className="text-xs text-muted-foreground truncate">
                                                             {ln.variant_name || ln.sku}
                                                             </div>
                                                         </div>
@@ -347,19 +347,19 @@ export default function StartReturnWizardModal({
                                                         {/* Metrics */}
                                                         <div className="grid grid-cols-3 gap-2 text-[11px]">
                                                             <div className="text-center">
-                                                                <div className="text-zinc-400 uppercase">Sold</div>
-                                                                <div className="tabular-nums text-zinc-200 font-medium">
+                                                                <div className="text-muted-foreground uppercase">Sold</div>
+                                                                <div className="tabular-nums text-foreground font-medium">
                                                                     {ln.quantity}
                                                                 </div>
                                                             </div>
                                                             <div className="text-center">
-                                                                <div className="text-zinc-400 uppercase">Returned</div>
+                                                                <div className="text-muted-foreground uppercase">Returned</div>
                                                                 <div className="tabular-nums text-amber-300 font-medium">
                                                                     {returned}
                                                                 </div>
                                                             </div>
                                                             <div className="text-center">
-                                                                <div className="text-zinc-400 uppercase">Remaining</div>
+                                                                <div className="text-muted-foreground uppercase">Remaining</div>
                                                                 <div
                                                                     className={`tabular-nums font-medium ${remaining === 0 ? "text-red-400" : "text-emerald-300"
                                                                         }`}
@@ -372,7 +372,7 @@ export default function StartReturnWizardModal({
                                                         {/* Qty */}
                                                         <div className="flex items-center justify-center">
                                                             {maxQty === 0 ? (
-                                                                <span className="rounded-md bg-zinc-800 px-2 py-1 text-xs text-zinc-400">
+                                                                <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
                                                                     Fully returned
                                                                 </span>
                                                             ) : (
@@ -403,20 +403,20 @@ export default function StartReturnWizardModal({
                                                                             if (sel) sel.focus();
                                                                         }
                                                                     }}
-                                                                    className="w-20 text-center rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-100"
+                                                                    className="w-20 text-center rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground"
                                                                 />
                                                             )}
                                                         </div>
                                                     </div>
 
                                                     {/* NEW: original pricing strip */}
-                                                    <div className="mt-1 text-[11px] text-zinc-400">
+                                                    <div className="mt-1 text-[11px] text-muted-foreground">
                                                         <span className="mr-2">Original:</span>
                                                         <span className="mr-2">
-                                                            Unit <span className="text-zinc-200">{safeMoney(ln.unit_price)}</span>
+                                                            Unit <span className="text-foreground">{safeMoney(ln.unit_price)}</span>
                                                         </span>
                                                         <span className="mr-2">
-                                                            Subtotal <span className="text-zinc-200">{safeMoney(ln.line_subtotal)}</span>
+                                                            Subtotal <span className="text-foreground">{safeMoney(ln.line_subtotal)}</span>
                                                         </span>
                                                         <span className="mr-2">
                                                             Discount <span className="text-amber-300">-{safeMoney(ln.discount || 0)}</span>
@@ -425,10 +425,10 @@ export default function StartReturnWizardModal({
                                                             Tax <span className="text-blue-300">{safeMoney(ln.tax || 0)}</span>
                                                         </span>
                                                         <span>
-                                                            Total <span className="text-zinc-100">{safeMoney(ln.line_total)}</span>
+                                                            Total <span className="text-foreground">{safeMoney(ln.line_total)}</span>
                                                         </span>
                                                     </div>
-                                                    {/* <div className="mt-2 text-[11px] text-zinc-400">
+                                                    {/* <div className="mt-2 text-[11px] text-muted-foreground">
                                                     <div className="grid grid-cols-5 gap-2 text-center">
                                                         <div className="uppercase">Unit</div>
                                                         <div className="uppercase">Subt.</div>
@@ -438,11 +438,11 @@ export default function StartReturnWizardModal({
                                                     </div>
 
                                                     <div className="grid grid-cols-5 gap-2 text-center mt-1">
-                                                        <div className="tabular-nums text-zinc-200">{safeMoney(ln.unit_price)}</div>
-                                                        <div className="tabular-nums text-zinc-200">{safeMoney(ln.line_subtotal)}</div>
+                                                        <div className="tabular-nums text-foreground">{safeMoney(ln.unit_price)}</div>
+                                                        <div className="tabular-nums text-foreground">{safeMoney(ln.line_subtotal)}</div>
                                                         <div className="tabular-nums text-amber-300">-{safeMoney(ln.discount || 0)}</div>
                                                         <div className="tabular-nums text-blue-300">{safeMoney(ln.tax || 0)}</div>
-                                                        <div className="tabular-nums text-zinc-100">{safeMoney(ln.line_total)}</div>
+                                                        <div className="tabular-nums text-foreground">{safeMoney(ln.line_total)}</div>
                                                     </div>
                                                     </div> */}
 
@@ -452,7 +452,7 @@ export default function StartReturnWizardModal({
                                                         <div className="mt-2 grid gap-2 md:grid-cols-2">
                                                             {/* Reason */}
                                                             <label className="text-xs block">
-                                                                <span className="mb-1 block text-zinc-300">
+                                                                <span className="mb-1 block text-muted-foreground">
                                                                     Reason<span className="text-red-400">*</span>
                                                                 </span>
                                                                 <select
@@ -472,7 +472,7 @@ export default function StartReturnWizardModal({
                                                                     ref={(el) => {
                                                                         reasonRefs.current[ln.id] = el;
                                                                     }}
-                                                                    className={`w-full rounded-md border bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100 ${qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-zinc-700"
+                                                                    className={`w-full rounded-md border bg-card px-2 py-1.5 text-sm text-foreground ${qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-border"
                                                                         }`}
                                                                 >
                                                                     <option value="">Select a reason…</option>
@@ -485,7 +485,7 @@ export default function StartReturnWizardModal({
 
                                                             {/* Notes */}
                                                             <label className="text-xs block">
-                                                                <span className="mb-1 block text-zinc-300">
+                                                                <span className="mb-1 block text-muted-foreground">
                                                                     Notes (optional)
                                                                 </span>
                                                                 <input
@@ -523,7 +523,7 @@ export default function StartReturnWizardModal({
                                                                     }}
                                                                     maxLength={250}
                                                                     placeholder="Short note…"
-                                                                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                                    className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground"
                                                                 />
                                                             </label>
 
@@ -535,20 +535,20 @@ export default function StartReturnWizardModal({
                                                                     onChange={(e) =>
                                                                         setLineRestock((prev) => ({ ...prev, [ln.id]: e.target.checked }))
                                                                     }
-                                                                    className="h-4 w-4 rounded border-zinc-700 bg-zinc-900"
+                                                                    className="h-4 w-4 rounded border-border bg-card"
                                                                 />
-                                                                <span className="text-zinc-300">Restock to inventory</span>
+                                                                <span className="text-muted-foreground">Restock to inventory</span>
                                                             </label>
 
                                                             {/* Condition */}
                                                             <label className="text-xs block">
-                                                                <span className="mb-1 block text-zinc-300">Condition</span>
+                                                                <span className="mb-1 block text-muted-foreground">Condition</span>
                                                                 <select
                                                                     value={lineCondition[ln.id] || "RESALEABLE"}
                                                                     onChange={(e) =>
                                                                         setLineCondition((prev) => ({ ...prev, [ln.id]: e.target.value }))
                                                                     }
-                                                                    className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                                    className="w-full rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground"
                                                                 >
                                                                     <option value="RESALEABLE">Resaleable</option>
                                                                     <option value="DAMAGED">Damaged</option>
@@ -585,8 +585,8 @@ export default function StartReturnWizardModal({
                                                 >
                                                     i
                                                 </button>
-                                                <div className="pointer-events-none absolute right-0 top-6 z-10 hidden w-64 rounded-md border border-zinc-800 bg-zinc-900 p-2 text-[11px] text-zinc-300 shadow-xl group-hover:block group-focus-within:block">
-                                                    <div className="font-medium text-zinc-100 mb-1">Store policy</div>
+                                                <div className="pointer-events-none absolute right-0 top-6 z-10 hidden w-64 rounded-md border border-border bg-card p-2 text-[11px] text-muted-foreground shadow-xl group-hover:block group-focus-within:block">
+                                                    <div className="font-medium text-foreground mb-1">Store policy</div>
                                                     <ul className="list-disc pl-4 space-y-1">
                                                         <li>Returns within 30 days (configurable).</li>
                                                         <li>Receipt required; reasons captured per item.</li>
@@ -599,13 +599,13 @@ export default function StartReturnWizardModal({
                                     </div>
 
                                     {/* Quick action: copy reason / clear reasons */}
-                                    <div className="rounded-lg border border-zinc-800 p-3">
-                                        <div className="text-xs text-zinc-400 mb-1">Quick actions</div>
+                                    <div className="rounded-lg border border-border p-3">
+                                        <div className="text-xs text-muted-foreground mb-1">Quick actions</div>
                                         <div className="grid grid-cols-[1fr_auto_auto] gap-2">
                                             <select
                                                 value={bulkReason}
                                                 onChange={(e) => setBulkReason(e.target.value)}
-                                                className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                                                className="rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground"
                                             >
                                                 <option value="">Select a reason…</option>
                                                 <option value="DEFECTIVE">Defective / Damaged</option>
@@ -642,7 +642,7 @@ export default function StartReturnWizardModal({
                                                         return next;
                                                     })
                                                 }
-                                                className="rounded-md px-2.5 py-1 text-xs font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+                                                className="rounded-md px-2.5 py-1 text-xs font-medium text-foreground hover:bg-white/5 disabled:opacity-50"
                                             >
                                                 Clear reasons
                                             </button>
@@ -650,7 +650,7 @@ export default function StartReturnWizardModal({
 
                                         {/* NEW: bulk restock toggle */}
                                         <div className="mt-3 flex items-center justify-between">
-                                            <span className="text-xs text-zinc-400">Restock selected items</span>
+                                            <span className="text-xs text-muted-foreground">Restock selected items</span>
                                             <button
                                                 type="button"
                                                 disabled={totalSelected === 0}
@@ -669,7 +669,7 @@ export default function StartReturnWizardModal({
                                                 }}
                                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${restockAll
                                                         ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40"
-                                                        : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                                        : "bg-muted text-muted-foreground border border-border"
                                                     } disabled:opacity-50`}
                                             >
                                                 {restockAll ? "On" : "Off"}
@@ -678,7 +678,7 @@ export default function StartReturnWizardModal({
 
                                         {/* NEW: show only selected toggle */}
                                         <div className="mt-2 flex items-center justify-between">
-                                        <span className="text-xs text-zinc-400">Show only selected items</span>
+                                        <span className="text-xs text-muted-foreground">Show only selected items</span>
                                         <button
                                             type="button"
                                             disabled={totalSelected === 0}
@@ -686,7 +686,7 @@ export default function StartReturnWizardModal({
                                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                                             showSelectedOnly
                                                 ? "bg-blue-600/30 text-blue-200 border border-blue-500/60"
-                                                : "bg-zinc-800 text-zinc-300 border border-zinc-700"
+                                                : "bg-muted text-muted-foreground border border-border"
                                             } disabled:opacity-50`}
                                         >
                                             {showSelectedOnly ? "On" : "Off"}
@@ -696,8 +696,8 @@ export default function StartReturnWizardModal({
                                     </div>
 
                                     {/* Legend for colors */}
-                                    <div className="rounded-lg border border-zinc-800 px-3 py-2 text-[11px] text-zinc-400 space-y-1">
-                                    <div className="text-xs text-zinc-300 font-medium">Legend</div>
+                                    <div className="rounded-lg border border-border px-3 py-2 text-[11px] text-muted-foreground space-y-1">
+                                    <div className="text-xs text-muted-foreground font-medium">Legend</div>
                                     <div className="flex items-center justify-between">
                                         <span className="flex items-center gap-2">
                                         <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -720,7 +720,7 @@ export default function StartReturnWizardModal({
 
 
 
-                                    <div className="rounded-lg border border-zinc-800 px-3 py-2 text-sm text-zinc-300">
+                                    <div className="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground">
                                         Total items selected:&nbsp;
                                         <span className="text-white font-medium">{totalSelected}</span>
                                     </div>
@@ -743,75 +743,75 @@ export default function StartReturnWizardModal({
 
                     {step === 2 && (
                         <>
-                            <div className="flex items-center justify-between bg-zinc-800/60 border border-zinc-700 rounded-lg px-4 py-2 mb-3">
-                                <div className="text-sm text-zinc-300 font-medium">
+                            <div className="flex items-center justify-between bg-muted/60 border border-border rounded-lg px-4 py-2 mb-3">
+                                <div className="text-sm text-muted-foreground font-medium">
                                     Review selected items
                                 </div>
-                                <div className="text-sm text-zinc-300">
+                                <div className="text-sm text-muted-foreground">
                                     Total Refund: <span className="text-white font-semibold">{safeMoney(returnTotals?.total ?? 0)}</span>
                                 </div>
                             </div>
 
                             <div className="grid md:grid-cols-[2fr_1fr] gap-4">
                                 {/* Left: review selected items */}
-                                <div className="rounded-xl border border-zinc-800 overflow-hidden">
-                                    <div className="px-3 py-2 bg-zinc-800 text-xs font-medium uppercase tracking-wide text-zinc-300">
+                                <div className="rounded-xl border border-border overflow-hidden">
+                                    <div className="px-3 py-2 bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                         Items to refund
                                     </div>
-                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 text-[11px] uppercase tracking-wide text-zinc-400 border-b border-zinc-800">
+                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border">
                                         <div>Item / Reason</div>
                                         <div className="text-center">Qty</div>
                                         <div className="text-center">Tax</div>
                                         <div className="text-center">Line total</div>
                                     </div>
-                                    <div className="divide-y divide-zinc-800">
+                                    <div className="divide-y divide-border">
                                         {reviewItems.length === 0 && (
-                                            <div className="px-3 py-3 text-sm text-zinc-500">No items found for this draft.</div>
+                                            <div className="px-3 py-3 text-sm text-muted-foreground">No items found for this draft.</div>
                                         )}
                                         {reviewItems.map((it: any) => (
                                             <div key={it.id} className="grid grid-cols-[1fr_auto_auto_auto] items-start gap-3 px-3 py-2 text-sm">
                                                 <div className="min-w-0">
-                                                    <div className="text-zinc-100 truncate">{it.product_name || `Line #${it.sale_line}`}</div>
-                                                    <div className="text-[12px] text-zinc-400 truncate">
+                                                    <div className="text-foreground truncate">{it.product_name || `Line #${it.sale_line}`}</div>
+                                                    <div className="text-[12px] text-muted-foreground truncate">
                                                         {it.variant_name || it.sku}
                                                     </div>
-                                                    <div className="text-[12px] text-zinc-500">
-                                                        Reason: <span className="text-zinc-300">{it.reason_code || "—"}</span>
-                                                        {it.notes ? <span className="text-zinc-500"> • {it.notes}</span> : null}
+                                                    <div className="text-[12px] text-muted-foreground">
+                                                        Reason: <span className="text-muted-foreground">{it.reason_code || "—"}</span>
+                                                        {it.notes ? <span className="text-muted-foreground"> • {it.notes}</span> : null}
                                                     </div>
                                                     {/* NEW: original line context */}
-                                                    <div className="mt-1 text-[11px] text-zinc-500">
+                                                    <div className="mt-1 text-[11px] text-muted-foreground">
                                                         Original: Subtotal {safeMoney(it.original_subtotal)}
                                                         {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
                                                         {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
-                                                        {" • "}Total <span className="text-zinc-200">{safeMoney(it.original_total)}</span>
+                                                        {" • "}Total <span className="text-foreground">{safeMoney(it.original_total)}</span>
                                                         {" • "}Qty {it.original_quantity}
                                                     </div>
                                                 </div>
 
                                                 {/* Return-only amounts */}
-                                                <div className="text-center tabular-nums text-zinc-200">
+                                                <div className="text-center tabular-nums text-foreground">
                                                     {it.qty_returned}
-                                                    <div className="text-[11px] text-zinc-500">
+                                                    <div className="text-[11px] text-muted-foreground">
                                                         of {it.original_quantity}
                                                     </div>
                                                 </div>
                                                 <div className="text-center tabular-nums text-blue-300">
                                                     {safeMoney(it.refund_tax || 0)}
                                                 </div>
-                                                <div className="text-center tabular-nums text-zinc-100 font-medium">
+                                                <div className="text-center tabular-nums text-foreground font-medium">
                                                     {safeMoney(it.refund_total || 0)}
                                                 </div>
                                                 {/*                                                 
-                                                <div className="text-center tabular-nums text-zinc-200">{it.qty_returned}</div>
+                                                <div className="text-center tabular-nums text-foreground">{it.qty_returned}</div>
                                                 <div className="text-center tabular-nums text-blue-300">{safeMoney(it.refund_tax || 0)}</div>
-                                                <div className="text-center tabular-nums text-zinc-100 font-medium">{safeMoney(it.refund_total || 0)}</div> */}
+                                                <div className="text-center tabular-nums text-foreground font-medium">{safeMoney(it.refund_total || 0)}</div> */}
                                             </div>
                                         ))}
                                     </div>
                                     {/* Footer totals */}
-                                    {/* <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
-                                        <div className="text-zinc-400">Totals</div>
+                                    {/* <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-border text-sm">
+                                        <div className="text-muted-foreground">Totals</div>
                                         <div />
                                         <div className="text-center tabular-nums text-blue-300">
                                             {safeMoney(reviewItems.reduce((s, it) => s + Number(it.refund_tax || 0), 0))}
@@ -821,8 +821,8 @@ export default function StartReturnWizardModal({
                                         </div>
                                     </div> */}
                                     {/* Footer totals */}
-                                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-zinc-800 text-sm">
-                                        <div className="text-zinc-400">Totals (this return)</div>
+                                    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-border text-sm">
+                                        <div className="text-muted-foreground">Totals (this return)</div>
                                         <div />
                                         <div className="text-center tabular-nums text-blue-300">
                                             {safeMoney(returnTotals?.tax ?? 0)}  {/* from updated.refund_tax_total */}
@@ -834,8 +834,8 @@ export default function StartReturnWizardModal({
                                 </div>
 
                                 {/* Right: refund method breakdown */}
-                                <div className="rounded-xl border border-zinc-800 overflow-hidden">
-                                    <div className="px-3 py-2 bg-zinc-800 text-xs font-medium uppercase tracking-wide text-zinc-300">
+                                <div className="rounded-xl border border-border overflow-hidden">
+                                    <div className="px-3 py-2 bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                         Refund breakdown
                                     </div>
                                     <div className="p-3 space-y-2">
@@ -848,7 +848,7 @@ export default function StartReturnWizardModal({
                                                         copy[idx] = { ...copy[idx], method: e.target.value as any };
                                                         setRefunds(copy);
                                                     }}
-                                                    className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+                                                    className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
                                                 >
                                                     <option value="CASH">Cash</option>
                                                     <option value="CARD">Card</option>
@@ -859,7 +859,7 @@ export default function StartReturnWizardModal({
                                                 <input
                                                     type="number" step="0.01" min={0} value={r.amount}
                                                     onChange={(e) => handleAmountChange(idx, Number(e.target.value))}
-                                                    className="w-32 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-100"
+                                                    className="w-32 rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground"
                                                 />
 
                                                 <button
@@ -867,13 +867,13 @@ export default function StartReturnWizardModal({
                                                     onClick={() => applyRemainderToRow(idx)}
                                                     disabled={remainingToAllocate <= 0}
                                                     title={remainingToAllocate > 0 ? `Apply ${safeMoney(remainingToAllocate)} to this method` : "Nothing remaining"}
-                                                    className="text-[11px] rounded px-2 py-1 text-zinc-300 hover:bg-white/5 disabled:opacity-40"
+                                                    className="text-[11px] rounded px-2 py-1 text-muted-foreground hover:bg-white/5 disabled:opacity-40"
                                                 >
                                                     Set remainder
                                                 </button>
 
                                                 <button
-                                                    className="text-xs text-zinc-300 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-40"
+                                                    className="text-xs text-muted-foreground rounded px-2 py-1 hover:bg-white/5 disabled:opacity-40"
                                                     onClick={() => handleRemoveMethod(idx)}
                                                     disabled={refunds.length <= 1}
                                                     title={refunds.length <= 1 ? "At least one method is required" : "Remove method"}
@@ -885,13 +885,13 @@ export default function StartReturnWizardModal({
 
                                         <div className="flex items-center gap-2">
                                             <button
-                                                className="text-xs text-zinc-300 rounded px-2 py-1 hover:bg-white/5"
+                                                className="text-xs text-muted-foreground rounded px-2 py-1 hover:bg-white/5"
                                                 onClick={handleAddMethod}
                                             >
                                                 + Add method
                                             </button>
                                             <button
-                                                className="text-xs text-zinc-300 rounded px-2 py-1 hover:bg-white/5"
+                                                className="text-xs text-muted-foreground rounded px-2 py-1 hover:bg-white/5"
                                                 onClick={splitEvenly}
                                                 disabled={refunds.length < 2}
                                                 title={refunds.length < 2 ? "Add another method to split" : "Split total evenly"}
@@ -903,21 +903,21 @@ export default function StartReturnWizardModal({
 
 
                                     {/* Totals check */}
-                                    <div className="border-t border-zinc-800 px-3 py-2 text-sm">
+                                    <div className="border-t border-border px-3 py-2 text-sm">
                                         <div className="flex items-center justify-between">
-                                            <div className="text-zinc-300">Refund total</div>
+                                            <div className="text-muted-foreground">Refund total</div>
                                             <div className="font-semibold text-white">{safeMoney(refundTotal)}</div>
                                         </div>
 
                                         <div className="mt-1 flex items-center justify-between">
-                                            <div className="text-zinc-400">Methods sum</div>
+                                            <div className="text-muted-foreground">Methods sum</div>
                                             <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-emerald-300" : "text-amber-300"}`}>
                                                 {safeMoney(sumRefunds())}
                                             </div>
                                         </div>
 
                                         <div className="mt-1 flex items-center justify-between">
-                                            <div className="text-zinc-400">Remaining</div>
+                                            <div className="text-muted-foreground">Remaining</div>
                                             <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-emerald-300" : "text-amber-300"}`}>
                                                 {safeMoney(remainingToAllocate)}
                                             </div>
@@ -928,7 +928,7 @@ export default function StartReturnWizardModal({
                             </div>
 
                             <div className="flex items-center justify-between mt-4">
-                                <button className="rounded-md px-3 py-1.5 text-sm text-zinc-300 hover:bg-white/5" onClick={() => setStep(1)}>
+                                <button className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-white/5" onClick={() => setStep(1)}>
                                     Back
                                 </button>
                                 <button

@@ -185,7 +185,7 @@ export default function TaxRulesTab() {
         const open = expandedIds.includes(r.id);
         return (
           <button
-            className="text-slate-300 hover:text-white"
+            className="text-muted-foreground hover:text-white"
             title={open ? "Collapse" : "Expand"}
             onClick={() => toggleExpand(r)}
           >
@@ -267,7 +267,7 @@ export default function TaxRulesTab() {
       key: "is_active",
       header: "Active",
       render: (r: TaxRule) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -295,43 +295,43 @@ export default function TaxRulesTab() {
     const scopeLabel = r.scope === "STORE" ? (r.store_name || (r.store ? `#${r.store}` : "—")) : "All Stores";
     const cats: string[] = r.category_names || [];
     return (
-      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+      <div className="bg-muted/60 rounded-md border border-border p-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-slate-400">Description</div>
-            <div className="text-slate-200 break-words">{r.description || "—"}</div>
-            <div className="text-xs text-slate-400 mt-2">Scope</div>
-            <div className="text-slate-200">{r.scope} • {scopeLabel}</div>
-            <div className="text-xs text-slate-400 mt-2">Apply</div>
-            <div className="text-slate-200">{r.apply_scope}</div>
+            <div className="text-xs text-muted-foreground">Description</div>
+            <div className="text-muted-foreground break-words">{r.description || "—"}</div>
+            <div className="text-xs text-muted-foreground mt-2">Scope</div>
+            <div className="text-muted-foreground">{r.scope} • {scopeLabel}</div>
+            <div className="text-xs text-muted-foreground mt-2">Apply</div>
+            <div className="text-muted-foreground">{r.apply_scope}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Basis</div>
-            <div className="text-slate-200">{basisLabel}</div>
-            <div className="text-xs text-slate-400 mt-2">Priority</div>
-            <div className="text-slate-200">{r.priority}</div>
-            <div className="text-xs text-slate-400 mt-2">Window</div>
-            <div className="text-slate-200">{windowLabel(r.start_at, r.end_at)}</div>
+            <div className="text-xs text-muted-foreground">Basis</div>
+            <div className="text-muted-foreground">{basisLabel}</div>
+            <div className="text-xs text-muted-foreground mt-2">Priority</div>
+            <div className="text-muted-foreground">{r.priority}</div>
+            <div className="text-xs text-muted-foreground mt-2">Window</div>
+            <div className="text-muted-foreground">{windowLabel(r.start_at, r.end_at)}</div>
           </div>
         </div>
         <div className="mt-3">
-          <div className="text-xs text-slate-400 mb-1">Categories</div>
+          <div className="text-xs text-muted-foreground mb-1">Categories</div>
           {cats.length ? (
             <div className="flex flex-wrap gap-1">
               {cats.slice(0, 12).map((c, i) => (
-                <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                <span key={i} className="px-2 py-0.5 rounded-full text-[11px] bg-muted/60 text-muted-foreground">
                   {c}
                 </span>
               ))}
-              {cats.length > 12 && <span className="text-xs text-slate-400">+{cats.length - 12} more</span>}
+              {cats.length > 12 && <span className="text-xs text-muted-foreground">+{cats.length - 12} more</span>}
             </div>
           ) : (
-            <div className="text-slate-400 text-sm">All taxable items.</div>
+            <div className="text-muted-foreground text-sm">All taxable items.</div>
           )}
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <div className="text-xs text-slate-400">
-            {r.is_active ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
+          <div className="text-xs text-muted-foreground">
+            {r.is_active ? <span className="text-emerald-300">Active</span> : <span className="text-muted-foreground">Inactive</span>}
           </div>
           <div>
             <button className="text-xs text-blue-400 hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
@@ -352,12 +352,12 @@ export default function TaxRulesTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search code, name or category code…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select
             value={(query as any).scope || ""}
             onChange={(e) => setQuery((p) => ({ ...p, scope: e.target.value || undefined }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Scope"
           >
             <option value="">All scopes</option>
@@ -367,7 +367,7 @@ export default function TaxRulesTab() {
           <select
             value={(query as any).basis || ""}
             onChange={(e) => setQuery((p) => ({ ...p, basis: e.target.value || undefined }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Basis"
           >
             <option value="">All basis</option>
@@ -377,7 +377,7 @@ export default function TaxRulesTab() {
           <select
             value={(query as any).apply_scope || ""}
             onChange={(e) => setQuery((p) => ({ ...p, apply_scope: e.target.value || undefined }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Apply scope"
           >
             <option value="">Apply to</option>
@@ -387,7 +387,7 @@ export default function TaxRulesTab() {
           <select
             value={(query as any).store || ""}
             onChange={(e) => setQuery((p) => ({ ...p, store: e.target.value === "" ? undefined : Number(e.target.value) }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Filter by store"
           >
             <option value="">All stores</option>
@@ -403,7 +403,7 @@ export default function TaxRulesTab() {
                 is_active: e.target.value === "" ? undefined : e.target.value === "true",
               }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Active"
           >
             <option value="">All</option>
@@ -420,7 +420,7 @@ export default function TaxRulesTab() {
               <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
                 className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
               <button onClick={() => setSelectedIds([])}
-                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+                className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}

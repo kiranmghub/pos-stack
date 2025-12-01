@@ -237,37 +237,37 @@ export default function OwnerDashboard() {
 
   if (role !== "owner") {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-200 grid place-items-center p-6">
+      <div className="min-h-screen bg-background text-foreground grid place-items-center p-6">
         <div className="max-w-md text-center">
           <h1 className="text-2xl font-semibold">Restricted</h1>
-          <p className="mt-2 text-slate-400">This dashboard is for Owner role. Your role: <span className="font-medium text-slate-200">{role || "unknown"}</span></p>
+          <p className="mt-2 text-muted-foreground">This dashboard is for Owner role. Your role: <span className="font-medium text-muted-foreground">{role || "unknown"}</span></p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900 text-slate-100">
+    <div className="min-h-screen w-full bg-background text-foreground">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/20 ring-1 ring-white/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-border">
               <Building2 className="h-4 w-4" />
             </div>
             <div>
-              <div className="text-sm text-slate-400">Tenant</div>
+              <div className="text-sm text-muted-foreground">Tenant</div>
               <div className="text-base font-semibold tracking-wide">{tenant || "—"}</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden md:flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1.5">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input className="bg-transparent text-sm focus:outline-none placeholder:text-slate-500" placeholder="Search…" />
+            <div className="hidden md:flex items-center gap-2 rounded-2xl border border-border bg-muted px-3 py-1.5">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input className="bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground" placeholder="Search…" />
             </div>
             <button
               onClick={() => { localStorage.clear(); window.location.href = "/login"; }}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-muted/80"
             >
               <LogOut className="h-4 w-4" /> Logout
             </button>
@@ -278,7 +278,7 @@ export default function OwnerDashboard() {
                 // Reload so the flag is re-evaluated on mount
                 window.location.reload();
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-1.5 text-sm hover:bg-white/15"
+              className="inline-flex items-center gap-2 rounded-xl bg-muted px-3 py-1.5 text-sm text-foreground hover:bg-muted/80"
               title="Toggle mock data"
             >
               <span>Mock: {localStorage.getItem("use_mock_dashboard") === "1" ? "On" : "Off"}</span>
@@ -295,17 +295,17 @@ export default function OwnerDashboard() {
           <KpiCard title="Revenue (Today)" value={summary ? formatCurrency(summary.revenue_today, currency) : "—"} icon={<DollarSign className="h-4 w-4" />} footer={
             <span className={clsx("inline-flex items-center gap-1 text-xs", revenueChangeColor)}>
               {((summary?.delta_revenue_pct ?? 0) >= 0) ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />} {Math.abs(summary?.delta_revenue_pct ?? 0)}%
-              <span className="text-slate-400"> vs yesterday</span>
+              <span className="text-muted-foreground"> vs yesterday</span>
             </span>
           } />
-          <KpiCard title="Orders (Today)" value={summary?.orders_today?.toString() || "—"} icon={<Package2 className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">All stores</span>} />
-          <KpiCard title="Avg Order Value" value={summary ? formatCurrency(summary.aov_today, currency) : "—"} icon={<Percent className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">Today</span>} />
-          <KpiCard title="Active Stores" value={summary?.active_stores?.toString() || "—"} icon={<Store className="h-4 w-4" />} footer={<span className="text-xs text-slate-400">Online registers</span>} />
+          <KpiCard title="Orders (Today)" value={summary?.orders_today?.toString() || "—"} icon={<Package2 className="h-4 w-4" />} footer={<span className="text-xs text-muted-foreground">All stores</span>} />
+          <KpiCard title="Avg Order Value" value={summary ? formatCurrency(summary.aov_today, currency) : "—"} icon={<Percent className="h-4 w-4" />} footer={<span className="text-xs text-muted-foreground">Today</span>} />
+          <KpiCard title="Active Stores" value={summary?.active_stores?.toString() || "—"} icon={<Store className="h-4 w-4" />} footer={<span className="text-xs text-muted-foreground">Online registers</span>} />
         </div>
 
         {/* Charts */}
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-5">
-          <div className="col-span-1 rounded-3xl border border-white/10 bg-white/5 p-4 lg:col-span-3">
+          <div className="col-span-1 rounded-3xl border border-border bg-card p-4 lg:col-span-3">
             <Header title="Revenue — last 14 days" icon={<TrendingUp className="h-4 w-4" />} />
             <div className="mt-2 h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -327,7 +327,7 @@ export default function OwnerDashboard() {
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="col-span-1 rounded-3xl border border-white/10 bg-white/5 p-4 lg:col-span-2">
+          <div className="col-span-1 rounded-3xl border border-border bg-card p-4 lg:col-span-2">
             <Header title="Revenue by store — 30 days" icon={<BarChart2 className="h-4 w-4" />} />
             <div className="mt-2 h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -352,7 +352,7 @@ export default function OwnerDashboard() {
             <Header title="Top products" icon={<Package2 className="h-4 w-4" />} />
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-slate-300">
+                <thead className="text-muted-foreground">
                   <tr>
                     <th className="pb-2">Product</th>
                     <th className="pb-2">SKU</th>
@@ -360,11 +360,11 @@ export default function OwnerDashboard() {
                     <th className="pb-2 text-right">Revenue</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-border/80">
                   {topProducts.map((p, i) => (
-                    <tr key={p.sku + i} className="hover:bg-white/5">
+                    <tr key={p.sku + i} className="hover:bg-muted/40">
                       <td className="py-2 pr-3">{p.name}</td>
-                      <td className="py-2 pr-3 text-slate-400">{p.sku}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{p.sku}</td>
                       <td className="py-2 pr-3 text-right">{p.qty}</td>
                       <td className="py-2 text-right">{formatCurrency(p.revenue, currency)}</td>
                     </tr>
@@ -378,7 +378,7 @@ export default function OwnerDashboard() {
             <Header title="Low stock alerts" icon={<CircleDashed className="h-4 w-4" />} />
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-slate-300">
+                <thead className="text-muted-foreground">
                   <tr>
                     <th className="pb-2">Store</th>
                     <th className="pb-2">Variant</th>
@@ -386,11 +386,11 @@ export default function OwnerDashboard() {
                     <th className="pb-2 text-right">Min</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/10">
+                <tbody className="divide-y divide-border/80">
                   {lowStock.map((r, i) => (
-                    <tr key={r.sku + r.store + i} className="hover:bg-white/5">
+                    <tr key={r.sku + r.store + i} className="hover:bg-muted/40">
                       <td className="py-2 pr-3">{r.store}</td>
-                      <td className="py-2 pr-3 text-slate-300">{r.variant} <span className="text-slate-500">({r.sku})</span></td>
+                      <td className="py-2 pr-3 text-muted-foreground">{r.variant} <span className="text-muted-foreground">({r.sku})</span></td>
                       <td className="py-2 pr-3 text-right">{r.on_hand}</td>
                       <td className="py-2 text-right">{r.min_stock}</td>
                     </tr>
@@ -406,7 +406,7 @@ export default function OwnerDashboard() {
           <Header title="Recent sales" icon={<Package2 className="h-4 w-4" />} />
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-slate-300">
+              <thead className="text-muted-foreground">
                 <tr>
                   <th className="pb-2">Sale #</th>
                   <th className="pb-2">Store</th>
@@ -415,12 +415,12 @@ export default function OwnerDashboard() {
                   <th className="pb-2 text-right">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10">
+              <tbody className="divide-y divide-border/80">
                 {recentSales.map((s) => (
-                  <tr key={s.id} className="hover:bg-white/5">
+                  <tr key={s.id} className="hover:bg-muted/40">
                     <td className="py-2 pr-3">#{s.id}</td>
                     <td className="py-2 pr-3">{s.store_name || s.store || "—"}</td>
-                    <td className="py-2 pr-3 text-slate-400">{s.cashier_name || s.cashier || "—"}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">{s.cashier_name || s.cashier || "—"}</td>
                     <td className="py-2 pr-3">{new Date(s.created_at).toLocaleString()}</td>
                     <td className="py-2 text-right">{formatCurrency(s.total, currency)}</td>
                   </tr>
@@ -432,8 +432,8 @@ export default function OwnerDashboard() {
 
         {/* Loading / error overlay */}
         {loading && (
-          <div className="fixed inset-0 z-20 grid place-items-center bg-slate-950/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm text-slate-200">
+          <div className="fixed inset-0 z-20 grid place-items-center bg-background/80 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-border bg-muted px-5 py-3 text-sm text-muted-foreground">
               Loading dashboard…
             </motion.div>
           </div>
@@ -454,17 +454,17 @@ export default function OwnerDashboard() {
 function Header({ title, icon }: { title: string; icon?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10">
+      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted">
         {icon}
       </div>
-      <h3 className="text-sm font-semibold tracking-wide text-slate-200">{title}</h3>
+      <h3 className="text-sm font-semibold tracking-wide text-muted-foreground">{title}</h3>
     </div>
   );
 }
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={clsx("rounded-3xl border border-white/10 bg-white/5 p-4", className)}>
+    <div className={clsx("rounded-3xl border border-border bg-card p-4", className)}>
       {children}
     </div>
   );
@@ -472,13 +472,13 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 function KpiCard({ title, value, icon, footer }: { title: string; value: string; icon?: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-3xl border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-slate-400">{title}</div>
-          <div className="mt-1 text-2xl font-semibold text-white">{value}</div>
+          <div className="text-sm text-muted-foreground">{title}</div>
+          <div className="mt-1 text-2xl font-semibold text-foreground">{value}</div>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-muted">
           {icon}
         </div>
       </div>

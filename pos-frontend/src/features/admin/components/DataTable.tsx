@@ -16,20 +16,20 @@ type TableProps<T> = {
 
 export function DataTable<T extends object>({ title, rows, cols, loading, total, query, onQueryChange, renderRowAfter, getRowKey }: TableProps<T>) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900">
-      <div className="flex items-center justify-between p-3 border-b border-slate-800">
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between p-3 border-b border-border">
         <h3 className="font-semibold">{title}</h3>
         <div className="flex items-center gap-2">
           <input
             value={query.search || ""}
             onChange={e => onQueryChange({ search: e.target.value })}
             placeholder="Search…"
-            className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-lg bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select
             value={query.ordering || ""}
             onChange={e => onQueryChange({ ordering: e.target.value })}
-            className="rounded-lg bg-slate-800 px-2 py-1.5 text-sm outline-none"
+            className="rounded-lg bg-muted px-2 py-1.5 text-sm outline-none"
             title="Order by"
           >
             <option value="">Ordering</option>
@@ -47,10 +47,10 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
 
       <div className="overflow-auto">
         <table className="min-w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800">
+          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur border-b border-border">
             <tr>
               {cols.map(c => (
-                <th key={String(c.key)} className={`px-3 py-2 text-left text-slate-300 ${c.align==="right"?"text-right":""}`} style={{width:c.width}}>
+                <th key={String(c.key)} className={`px-3 py-2 text-left text-muted-foreground ${c.align==="right"?"text-right":""}`} style={{width:c.width}}>
                   {c.header}
                 </th>
               ))}
@@ -58,18 +58,18 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
           </thead>
           <tbody>
           {loading ? (
-            <tr><td className="px-3 py-4 text-slate-400" colSpan={cols.length}>Loading…</td></tr>
+            <tr><td className="px-3 py-4 text-muted-foreground" colSpan={cols.length}>Loading…</td></tr>
           ) : rows.length === 0 ? (
-            <tr><td className="px-3 py-4 text-slate-400" colSpan={cols.length}>No rows</td></tr>
+            <tr><td className="px-3 py-4 text-muted-foreground" colSpan={cols.length}>No rows</td></tr>
           ) : rows.map((r, i) => {
             const rowKey = getRowKey ? getRowKey(r, i) : i;
             return (
               <React.Fragment key={rowKey}>
             <tr
                 key={i}
-                className={`border-b border-slate-800/60 hover:bg-slate-800/40 transition-colors ${
+                className={`border-b border-border/60 hover:bg-muted/40 transition-colors ${
                   // highlight selected rows if they contain a "selected" prop passed by AdminPage
-                  (r as any).selected ? "bg-slate-800/70" : ""
+                  (r as any).selected ? "bg-muted/70" : ""
                 }`}
               >
 
@@ -80,7 +80,7 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
                 ))}
               </tr>
               {renderRowAfter ? (
-                <tr className="border-b border-slate-800/60">
+                <tr className="border-b border-border/60">
                   <td colSpan={cols.length} className="px-3 py-2">
                     {renderRowAfter(r)}
                   </td>
@@ -92,7 +92,7 @@ export function DataTable<T extends object>({ title, rows, cols, loading, total,
         </table>
       </div>
 
-      <div className="p-2 text-xs text-slate-400">
+      <div className="p-2 text-xs text-muted-foreground">
         {typeof total === "number" ? `${total} record(s)` : null}
       </div>
     </div>

@@ -13,10 +13,11 @@ export default function CatalogPage() {
 
 
   return (
-    <div className="mx-auto max-w-7xl p-4 md:p-6">
+    <div className="min-h-[calc(100vh-3rem)] bg-background">
+      <div className="mx-auto max-w-7xl p-4 md:p-6">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold">Catalog</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground">
           Browse products, manage variants, and upload photos.
         </p>
       </div>
@@ -64,6 +65,7 @@ export default function CatalogPage() {
         variant={openVariantForm?.variant}
         mode={openVariantForm?.mode ?? "edit"}
       />
+      </div>
     </div>
   );
 }

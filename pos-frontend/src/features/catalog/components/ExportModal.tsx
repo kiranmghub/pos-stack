@@ -81,20 +81,20 @@ export default function ExportModal({
       {/* backdrop */}
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       {/* modal */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-zinc-900 text-zinc-100 shadow-2xl border border-zinc-800">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+      <div className="relative w-full max-w-lg rounded-2xl bg-card text-foreground shadow-2xl border border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">Export Catalog</h2>
           <button className="p-1 rounded hover:bg-white/5" onClick={onClose} aria-label="Close">
-            <X className="w-5 h-5 text-zinc-300" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
         <div className="px-5 py-4 space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-zinc-400">Scope</span>
+              <span className="text-sm text-muted-foreground">Scope</span>
               <select
-                className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                className="rounded-md px-2 py-1 bg-card border border-border text-foreground"
                 value={scope}
                 onChange={(e) => setScope(e.target.value as Scope)}
                 disabled={busy}
@@ -106,9 +106,9 @@ export default function ExportModal({
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-zinc-400">Format</span>
+              <span className="text-sm text-muted-foreground">Format</span>
               <select
-                className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                className="rounded-md px-2 py-1 bg-card border border-border text-foreground"
                 value={effectiveFormat}
                 onChange={(e) => setFormat(e.target.value as Format)}
                 disabled={busy || scope === "combined"}
@@ -117,7 +117,7 @@ export default function ExportModal({
                 <option value="json">JSON</option>
                 <option value="pdf">PDF</option>
               </select>
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted-foreground">
                 {scope === "combined"
                   ? "Combined export is JSON-only."
                   : "PDF omits image URLs for compact output."}
@@ -136,12 +136,12 @@ export default function ExportModal({
                 onChange={(e) => setIncludeOnHand(e.target.checked)}
                 disabled={busy}
               />
-              <span className="text-sm text-zinc-200">Include On-Hand</span>
+              <span className="text-sm text-foreground">Include On-Hand</span>
             </label>
 
             {includeOnHand && (
               <div className="space-y-2 pl-1">
-                <div className="text-xs text-zinc-400">On-Hand Mode</div>
+                <div className="text-xs text-muted-foreground">On-Hand Mode</div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <label className="inline-flex items-center gap-2">
                     <input type="radio" name="oh" checked={mode==="aggregate"} onChange={()=>setMode("aggregate")} />
@@ -159,7 +159,7 @@ export default function ExportModal({
                       onChange={()=>setMode("breakdown_columns")}
                       disabled={breakdownDisabled}
                     />
-                    <span className={breakdownDisabled ? "text-sm text-zinc-500" : "text-sm"}>
+                    <span className={breakdownDisabled ? "text-sm text-muted-foreground" : "text-sm"}>
                       Breakdown by store — columns
                     </span>
                   </label>
@@ -171,7 +171,7 @@ export default function ExportModal({
                       onChange={()=>setMode("breakdown_rows")}
                       disabled={breakdownDisabled}
                     />
-                    <span className={breakdownDisabled ? "text-sm text-zinc-500" : "text-sm"}>
+                    <span className={breakdownDisabled ? "text-sm text-muted-foreground" : "text-sm"}>
                       Breakdown by store — rows
                     </span>
                   </label>
@@ -180,9 +180,9 @@ export default function ExportModal({
                 {/* Store pickers */}
                 {mode === "store" && (
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-zinc-400">Store</span>
+                    <span className="text-sm text-muted-foreground">Store</span>
                     <select
-                      className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100"
+                      className="rounded-md px-2 py-1 bg-card border border-border text-foreground"
                       value={storeId}
                       onChange={(e)=>setStoreId(e.target.value)}
                     >
@@ -194,10 +194,10 @@ export default function ExportModal({
 
                 {(mode === "breakdown_columns" || mode === "breakdown_rows") && !breakdownDisabled && (
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-zinc-400">Stores (multi-select)</span>
+                    <span className="text-sm text-muted-foreground">Stores (multi-select)</span>
                     <select
                       multiple
-                      className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100 h-28"
+                      className="rounded-md px-2 py-1 bg-card border border-border text-foreground h-28"
                       value={storeIds}
                       onChange={(e) => {
                         const vals = Array.from(e.target.selectedOptions).map(o => o.value);
@@ -206,7 +206,7 @@ export default function ExportModal({
                     >
                       {stores.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
                     </select>
-                    <span className="text-xs text-zinc-500">Tip: many stores → consider “rows” layout.</span>
+                    <span className="text-xs text-muted-foreground">Tip: many stores → consider “rows” layout.</span>
                   </label>
                 )}
               </div>
@@ -214,15 +214,15 @@ export default function ExportModal({
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-zinc-400">Search filter (optional)</span>
+            <span className="text-sm text-muted-foreground">Search filter (optional)</span>
             <input
-              className="rounded-md px-2 py-1 bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+              className="rounded-md px-2 py-1 bg-card border border-border text-foreground placeholder:text-muted-foreground"
               placeholder="Filter by code or name…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               disabled={busy}
             />
-            <span className="text-xs text-zinc-500">Matches product/variant code or name.</span>
+            <span className="text-xs text-muted-foreground">Matches product/variant code or name.</span>
           </label>
 
           {error && (
@@ -233,15 +233,15 @@ export default function ExportModal({
         </div>
 
 
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-zinc-800">
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button 
-            className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-100 hover:bg-white/5"
+            className="rounded-xl border border-border px-3 py-2 text-sm text-foreground hover:bg-white/5"
             onClick={onClose}
             disabled={busy}>
             Cancel
           </button>
           <button
-            className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-zinc-900 hover:bg-zinc-200 disabled:opacity-60"
+            className="rounded-xl px-3 py-2 text-sm bg-zinc-100 text-foreground hover:bg-zinc-200 disabled:opacity-60"
             onClick={onExport}
             disabled={busy}
           >

@@ -475,8 +475,8 @@ React.useEffect(() => {
     <div className={`fixed inset-0 z-50 ${open ? "" : "hidden"}`}>
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
-      <div className="absolute right-0 top-0 h-full w-[560px] bg-zinc-900 text-zinc-100 shadow-2xl border-l border-zinc-800">
-        <div className="flex items-center justify-between border-b border-zinc-800 p-4">
+      <div className="absolute right-0 top-0 h-full w-[560px] bg-card text-foreground shadow-2xl border-l border-border">
+        <div className="flex items-center justify-between border-b border-border p-4">
           <h3 className="text-lg font-semibold">
             {isView ? "Variant Details" : isEdit ? "Edit Variant" : "New Variant"}
           </h3>
@@ -510,7 +510,7 @@ React.useEffect(() => {
               {lockedProductId ? (
                 // Locked: show read-only selected product ID
                 <input
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-400"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
                   value={productLabel || `Product ID: ${String(lockedProductId)}`}
                   readOnly
                   title="This variant will be created for the selected product."
@@ -521,7 +521,7 @@ React.useEffect(() => {
                   <div className="relative">
                     <input
                       ref={productInputRef}
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 pr-9 text-sm text-zinc-100 placeholder-zinc-500"
+                      className="w-full rounded-xl border border-border bg-card px-3 py-2 pr-9 text-sm text-foreground placeholder:text-muted-foreground"
                       placeholder="Type to search products by name or code…"
                       value={productQuery}
                       onChange={(e) => {
@@ -572,7 +572,7 @@ React.useEffect(() => {
                       <button
                         type="button"
                         aria-label="Clear product search"
-                        className="absolute inset-y-0 right-2 my-auto flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-white/5 leading-none"
+                        className="absolute inset-y-0 right-2 my-auto flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 leading-none"
                         tabIndex={-1} // ← skip in Tab order
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
@@ -589,9 +589,9 @@ React.useEffect(() => {
 
                   {/* dropdown */}
                   {showProductMenu && (productOptions.length > 0 || loadingProducts) && (
-                    <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+                    <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-border bg-card shadow-xl">
                       {loadingProducts && (
-                        <div className="px-3 py-2 text-sm text-zinc-400">Searching…</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground">Searching…</div>
                       )}
                       {!loadingProducts &&
                         productOptions.map((p, i) => {
@@ -611,19 +611,19 @@ React.useEffect(() => {
                                 setShowProductMenu(false);
                               }}
                             >
-                              <div className="text-zinc-100">{p.name}</div>
-                              {p.code && <div className="text-xs text-zinc-400">{p.code}</div>}
+                              <div className="text-foreground">{p.name}</div>
+                              {p.code && <div className="text-xs text-muted-foreground">{p.code}</div>}
                             </div>
                           );
                         })}
                       {!loadingProducts && productOptions.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-zinc-400">No matches</div>
+                        <div className="px-3 py-2 text-sm text-muted-foreground">No matches</div>
                       )}
                     </div>
                   )}
 
                   {/* helper text showing selection status */}
-                  <div className="mt-1 text-xs text-zinc-400">
+                  <div className="mt-1 text-xs text-muted-foreground">
                     {form.product ? "Product selected" : "Select a product to continue"}
                   </div>
                 </div>
@@ -634,8 +634,8 @@ React.useEffect(() => {
               <label className="mb-1 block text-sm font-medium">Name</label>
               <input
                 ref={nameInputRef}
-                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                  errors.name ? "border-red-500" : "border-zinc-700"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                  errors.name ? "border-red-500" : "border-border"
                 }`}
                 value={form.name}
                 onChange={(e) => {
@@ -667,8 +667,8 @@ React.useEffect(() => {
                 )}
               </div>
               <input
-                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                  errors.sku ? "border-red-500" : "border-zinc-700"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                  errors.sku ? "border-red-500" : "border-border"
                 }`}
                 value={form.sku || ""}
                 onChange={(e) => {
@@ -701,8 +701,8 @@ React.useEffect(() => {
                 )}
               </div>
               <input
-                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                  errors.barcode ? "border-red-500" : "border-zinc-700"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                  errors.barcode ? "border-red-500" : "border-border"
                 }`}
                 value={form.barcode || ""}
                 onChange={(e) => {
@@ -751,8 +751,8 @@ React.useEffect(() => {
               <input
                 type="number"
                 step="0.01"
-                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                  errors.cost ? "border-red-500" : "border-zinc-700"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                  errors.cost ? "border-red-500" : "border-border"
                 }`}
                 value={form.cost ?? 0}
                 onChange={(e) => {
@@ -772,7 +772,7 @@ React.useEffect(() => {
                 disabled={isView}
               />
               {errors.cost && <div className="mt-1 text-xs text-red-400">{errors.cost}</div>}
-              <p className="mt-1 text-xs text-zinc-400">Enter cost first; margin % is optional.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Enter cost first; margin % is optional.</p>
             </div>
 
             <div>
@@ -780,8 +780,8 @@ React.useEffect(() => {
               <input
                 type="number"
                 step="0.01"
-                className={`w-full rounded-xl border px-3 py-2 text-sm bg-zinc-900 text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50 ${
-                  errors.margin_percentage ? "border-red-500" : "border-zinc-700"
+                className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
+                  errors.margin_percentage ? "border-red-500" : "border-border"
                 }`}
                 value={form.margin_percentage ?? ""}
                 onChange={(e) => {
@@ -811,7 +811,7 @@ React.useEffect(() => {
               <input
                 type="number"
                 step="0.01"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
                 value={form.price}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value || "0");
@@ -827,13 +827,13 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              <p className="mt-1 text-xs text-zinc-400">If you edit price directly, margin will auto-update when cost is set.</p>
+              <p className="mt-1 text-xs text-muted-foreground">If you edit price directly, margin will auto-update when cost is set.</p>
             </div>
 
             <div>
               <label className="mb-1 block text-sm font-medium">Unit of Measure (UOM)</label>
               <input
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                 value={form.uom || "each"}
                 onChange={(e) => setForm((s) => ({ ...s, uom: e.target.value }))}
                 placeholder="each, case, lb, etc."
@@ -845,7 +845,7 @@ React.useEffect(() => {
               <label className="mb-1 block text-sm font-medium">Tax Category</label>
               {taxes ? (
                 <select
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
                   value={String(form.tax_category || "")}
                   onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value || "" }))}
                   disabled={isView}
@@ -860,13 +860,13 @@ React.useEffect(() => {
               ) : (
                 <div className="space-y-2">
                   <input
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground"
                     placeholder="Tax Category ID (optional)"
                     value={String(form.tax_category || "")}
                     onChange={(e) => setForm((s) => ({ ...s, tax_category: e.target.value }))}
                     disabled={isView}
                   />
-                  {taxFetchError && <div className="text-xs text-zinc-400">{taxFetchError}</div>}
+                  {taxFetchError && <div className="text-xs text-muted-foreground">{taxFetchError}</div>}
                 </div>
               )}
             </div>
@@ -875,7 +875,7 @@ React.useEffect(() => {
               <div>
                 <label className="mb-1 block text-sm font-medium">Image URL (optional)</label>
                 <input
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                   value={form.image_url || ""}
                   onChange={(e) => setForm((s) => ({ ...s, image_url: e.target.value }))}
                   placeholder="https://..."
@@ -884,7 +884,7 @@ React.useEffect(() => {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Upload Image (file)</label>
-                <label className="flex h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-zinc-700 text-sm text-zinc-400 hover:border-zinc-500">
+                <label className="flex h-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-zinc-500">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -905,7 +905,7 @@ React.useEffect(() => {
               {(previewUrl || newImage) && (
                 <div className="md:col-span-2">
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <div className="overflow-hidden rounded-xl border border-zinc-800">
+                    <div className="overflow-hidden rounded-xl border border-border">
                       {/* @ts-ignore */}
                       <img src={previewUrl} className="h-24 w-24 object-cover" />
                     </div>
@@ -918,13 +918,13 @@ React.useEffect(() => {
               <label className="mb-1 block text-sm font-medium">Initial On Hand</label>
               <input
                 type="number"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
                 value={form.on_hand || 0}
                 onChange={(e) => setForm((s) => ({ ...s, on_hand: parseInt(e.target.value || "0") }))}
                 disabled={isView || isCreate}
               />
               {isCreate && (
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Set on-hand after creating the variant via inventory adjustments or counts.
                 </p>
               )}
@@ -938,24 +938,24 @@ React.useEffect(() => {
                 checked={!!form.active}
                 onChange={(e) => setForm((s) => ({ ...s, active: e.target.checked }))}
               />
-              <label htmlFor="vactive" className="text-sm text-zinc-200">
+              <label htmlFor="vactive" className="text-sm text-foreground">
                 Active
               </label>
             </div>
           </div>
 
           {isView && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 text-sm">
+            <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <div className="text-zinc-400">
+                <div className="text-muted-foreground">
                   <div className="text-xs uppercase tracking-wide">Created</div>
-                  <div className="text-zinc-200">
+                  <div className="text-foreground">
                     {fmt((variant as any)?.created_at)}
                   </div>
                 </div>
-                <div className="text-zinc-400">
+                <div className="text-muted-foreground">
                   <div className="text-xs uppercase tracking-wide">Updated</div>
-                  <div className="text-zinc-200">
+                  <div className="text-foreground">
                     {fmt((variant as any)?.updated_at)}
                   </div>
                 </div>
@@ -967,7 +967,7 @@ React.useEffect(() => {
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                className="rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-100 hover:bg-white/5"
+                className="rounded-xl border border-border px-4 py-2 text-sm text-foreground hover:bg-white/5"
                 onClick={handleClose}
               >
                 Cancel

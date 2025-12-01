@@ -17,16 +17,16 @@ export function ReturnsToolbar(props: {
 }) {
   const { query, setQuery, storeId, setStoreId, stores, status, setStatus, dateFrom, setDateFrom, dateTo, setDateTo } = props;
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+    <div className="rounded-xl border border-border bg-background/70 p-3">
       <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-[1.5fr_auto_auto_auto]">
         <input
-          className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500"
+          className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
           placeholder="Search return #, receipt, cashier…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <select
-          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={storeId}
           onChange={(e) => setStoreId(e.target.value)}
         >
@@ -40,7 +40,7 @@ export function ReturnsToolbar(props: {
         </select>
 
         <select
-          className="rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+          className="rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         >
@@ -53,13 +53,13 @@ export function ReturnsToolbar(props: {
         <div className="flex items-center gap-2">
           <input
             type="date"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            className="w-full rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
           />
           <input
             type="date"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 text-xs text-zinc-100 px-2 py-1"
+            className="w-full rounded-md border border-border bg-card text-xs text-foreground px-2 py-1"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />

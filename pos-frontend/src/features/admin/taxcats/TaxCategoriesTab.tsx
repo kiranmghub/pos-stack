@@ -65,7 +65,7 @@ export default function TaxCategoriesTab() {
           const open = expandedIds.includes(r.id);
           return (
             <button
-              className="text-slate-300 hover:text-white"
+              className="text-muted-foreground hover:text-white"
               title={open ? "Collapse" : "Expand"}
               onClick={() =>
                 setExpandedIds(prev =>
@@ -137,17 +137,17 @@ export default function TaxCategoriesTab() {
     const renderRowAfter = React.useCallback((r: any) => {
       if (!expandedIds.includes(r.id)) return null;
       return (
-        <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="bg-muted/60 rounded-md border border-border p-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-xs text-slate-400">Code</div>
-              <div className="text-slate-200 break-words">{r.code || "—"}</div>
-              <div className="text-xs text-slate-400 mt-2">Rate</div>
-              <div className="text-slate-200">{Number(r.rate).toFixed(4)}</div>
+              <div className="text-xs text-muted-foreground">Code</div>
+              <div className="text-muted-foreground break-words">{r.code || "—"}</div>
+              <div className="text-xs text-muted-foreground mt-2">Rate</div>
+              <div className="text-muted-foreground">{Number(r.rate).toFixed(4)}</div>
             </div>
             <div>
-              <div className="text-xs text-slate-400">Description</div>
-              <div className="text-slate-200 break-words">{r.description || "—"}</div>
+              <div className="text-xs text-muted-foreground">Description</div>
+              <div className="text-muted-foreground break-words">{r.description || "—"}</div>
             </div>
           </div>
           <div className="mt-3 flex items-center justify-end">
@@ -209,7 +209,7 @@ export default function TaxCategoriesTab() {
               </button>
               <button
                 onClick={() => setSelectedIds([])}
-                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground"
               >
                 Clear
               </button>

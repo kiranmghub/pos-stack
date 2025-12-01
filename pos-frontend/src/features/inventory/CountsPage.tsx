@@ -266,12 +266,12 @@ async function onScanSubmit(e: React.FormEvent) {
       {/* Outer grid with fixed page height; adjust 140px to match your global header/nav height */}
       <div className="h-[calc(100vh-140px)] w-full grid grid-cols-12 gap-4">
         {/* LEFT: Sessions (own scroll container) */}
-        <aside className="relative col-span-12 md:col-span-4 lg:col-span-3 xl:col-span-3 2xl:col-span-3 border border-slate-800 rounded-2xl bg-slate-900/40 overflow-auto">
+        <aside className="relative col-span-12 md:col-span-4 lg:col-span-3 xl:col-span-3 2xl:col-span-3 border border-border rounded-2xl bg-muted/40 overflow-auto">
           {/* Sticky header (filters + New + Search) */}
-          <div className="sticky top-0 z-30 border-b border-slate-800 bg-slate-900">
+          <div className="sticky top-0 z-30 border-b border-border bg-card">
             <div className="p-3 flex flex-wrap items-center gap-2">
               <select
-                className="rounded bg-slate-800 px-2 py-1"
+                className="rounded bg-muted px-2 py-1"
                 value={storeId}
                 onChange={(e) => {
                   setStoreId(e.target.value ? Number(e.target.value) : "");
@@ -285,7 +285,7 @@ async function onScanSubmit(e: React.FormEvent) {
                 ))}
               </select>
               <select
-                className="rounded bg-slate-800 px-2 py-1"
+                className="rounded bg-muted px-2 py-1"
                 value={status}
                 onChange={(e) => {
                   setStatus(e.target.value as any);
@@ -306,8 +306,8 @@ async function onScanSubmit(e: React.FormEvent) {
               </button>
 
             </div>
-            <div className="p-3 border-t border-slate-800 flex items-center gap-2">
-              <Search className="h-4 w-4 text-slate-400" />
+            <div className="p-3 border-t border-border flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
               <input
                 value={q}
                 onChange={(e) => {
@@ -315,31 +315,31 @@ async function onScanSubmit(e: React.FormEvent) {
                   setPage(1);
                 }}
                 placeholder="Search #id, code, notes, or store…"
-                className="flex-1 bg-slate-800 rounded px-2 py-1 outline-none"
+                className="flex-1 bg-muted rounded px-2 py-1 outline-none"
               />
             </div>
           </div>
 
           {/* Scrollable list */}
-          <div className="divide-y divide-slate-800">
-            {loading && <div className="p-3 text-slate-400">Loading…</div>}
-            {!loading && rows.length === 0 && <div className="p-3 text-slate-400">No sessions</div>}
+          <div className="divide-y divide-border">
+            {loading && <div className="p-3 text-muted-foreground">Loading…</div>}
+            {!loading && rows.length === 0 && <div className="p-3 text-muted-foreground">No sessions</div>}
             {!loading &&
               rows.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => openSession(r.id)}
-                  className={`w-full text-left p-3 hover:bg-slate-800/60 ${
-                    openId === r.id ? "bg-slate-800/40" : ""
+                  className={`w-full text-left p-3 hover:bg-muted/60 ${
+                    openId === r.id ? "bg-muted/40" : ""
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="font-medium">
                       #{r.id} {r.code ? `· ${r.code}` : ""}
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-muted-foreground">
                     {r.store.code} — {r.store.name}
                   </div>
                   <div className="text-xs mt-1">
@@ -348,7 +348,7 @@ async function onScanSubmit(e: React.FormEvent) {
                     ) : r.status === "IN_PROGRESS" ? (
                       <span className="text-amber-300">In Progress</span>
                     ) : (
-                      <span className="text-slate-300">Draft</span>
+                      <span className="text-muted-foreground">Draft</span>
                     )}
                   </div>
                 </button>
@@ -356,22 +356,22 @@ async function onScanSubmit(e: React.FormEvent) {
           </div>
 
           {totalPages > 1 && (
-            <div className="border-t border-slate-800 p-2 flex items-center justify-between text-sm">
-              <div className="text-slate-400">
+            <div className="border-t border-border p-2 flex items-center justify-between text-sm">
+              <div className="text-muted-foreground">
                 Page {page} of {totalPages}
               </div>
               <div className="flex items-center gap-2">
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50"
+                  className="rounded bg-muted px-2 py-1 disabled:opacity-50"
                 >
                   Prev
                 </button>
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="rounded bg-slate-800 px-2 py-1 disabled:opacity-50"
+                  className="rounded bg-muted px-2 py-1 disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -381,15 +381,15 @@ async function onScanSubmit(e: React.FormEvent) {
         </aside>
 
         {/* RIGHT: Session detail (own scroll container) */}
-        <section className="col-span-12 md:col-span-8 lg:col-span-9 xl:col-span-9 2xl:col-span-9 border border-slate-800 rounded-2xl bg-slate-900/40 overflow-auto">
-          {!session && <div className="p-6 text-slate-400">Select or create a count to begin.</div>}
+        <section className="col-span-12 md:col-span-8 lg:col-span-9 xl:col-span-9 2xl:col-span-9 border border-border rounded-2xl bg-muted/40 overflow-auto">
+          {!session && <div className="p-6 text-muted-foreground">Select or create a count to begin.</div>}
           {!!session && (
             <>
               {/* Sticky header with finalize */}
-              <div className="sticky top-0 z-20 border-b border-slate-800 bg-slate-900/85 backdrop-blur">
+              <div className="sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur">
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <ClipboardList className="h-5 w-5 text-slate-300" />
+                    <ClipboardList className="h-5 w-5 text-muted-foreground" />
                     <div className="font-semibold">Count #{session.id}</div>
                     {session.status === "FINALIZED" ? (
                       <span className="inline-flex items-center gap-1 text-emerald-300">
@@ -400,7 +400,7 @@ async function onScanSubmit(e: React.FormEvent) {
                         <Boxes className="h-4 w-4" /> In Progress
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-slate-300">
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
                         <Boxes className="h-4 w-4" /> Draft
                       </span>
                     )}
@@ -422,10 +422,10 @@ async function onScanSubmit(e: React.FormEvent) {
                   <form
                     ref={formRef}
                     onSubmit={onScanSubmit}
-                    className="p-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-[1fr,1fr,90px,1fr,120px] gap-2"
+                    className="p-4 border-t border-border grid grid-cols-1 sm:grid-cols-[1fr,1fr,90px,1fr,120px] gap-2"
                   >
-                    <div className="flex items-center gap-2 rounded bg-slate-800 px-3 py-2">
-                      <ScanLine className="h-4 w-4 text-slate-400" />
+                    <div className="flex items-center gap-2 rounded bg-muted px-3 py-2">
+                      <ScanLine className="h-4 w-4 text-muted-foreground" />
                       <input
                         ref={barcodeRef}
                         value={barcode}
@@ -447,8 +447,8 @@ async function onScanSubmit(e: React.FormEvent) {
                           className="bg-transparent outline-none flex-1"
                       />
                     </div>
-                      <div className="flex items-center gap-2 rounded bg-slate-800 px-3 py-2 relative">
-                        <Search className="h-4 w-4 text-slate-400" />
+                      <div className="flex items-center gap-2 rounded bg-muted px-3 py-2 relative">
+                        <Search className="h-4 w-4 text-muted-foreground" />
                        <input
                          value={skuQuery}
                          onChange={(e) => { setSkuQuery(e.target.value); }}
@@ -459,8 +459,8 @@ async function onScanSubmit(e: React.FormEvent) {
                        />
                        {/* dropdown */}
                        {skuOpen && (
-                         <div className="absolute left-0 top-full mt-1 w-full rounded border border-slate-700 bg-slate-900 shadow-lg z-20">
-                           {skuLoading && <div className="px-3 py-2 text-slate-400 text-sm">Searching…</div>}
+                         <div className="absolute left-0 top-full mt-1 w-full rounded border border-border bg-card shadow-lg z-20">
+                           {skuLoading && <div className="px-3 py-2 text-muted-foreground text-sm">Searching…</div>}
                            {!skuLoading && skuResults.map((v) => (
                              <button
                                key={v.id || v.sku}
@@ -472,10 +472,10 @@ async function onScanSubmit(e: React.FormEvent) {
                                 setSkuOpen(false);                // close before submitting
                                 formRef.current?.requestSubmit();
                                }}
-                               className="w-full text-left px-3 py-2 hover:bg-slate-800"
+                               className="w-full text-left px-3 py-2 hover:bg-muted"
                              >
                                <div className="text-sm">{v.sku || "—"}</div>
-                               <div className="text-xs text-slate-400">{v.product_name || v.name}</div>
+                               <div className="text-xs text-muted-foreground">{v.product_name || v.name}</div>
                              </button>
                            ))}
                          </div>
@@ -485,14 +485,14 @@ async function onScanSubmit(e: React.FormEvent) {
                     <input
                       value={qty}
                       onChange={(e) => setQty(toInt(e.target.value, 1))}
-                      className="rounded bg-slate-800 px-3 py-2"
+                      className="rounded bg-muted px-3 py-2"
                       inputMode="numeric"
                     />
                     <input
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       placeholder="Location/bin"
-                      className="rounded bg-slate-800 px-3 py-2"
+                      className="rounded bg-muted px-3 py-2"
                     />
                     <button className="rounded bg-indigo-600 hover:bg-indigo-500 px-3 py-2">Add</button>
                   </form>
@@ -502,8 +502,8 @@ async function onScanSubmit(e: React.FormEvent) {
               {/* Lines (scroll under the sticky header + toolbar) */}
               <div className="p-4">
                 <table className="w-full border-collapse">
-                  <thead className="bg-slate-900/60">
-                    <tr className="text-left text-sm text-slate-300">
+                  <thead className="bg-muted/60">
+                    <tr className="text-left text-sm text-muted-foreground">
                       <th className="px-3 py-2">Product</th>
                       <th className="px-3 py-2">SKU</th>
                       <th className="px-3 py-2 text-right">Expected</th>
@@ -513,13 +513,13 @@ async function onScanSubmit(e: React.FormEvent) {
                       <th className="px-3 py-2 w-28"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-border">
                     {(session.lines || []).map((ln) => {
                       const exp = toInt(ln.expected_qty, 0);
                       const cnt = toInt(ln.counted_qty, 0);
                       const delta = cnt - exp;
                       return (
-                        <tr key={ln.id} className="hover:bg-slate-900/40">
+                        <tr key={ln.id} className="hover:bg-muted/40">
                           <td className="px-3 py-2">{ln.product_name}</td>
                           <td className="px-3 py-2">{ln.sku || "—"}</td>
                           <td className="px-3 py-2 text-right">{exp}</td>
@@ -528,7 +528,7 @@ async function onScanSubmit(e: React.FormEvent) {
                               cnt
                             ) : (
                               <input
-                                className="w-20 rounded bg-slate-800 px-2 py-1 text-right"
+                                className="w-20 rounded bg-muted px-2 py-1 text-right"
                                 inputMode="numeric"
                                 defaultValue={cnt}
                                 onBlur={(e) => onSetQty(ln.variant_id, toInt(e.target.value, cnt))}
@@ -537,19 +537,19 @@ async function onScanSubmit(e: React.FormEvent) {
                           </td>
                           <td
                             className={`px-3 py-2 text-right ${
-                              delta !== 0 ? "text-amber-300" : "text-slate-300"
+                              delta !== 0 ? "text-amber-300" : "text-muted-foreground"
                             }`}
                           >
                             {delta}
                           </td>
                           <td className="px-3 py-2">{ln.location || "—"}</td>
-                          <td className="px-3 py-2 text-right text-xs text-slate-400">{ln.method}</td>
+                          <td className="px-3 py-2 text-right text-xs text-muted-foreground">{ln.method}</td>
                         </tr>
                       );
                     })}
                     {(!session.lines || session.lines.length === 0) && (
                       <tr>
-                        <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
+                        <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
                           No lines yet
                         </td>
                       </tr>
@@ -560,7 +560,7 @@ async function onScanSubmit(e: React.FormEvent) {
 
               {msg && (
                 <div className="px-4 pb-4">
-                  <div className="rounded bg-slate-800 px-3 py-2 text-sm">{msg}</div>
+                  <div className="rounded bg-muted px-3 py-2 text-sm">{msg}</div>
                 </div>
               )}
             </>

@@ -91,7 +91,7 @@ export default function CouponsTab() {
       render: (r: Coupon) => {
         const open = expandedIds.includes(r.id);
         return (
-          <button className="text-slate-300 hover:text-white" title={open ? "Collapse" : "Expand"} onClick={() => toggleExpand(r)}>
+          <button className="text-muted-foreground hover:text-white" title={open ? "Collapse" : "Expand"} onClick={() => toggleExpand(r)}>
             <svg className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M9 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -151,7 +151,7 @@ export default function CouponsTab() {
       key: "is_active",
       header: "Active",
       render: (r: Coupon) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -185,25 +185,25 @@ export default function CouponsTab() {
     if (!expandedIds.includes(r.id)) return null;
     const remaining = r.max_uses == null ? "∞" : Math.max(0, (r.max_uses || 0) - (r.used_count || 0));
     return (
-      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+      <div className="bg-muted/60 rounded-md border border-border p-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-slate-400">Description</div>
-            <div className="text-slate-200 break-words">{r.description || "—"}</div>
-            <div className="text-xs text-slate-400 mt-2">Rule</div>
-            <div className="text-slate-200">{r.rule ? `${r.rule.code}${r.rule.name ? ` — ${r.rule.name}` : ""}` : "—"}</div>
-            <div className="text-xs text-slate-400 mt-2">Active</div>
-            <div className="text-slate-200">{r.is_active ? "Yes" : "No"}</div>
+            <div className="text-xs text-muted-foreground">Description</div>
+            <div className="text-muted-foreground break-words">{r.description || "—"}</div>
+            <div className="text-xs text-muted-foreground mt-2">Rule</div>
+            <div className="text-muted-foreground">{r.rule ? `${r.rule.code}${r.rule.name ? ` — ${r.rule.name}` : ""}` : "—"}</div>
+            <div className="text-xs text-muted-foreground mt-2">Active</div>
+            <div className="text-muted-foreground">{r.is_active ? "Yes" : "No"}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Usage</div>
-            <div className="text-slate-200">
+            <div className="text-xs text-muted-foreground">Usage</div>
+            <div className="text-muted-foreground">
               Used {r.used_count || 0}
               {r.max_uses != null ? ` of ${r.max_uses}` : " of ∞"}
               {" · Remaining "}{remaining}
             </div>
-            <div className="text-xs text-slate-400 mt-2">Window</div>
-            <div className="text-slate-200">
+            <div className="text-xs text-muted-foreground mt-2">Window</div>
+            <div className="text-muted-foreground">
               {r.start_at ? r.start_at.replace("T"," ").slice(0,16) : "—"} → {r.end_at ? r.end_at.replace("T"," ").slice(0,16) : "—"}
             </div>
           </div>
@@ -221,14 +221,14 @@ export default function CouponsTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search code, name, description…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select
             value={query.is_active === true ? "true" : query.is_active === false ? "false" : ""}
             onChange={(e) =>
               setQuery((p) => ({ ...p, is_active: e.target.value === "" ? undefined : e.target.value === "true" }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Active"
           >
             <option value="">All</option>
@@ -248,7 +248,7 @@ export default function CouponsTab() {
                 Deactivate Selected
                 </button>
                 <button onClick={() => setSelectedIds([])}
-                        className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">
+                        className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">
                 Clear
                 </button>
             </>

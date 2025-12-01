@@ -155,7 +155,7 @@ export default function UsersTab() {
       return (
         <div className="leading-tight">
           <div className="font-medium">{uname}</div>
-          <div className="text-xs text-slate-400">{email}</div>
+          <div className="text-xs text-muted-foreground">{email}</div>
         </div>
       );
     };
@@ -169,7 +169,7 @@ export default function UsersTab() {
           const open = expandedIds.includes(r.id);
           return (
             <button
-              className="text-slate-300 hover:text-white"
+              className="text-muted-foreground hover:text-white"
               title={open ? "Collapse" : "Expand"}
               onClick={() =>
                 setExpandedIds(prev =>
@@ -221,7 +221,7 @@ export default function UsersTab() {
                   : r.is_active ? "Deactivate user" : "Activate user"
               }
             />
-            <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
               {r.is_active ? "Active" : "Inactive"}
             </span>
           </label>
@@ -243,13 +243,13 @@ export default function UsersTab() {
               {shown.map((s: any) => (
                 <span
                   key={s.id}
-                  className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200 max-w-[9rem] truncate"
+                  className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-muted/60 text-muted-foreground max-w-[9rem] truncate"
                 >
                   {s.name}
                 </span>
               ))}
               {more > 0 && (
-                <span className="shrink-0 text-xs text-slate-400">+{more}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">+{more}</span>
               )}
             </div>
           );
@@ -287,40 +287,40 @@ export default function UsersTab() {
     if (!expandedIds.includes(r.id)) return null;
     const stores = (r.store_objects || []) as Array<{ id:number; name:string; code?:string }>;
     return (
-      <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+      <div className="bg-muted/60 rounded-md border border-border p-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <div className="text-xs text-slate-400">User</div>
-            <div className="text-slate-200 break-words">
+            <div className="text-xs text-muted-foreground">User</div>
+            <div className="text-muted-foreground break-words">
               {r.user?.username ?? "—"}{r.user?.email ? ` — ${r.user.email}` : ""}
             </div>
-            <div className="text-xs text-slate-400 mt-2">Role</div>
-            <div className="text-slate-200">{r.role || "—"}</div>
-            <div className="text-xs text-slate-400 mt-2">Active</div>
+            <div className="text-xs text-muted-foreground mt-2">Role</div>
+            <div className="text-muted-foreground">{r.role || "—"}</div>
+            <div className="text-xs text-muted-foreground mt-2">Active</div>
             <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-amber-600/30 text-amber-300"}`}>
               {r.is_active ? "Yes" : "No"}
             </span>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Stores</div>
+            <div className="text-xs text-muted-foreground">Stores</div>
             {stores.length ? (
               <div className="flex flex-wrap gap-1 mt-1">
                 {stores.slice(0, 20).map(s => (
-                  <span key={s.id} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-700/60 text-slate-200">
+                  <span key={s.id} className="px-2 py-0.5 rounded-full text-[11px] bg-muted/60 text-muted-foreground">
                     {s.name}{s.code ? ` (${s.code})` : ""}
                   </span>
                 ))}
                 {stores.length > 20 && (
-                  <span className="text-xs text-slate-400">+{stores.length - 20} more</span>
+                  <span className="text-xs text-muted-foreground">+{stores.length - 20} more</span>
                 )}
               </div>
             ) : (
-              <div className="text-slate-400 text-sm">No stores linked.</div>
+              <div className="text-muted-foreground text-sm">No stores linked.</div>
             )}
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <div className="text-xs text-slate-400" />
+          <div className="text-xs text-muted-foreground" />
           <div>
             <button className="text-xs text-blue-400 hover:underline"
                     onClick={() => { setEditUser(r); setShowUserModal(true); }}>
@@ -343,7 +343,7 @@ export default function UsersTab() {
           <select
             value={query.role || ""}
             onChange={(e) => setQuery((p) => ({ ...p, role: e.target.value || undefined }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
           >
             <option value="">All Roles</option>
             <option value="owner">Owner</option>
@@ -370,7 +370,7 @@ export default function UsersTab() {
                     : e.target.value === "true",
               }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
           >
             <option value="">All Users</option>
             <option value="true">Active</option>
@@ -382,7 +382,7 @@ export default function UsersTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search username or email…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
 
@@ -397,8 +397,8 @@ export default function UsersTab() {
 
       {/* Bulk toolbar */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-md px-3 py-2 text-sm">
-          <span className="text-slate-200">{selectedIds.length} selected</span>
+        <div className="flex items-center justify-between bg-muted/60 border border-border rounded-md px-3 py-2 text-sm">
+          <span className="text-muted-foreground">{selectedIds.length} selected</span>
           {(() => {
             const selectedRows = data.filter((u: AdminUser) => selectedIds.includes(u.id));
             const allActive = selectedRows.every((u) => u.is_active);
@@ -416,7 +416,7 @@ export default function UsersTab() {
                   </button>
                   <button
                     onClick={clearSelection}
-                    className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                    className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground"
                   >
                     Clear
                   </button>
@@ -435,7 +435,7 @@ export default function UsersTab() {
                   </button>
                   <button
                     onClick={clearSelection}
-                    className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                    className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground"
                   >
                     Clear
                   </button>
@@ -460,7 +460,7 @@ export default function UsersTab() {
                 </button>
                 <button
                   onClick={clearSelection}
-                  className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100"
+                  className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground"
                 >
                   Clear
                 </button>

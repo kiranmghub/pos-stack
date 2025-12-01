@@ -124,7 +124,7 @@ export default function RegistersTab() {
             const open = expandedIds.includes(r.id);
             return (
               <button
-                className="text-slate-300 hover:text-white"
+                className="text-muted-foreground hover:text-white"
                 title={open ? "Collapse" : "Expand"}
                 onClick={() =>
                   setExpandedIds(prev =>
@@ -176,7 +176,7 @@ export default function RegistersTab() {
       key: "is_active",
       header: "Active",
       render: (r: Register) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-slate-600/30 text-slate-300"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -207,23 +207,23 @@ export default function RegistersTab() {
     const renderRowAfter = React.useCallback((r: any) => {
       if (!expandedIds.includes(r.id)) return null;
       return (
-        <div className="bg-slate-900/60 rounded-md border border-slate-800 p-3">
+        <div className="bg-muted/60 rounded-md border border-border p-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-xs text-slate-400">Code</div>
-              <div className="text-slate-200 break-words">{r.code || "—"}</div>
-              <div className="text-xs text-slate-400 mt-2">Name</div>
-              <div className="text-slate-200 break-words">{r.name || "—"}</div>
-              <div className="text-xs text-slate-400 mt-2">Active</div>
-              <div className="text-slate-200">{r.is_active ? "Yes" : "No"}</div>
+              <div className="text-xs text-muted-foreground">Code</div>
+              <div className="text-muted-foreground break-words">{r.code || "—"}</div>
+              <div className="text-xs text-muted-foreground mt-2">Name</div>
+              <div className="text-muted-foreground break-words">{r.name || "—"}</div>
+              <div className="text-xs text-muted-foreground mt-2">Active</div>
+              <div className="text-muted-foreground">{r.is_active ? "Yes" : "No"}</div>
             </div>
             <div>
-              <div className="text-xs text-slate-400">Store</div>
-              <div className="text-slate-200">
+              <div className="text-xs text-muted-foreground">Store</div>
+              <div className="text-muted-foreground">
                 {r.store_name ? `${r.store_name}${r.store_code ? ` (${r.store_code})` : ""}` : "—"}
               </div>
-              <div className="text-xs text-slate-400 mt-2">Hardware Profile</div>
-              <div className="text-slate-200 break-words text-xs max-w-[40rem]">
+              <div className="text-xs text-muted-foreground mt-2">Hardware Profile</div>
+              <div className="text-muted-foreground break-words text-xs max-w-[40rem]">
                 {r.hardware_profile ? JSON.stringify(r.hardware_profile) : "—"}
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function RegistersTab() {
             value={query.search || ""}
             onChange={(e) => setQuery((p) => ({ ...p, search: e.target.value || undefined }))}
             placeholder="Search code or store…"
-            className="rounded-md bg-slate-800 px-3 py-1.5 text-sm outline-none placeholder:text-slate-400"
+            className="rounded-md bg-muted px-3 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
           />
           <select
             value={query.is_active === true ? "true" : query.is_active === false ? "false" : ""}
@@ -257,7 +257,7 @@ export default function RegistersTab() {
                 is_active: e.target.value === "" ? undefined : e.target.value === "true",
               }))
             }
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
           >
             <option value="">All</option>
             <option value="true">Active</option>
@@ -267,7 +267,7 @@ export default function RegistersTab() {
           <select
             value={(query as any).store || ""}
             onChange={(e) => setQuery((p) => ({ ...p, store: e.target.value === "" ? undefined : Number(e.target.value) }))}
-            className="rounded-md bg-slate-800 px-2 py-1 text-sm outline-none"
+            className="rounded-md bg-muted px-2 py-1 text-sm outline-none"
             title="Filter by store"
           >
             <option value="">All Stores</option>
@@ -285,7 +285,7 @@ export default function RegistersTab() {
               <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
                 className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
               <button onClick={() => setSelectedIds([])}
-                className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">Clear</button>
+                className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}

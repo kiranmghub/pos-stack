@@ -280,18 +280,18 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
           value={catQuery}
           onChange={(e) => setCatQuery(e.target.value)}
           placeholder="Search categories…"
-          className="rounded-md bg-slate-800 px-2 py-1 text-xs outline-none placeholder:text-slate-400"
+          className="rounded-md bg-muted px-2 py-1 text-xs outline-none placeholder:text-muted-foreground"
           title="Filter categories by name or code"
         />
       </div>
 
 
-      <div className="mt-1 space-y-1 max-h-32 overflow-auto border border-slate-700 rounded-md p-2">
+      <div className="mt-1 space-y-1 max-h-32 overflow-auto border border-border rounded-md p-2">
         {filteredCats.length === 0 ? (
-          <p className="text-xs text-slate-400">No matching categories.</p>
+          <p className="text-xs text-muted-foreground">No matching categories.</p>
         ) : (
           filteredCats.map(c => (
-            <label key={c.id} className="flex items-center gap-2 text-sm text-slate-300">
+            <label key={c.id} className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                  checked={allCats || categoryIds.includes(c.id)}   // visually all checked when allCats
@@ -321,8 +321,8 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50">
-      <div className="w-[860px] rounded-xl border border-slate-800 bg-slate-900">
-        <div className="border-b border-slate-800 p-3">
+      <div className="w-[860px] rounded-xl border border-border bg-card">
+        <div className="border-b border-border p-3">
           <h3 className="font-semibold">{isEdit ? "Edit Tax Rule" : "New Tax Rule"}</h3>
         </div>
 
@@ -336,12 +336,12 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                 <div>
                   <label className="text-sm">Code *</label>
                   <input value={code} onChange={(e) => setCode(e.target.value)}
-                         className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none" />
+                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none" />
                 </div>
                 <div>
                   <label className="text-sm">Name *</label>
                   <input value={name} onChange={(e) => setName(e.target.value)}
-                         className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none" />
+                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none" />
                 </div>
                 <label className="inline-flex items-center gap-2">
                   <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
@@ -354,10 +354,10 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={4}
-                    className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                    className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                     placeholder="What does this tax rule do?"
                     />
-                    <p className="text-xs text-slate-400 mt-1">Optional; shown for admin context.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Optional; shown for admin context.</p>
                 </div>  
               </div>
 
@@ -377,19 +377,19 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                   </div>
                 </div>
                 <div>
-                  <label className={`text-sm ${scope === "STORE" ? "" : "text-slate-400"}`}>Store {scope === "STORE" ? "*" : ""}</label>
+                  <label className={`text-sm ${scope === "STORE" ? "" : "text-muted-foreground"}`}>Store {scope === "STORE" ? "*" : ""}</label>
                   <select
                     value={storeId || 0}
                     onChange={(e) => setStoreId(Number(e.target.value))}
                     disabled={scope !== "STORE"}
-                    className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none disabled:opacity-50"
+                    className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none disabled:opacity-50"
                   >
                     <option value={0}>Select a store…</option>
                     {stores.map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
                     ))}
                   </select>
-                  <p className="text-xs text-slate-400 mt-1">Required only when scope = Store.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Required only when scope = Store.</p>
                 </div>
                 {CategoriesField}
               </div>
@@ -423,9 +423,9 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       onBlur={normalizeRate}
                       inputMode="decimal"
                       placeholder="0.0000"
-                      className={`w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none ${rateErr ? "ring-1 ring-red-500" : ""}`}
+                      className={`w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none ${rateErr ? "ring-1 ring-destructive" : ""}`}
                     />
-                    <p className={`text-xs mt-1 ${rateErr ? "text-red-400" : "text-slate-400"}`}>
+                    <p className={`text-xs mt-1 ${rateErr ? "text-red-400" : "text-muted-foreground"}`}>
                       {rateErr || "Percent as fraction (e.g., 8.25% → 0.0825). You can type 8.25; we’ll save 0.0825."}
                     </p>
                   </div>
@@ -438,9 +438,9 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       onBlur={normalizeAmount}
                       inputMode="decimal"
                       placeholder="0.00"
-                      className={`w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none ${amountErr ? "ring-1 ring-red-500" : ""}`}
+                      className={`w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none ${amountErr ? "ring-1 ring-destructive" : ""}`}
                     />
-                    <p className={`text-xs mt-1 ${amountErr ? "text-red-400" : "text-slate-400"}`}>
+                    <p className={`text-xs mt-1 ${amountErr ? "text-red-400" : "text-muted-foreground"}`}>
                       {amountErr || "Fixed currency amount (e.g., 2.00)."}
                     </p>
                   </div>
@@ -469,10 +469,10 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                     value={String(priority)}
                     onChange={(e) => setPriority(Number(e.target.value) || 0)}
                     inputMode="numeric"
-                    className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                    className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                     placeholder="100"
                   />
-                  <p className="text-xs text-slate-400 mt-1">Lower runs earlier. Default 100.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Lower runs earlier. Default 100.</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -482,7 +482,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       type="datetime-local"
                       value={startAt || ""}
                       onChange={(e) => setStartAt(e.target.value)}
-                      className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                      className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                     />
                   </div>
                   <div>
@@ -491,7 +491,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       type="datetime-local"
                       value={endAt || ""}
                       onChange={(e) => setEndAt(e.target.value)}
-                      className="w-full mt-1 rounded-md bg-slate-800 px-3 py-2 text-sm outline-none"
+                      className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                     />
                   </div>
                 </div>
@@ -500,42 +500,42 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
           )}
 
           {/* === Preview strip (always visible) === */}
-          <div className="mt-2 rounded-md border border-slate-800 bg-slate-900/60 px-3 py-2 text-xs text-slate-300">
+          <div className="mt-2 rounded-md border border-border bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
             <span className="font-medium">Preview:</span>{" "}
             <span>
-              Applies to <span className="text-slate-200">{storeLabel}</span>
+              Applies to <span className="text-muted-foreground">{storeLabel}</span>
               {" • "}
               {basis === "PCT" ? (
-                <>Rate <span className="text-slate-200">{prettyPercent}</span></>
+                <>Rate <span className="text-muted-foreground">{prettyPercent}</span></>
               ) : (
-                <>Amount <span className="text-slate-200">{Number(amountText || 0).toFixed(2)}</span></>
+                <>Amount <span className="text-muted-foreground">{Number(amountText || 0).toFixed(2)}</span></>
               )}
               {" on "}
-              <span className="text-slate-200">{applyScope === "LINE" ? "Line" : "Receipt"}</span>
+              <span className="text-muted-foreground">{applyScope === "LINE" ? "Line" : "Receipt"}</span>
               {" • "}
-              Prio <span className="text-slate-200">{priority || 0}</span>
+              Prio <span className="text-muted-foreground">{priority || 0}</span>
               {" • "}
-              {isActive ? <span className="text-emerald-300">Active</span> : <span className="text-slate-400">Inactive</span>}
+              {isActive ? <span className="text-emerald-300">Active</span> : <span className="text-muted-foreground">Inactive</span>}
               {" • "}
-              <span className="text-slate-200">{windowLabel}</span>
+              <span className="text-muted-foreground">{windowLabel}</span>
               {" • "}
-              Cats <span className="text-slate-200">{catsLabel}</span>
+              Cats <span className="text-muted-foreground">{catsLabel}</span>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-800 p-3">
-          <div className="text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-border p-3">
+          <div className="text-xs text-muted-foreground">
             {step === 1 ? "Step 1 of 2: Targeting" : "Step 2 of 2: Calculation"}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} disabled={saving}
-                    className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">
+                    className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">
               Cancel
             </button>
             {step === 2 && (
               <button onClick={back}
-                      className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-100">
+                      className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">
                 Back
               </button>
             )}

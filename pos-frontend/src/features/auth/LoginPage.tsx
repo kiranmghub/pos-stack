@@ -83,15 +83,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-slate-100">
+    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-background via-muted/30 to-muted/50 text-foreground">
       {/* Soft animated orbs */}
       <motion.div
-        className="pointer-events-none fixed -top-32 -left-24 h-96 w-96 rounded-full bg-indigo-600/20 blur-3xl"
+        className="pointer-events-none fixed -top-32 -left-24 h-96 w-96 rounded-full bg-muted/30 blur-3xl"
         animate={{ x: [0, 20, -10, 0], y: [0, 10, -10, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="pointer-events-none fixed -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-fuchsia-600/10 blur-3xl"
+        className="pointer-events-none fixed -bottom-32 -right-24 h-[28rem] w-[28rem] rounded-full bg-muted/20 blur-3xl"
         animate={{ x: [0, -15, 10, 0], y: [0, -10, 5, 0] }}
         transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
       />
@@ -101,17 +101,17 @@ export default function LoginPage() {
           {/* Left: Brand blurb */}
           <div className="hidden md:block">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <div className="mb-6 inline-flex items-center gap-3 rounded-full bg-white/10 px-4 py-2 ring-1 ring-white/15">
+              <div className="mb-6 inline-flex items-center gap-3 rounded-full bg-muted px-4 py-2 ring-1 ring-white/15">
                 <Sparkles className="h-4 w-4" />
-                <span className="text-sm text-slate-200">Omnichannel POS • Offline‑first • Multi‑tenant</span>
+                <span className="text-sm text-muted-foreground">Omnichannel POS • Offline‑first • Multi‑tenant</span>
               </div>
-              <h1 className="text-4xl font-semibold leading-tight text-white md:text-5xl">
+              <h1 className="text-4xl font-semibold leading-tight text-foreground md:text-5xl">
                 Welcome back
-                <span className="block text-lg font-normal text-slate-300">Sign in to your store workspace</span>
+                <span className="block text-lg font-normal text-muted-foreground">Sign in to your store workspace</span>
               </h1>
-              <p className="mt-6 max-w-md text-slate-300/80">
-                Secure, tenant‑aware login. Use your <span className="font-medium text-white">username</span>,
-                your tenant’s <span className="font-medium text-white">code</span>, and password to continue.
+              <p className="mt-6 max-w-md text-muted-foreground">
+                Secure, tenant‑aware login. Use your <span className="font-medium text-foreground">username</span>,
+                your tenant’s <span className="font-medium text-foreground">code</span>, and password to continue.
               </p>
             </motion.div>
           </div>
@@ -119,29 +119,29 @@ export default function LoginPage() {
           {/* Right: Login card */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="relative mx-auto w-full max-w-md">
-              <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-tr from-indigo-500/20 to-fuchsia-500/10 blur-xl" />
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl md:p-8">
+              <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-tr from-muted/20 to-muted/10 blur-xl" />
+              <div className="rounded-3xl border border-border bg-card p-6 shadow-2xl backdrop-blur-xl md:p-8">
                 <div className="mb-6 flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/20 ring-1 ring-white/15">
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-white">Sign in</h2>
-                    <p className="text-sm text-slate-300/80">Enter your credentials to continue</p>
+                    <h2 className="text-xl font-semibold text-foreground">Sign in</h2>
+                    <p className="text-sm text-muted-foreground">Enter your credentials to continue</p>
                   </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Username */}
                   <label className="block">
-                    <span className="mb-1.5 block text-sm text-slate-200">Username</span>
-                    <div className="group relative flex items-center rounded-2xl border border-white/10 bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
-                      <Mail className="mr-2 h-4 w-4 shrink-0 text-slate-300/70" />
+                    <span className="mb-1.5 block text-sm text-muted-foreground">Username</span>
+                    <div className="group relative flex items-center rounded-2xl border border-border bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
+                      <Mail className="mr-2 h-4 w-4 shrink-0 text-muted-foreground/70" />
                       <input
                         type="text"
                         inputMode="text"
                         autoComplete="username"
-                        className="h-11 w-full bg-transparent py-2.5 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                        className="h-11 w-full bg-transparent py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                         placeholder="jane.doe"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
@@ -151,13 +151,13 @@ export default function LoginPage() {
 
                   {/* Tenant code */}
                   <label className="block">
-                    <span className="mb-1.5 block text-sm text-slate-200">Tenant code</span>
-                    <div className="group relative flex items-center rounded-2xl border border-white/10 bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
-                      <Building2 className="mr-2 h-4 w-4 shrink-0 text-slate-300/70" />
+                    <span className="mb-1.5 block text-sm text-muted-foreground">Tenant code</span>
+                    <div className="group relative flex items-center rounded-2xl border border-border bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
+                      <Building2 className="mr-2 h-4 w-4 shrink-0 text-muted-foreground/70" />
                       <input
                         type="text"
                         inputMode="text"
-                        className="h-11 w-full bg-transparent py-2.5 text-slate-100 uppercase tracking-wide placeholder:text-slate-400/60 focus:outline-none"
+                        className="h-11 w-full bg-transparent py-2.5 text-foreground uppercase tracking-wide placeholder:text-muted-foreground/60 focus:outline-none"
                         placeholder="ACME"
                         value={tenantCode}
                         onChange={(e) => setTenantCode(e.target.value)}
@@ -167,13 +167,13 @@ export default function LoginPage() {
 
                   {/* Password */}
                   <label className="block">
-                    <span className="mb-1.5 block text-sm text-slate-200">Password</span>
-                    <div className="group relative flex items-center rounded-2xl border border-white/10 bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
-                      <Lock className="mr-2 h-4 w-4 shrink-0 text-slate-300/70" />
+                    <span className="mb-1.5 block text-sm text-muted-foreground">Password</span>
+                    <div className="group relative flex items-center rounded-2xl border border-border bg-black/20 px-3 focus-within:ring-2 focus-within:ring-indigo-500/60">
+                      <Lock className="mr-2 h-4 w-4 shrink-0 text-muted-foreground/70" />
                       <input
                         type={showPw ? "text" : "password"}
                         autoComplete="current-password"
-                        className="h-11 w-full bg-transparent py-2.5 text-slate-100 placeholder:text-slate-400/60 focus:outline-none"
+                        className="h-11 w-full bg-transparent py-2.5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -181,7 +181,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPw((s) => !s)}
-                        className="ml-2 rounded-lg p-1 text-slate-300/70 hover:bg-white/10"
+                        className="ml-2 rounded-lg p-1 text-muted-foreground/70 hover:bg-muted"
                         aria-label={showPw ? "Hide password" : "Show password"}
                       >
                         {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -196,8 +196,8 @@ export default function LoginPage() {
                   )}
 
                   <div className="flex items-center justify-between pt-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-300/80">
-                      <input type="checkbox" className="h-4 w-4 rounded border-white/20 bg-transparent" />
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                      <input type="checkbox" className="h-4 w-4 rounded border-border/40 bg-transparent" />
                       Remember me
                     </label>
                     <a href="#" className="text-sm text-indigo-300 hover:text-indigo-200">Forgot password?</a>
@@ -209,8 +209,8 @@ export default function LoginPage() {
                     className={classNames(
                       "group relative mt-2 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-sm font-semibold",
                       submitEnabled && !loading
-                        ? "bg-indigo-500 text-white hover:bg-indigo-400"
-                        : "bg-white/10 text-slate-300/70"
+                        ? "bg-indigo-500 text-foreground hover:bg-indigo-400"
+                        : "bg-muted text-muted-foreground/70"
                     )}
                   >
                     <span className="relative z-10">{loading ? "Signing in…" : "Sign in"}</span>
@@ -223,14 +223,14 @@ export default function LoginPage() {
                     />
                   </button>
 
-                  <p className="pt-2 text-center text-sm text-slate-400">
+                  <p className="pt-2 text-center text-sm text-muted-foreground">
                     Need an account? <a href="#" className="text-indigo-300 hover:text-indigo-200">Contact your tenant admin</a>
                   </p>
                 </form>
               </div>
 
-              <p className="mt-6 text-center text-xs text-slate-400/80">
-                By continuing you agree to our <a className="underline decoration-slate-500/50 hover:text-slate-200" href="#">Terms</a> and <a className="underline decoration-slate-500/50 hover:text-slate-200" href="#">Privacy Policy</a>.
+              <p className="mt-6 text-center text-xs text-muted-foreground/80">
+                By continuing you agree to our <a className="underline decoration-muted-foreground/50 hover:text-muted-foreground" href="#">Terms</a> and <a className="underline decoration-muted-foreground/50 hover:text-muted-foreground" href="#">Privacy Policy</a>.
               </p>
             </div>
           </motion.div>

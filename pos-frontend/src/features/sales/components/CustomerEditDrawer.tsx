@@ -123,24 +123,24 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
 
   return (
     <div className="fixed inset-0 z-[85] flex justify-end bg-black/40">
-      <div className="flex h-full w-full max-w-xl flex-col border-l border-zinc-800 bg-zinc-950">
+      <div className="flex h-full w-full max-w-xl flex-col border-l border-border bg-background">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
               Edit customer
             </div>
-            <div className="text-lg font-semibold text-zinc-50">
+            <div className="text-lg font-semibold text-white">
               {detail?.full_name || "Customer"}
             </div>
-            <div className="text-xs text-zinc-500">
+            <div className="text-xs text-muted-foreground">
               Joined: {dateJoinedLabel}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-zinc-700 px-2 py-1 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="rounded-full border border-border px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
           >
             ✕
           </button>
@@ -150,7 +150,7 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
         <form id="customer-edit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
 
           {loading && (
-            <div className="text-sm text-zinc-400">Loading…</div>
+            <div className="text-sm text-muted-foreground">Loading…</div>
           )}
 
           {!loading && (
@@ -158,11 +158,11 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
               {/* Identity */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     First name
                   </label>
                   <input
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
@@ -170,11 +170,11 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     Last name
                   </label>
                   <input
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     disabled={!isEditing}
@@ -185,23 +185,23 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
               {/* Contact */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     Email
                   </label>
                   <input
                     type="email"
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={!isEditing}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     Phone
                   </label>
                   <input
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={!isEditing}
@@ -211,19 +211,19 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
 
               {/* Address */}
               <div className="space-y-2">
-                <div className="text-[11px] uppercase tracking-wide text-zinc-500">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   Address
                 </div>
                 <input
                   placeholder="Address line 1"
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                   value={address1}
                   onChange={(e) => setAddress1(e.target.value)}
                   disabled={!isEditing}
                 />
                 <input
                   placeholder="Address line 2"
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                   value={address2}
                   onChange={(e) => setAddress2(e.target.value)}
                   disabled={!isEditing}
@@ -231,21 +231,21 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
                 <div className="grid gap-2 md:grid-cols-3">
                   <input
                     placeholder="City"
-                    className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={!isEditing}
                   />
                   <input
                     placeholder="State / Province"
-                    className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={region}
                     onChange={(e) => setRegion(e.target.value)}
                     disabled={!isEditing}
                   />
                   <input
                     placeholder="Postal code"
-                    className="rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={postalCode}
                     onChange={(e) => setPostalCode(e.target.value)}
                     disabled={!isEditing}
@@ -253,7 +253,7 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
                 </div>
                 <input
                   placeholder="Country (ISO 2-letter code)"
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                   disabled={!isEditing}
@@ -263,23 +263,23 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
               {/* Personal */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     Date of birth
                   </label>
                   <input
                     type="date"
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={dateOfBirth || ""}
                     onChange={(e) => setDateOfBirth(e.target.value)}
                     disabled={!isEditing}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] uppercase tracking-wide text-zinc-500">
+                  <label className="block text-[11px] uppercase tracking-wide text-muted-foreground">
                     Gender
                   </label>
                   <input
-                    className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none"
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground outline-none"
                     value={gender || ""}
                     onChange={(e) => setGender(e.target.value)}
                     placeholder="Optional"
@@ -290,24 +290,24 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
 
               {/* Preferences & loyalty */}
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm">
-                  <div className="text-[11px] uppercase tracking-wide text-zinc-500">
+                <div className="space-y-2 rounded-lg border border-border bg-muted/60 p-3 text-sm">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Consent & marketing
                   </div>
-                  <label className="mt-1 flex items-center gap-2 text-xs text-zinc-200">
+                  <label className="mt-1 flex items-center gap-2 text-xs text-foreground">
                     <input
                       type="checkbox"
-                      className="h-3 w-3 rounded border-zinc-600 bg-zinc-900"
+                      className="h-3 w-3 rounded border-border bg-card"
                       checked={marketingOptIn}
                       onChange={(e) => setMarketingOptIn(e.target.checked)}
                       disabled={!isEditing}
                     />
                     Email marketing opt-in
                   </label>
-                  <label className="flex items-center gap-2 text-xs text-zinc-200">
+                  <label className="flex items-center gap-2 text-xs text-foreground">
                     <input
                       type="checkbox"
-                      className="h-3 w-3 rounded border-zinc-600 bg-zinc-900"
+                      className="h-3 w-3 rounded border-border bg-card"
                       checked={smsOptIn}
                       onChange={(e) => setSmsOptIn(e.target.checked)}
                       disabled={!isEditing}
@@ -316,21 +316,21 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
                   </label>
                 </div>
 
-                <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm">
-                  <div className="text-[11px] uppercase tracking-wide text-zinc-500">
+                <div className="space-y-2 rounded-lg border border-border bg-muted/60 p-3 text-sm">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Loyalty
                   </div>
-                  <label className="mt-1 flex items-center gap-2 text-xs text-zinc-200">
+                  <label className="mt-1 flex items-center gap-2 text-xs text-foreground">
                     <input
                       type="checkbox"
-                      className="h-3 w-3 rounded border-zinc-600 bg-zinc-900"
+                      className="h-3 w-3 rounded border-border bg-card"
                       checked={isLoyaltyMember}
                       onChange={(e) => setIsLoyaltyMember(e.target.checked)}
                       disabled={!isEditing}
                     />
                     Mark as loyalty program member
                   </label>
-                  <div className="text-[11px] text-zinc-500">
+                  <div className="text-[11px] text-muted-foreground">
                     They&apos;ll earn points when making purchases, based on your
                     loyalty settings.
                   </div>
@@ -341,11 +341,11 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-sm">
+        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
         <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800"
+            className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted"
         >
             {isEditing ? "Cancel" : "Close"}
         </button>
