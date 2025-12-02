@@ -249,7 +249,7 @@ export default function ImportModal({
                     </label>
 
                     {error && (
-                        <div className="text-sm text-red-300 border border-red-900/40 bg-red-900/30 rounded-md px-3 py-2">
+                        <div className="text-sm text-error-foreground border border-error/40 bg-error/30 rounded-md px-3 py-2">
                             {error}
                         </div>
                     )}
@@ -269,7 +269,7 @@ export default function ImportModal({
                                 <div className="p-3" ref={errorsRef}>
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="text-sm text-muted-foreground">
-                                            Errors <span className="ml-1 rounded-md bg-red-500/20 px-2 py-0.5 text-xs text-red-300">{result.errors.length}</span>
+                                            Errors <span className="ml-1 rounded-md bg-badge-error-bg px-2 py-0.5 text-xs text-badge-error-text">{result.errors.length}</span>
                                         </div>
                                         <button
                                             className="rounded-xl border border-border px-3 py-1.5 text-xs text-foreground hover:bg-white/5"
@@ -293,8 +293,8 @@ export default function ImportModal({
                                                     const sev = classifyError(e.message); // "error" | "warn"
                                                     const rowColor =
                                                         sev === "error"
-                                                            ? "border-l-2 border-red-500 bg-red-500/5"
-                                                            : "border-l-2 border-amber-500 bg-amber-500/5";
+                                                            ? "border-l-2 border-error bg-error/5"
+                                                            : "border-l-2 border-warning bg-warning/5";
                                                     return (
                                                         <tr key={idx} className={`${rowColor}`}>
                                                             <td className="px-2 py-1 align-top border-b border-border text-foreground">{e.row}</td>

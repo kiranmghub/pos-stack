@@ -39,7 +39,7 @@ function AutoButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-indigo-200 hover:bg-card disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-primary hover:bg-card disabled:opacity-50"
     >
       <Wand2 className="h-4 w-4" /> Auto-generate
     </button>
@@ -325,7 +325,7 @@ export default function OnboardingWizard() {
         </button>
 
         <div className="mb-6 flex items-center gap-3">
-          <Sparkles className="h-6 w-6 text-indigo-300" />
+          <Sparkles className="h-6 w-6 text-primary" />
           <div>
             <div className="text-sm text-muted-foreground">Onboarding</div>
             <div className="text-xl font-semibold text-foreground">{current.title}</div>
@@ -333,8 +333,8 @@ export default function OnboardingWizard() {
           </div>
         </div>
 
-        {error && <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
-        {success && <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{success}</div>}
+        {error && <div className="mb-4 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-error-foreground">{error}</div>}
+        {success && <div className="mb-4 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-sm text-success-foreground">{success}</div>}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -439,7 +439,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleStoreNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Save & Next
                   </button>
@@ -482,7 +482,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleRegisterNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Save & Next
                   </button>
@@ -528,7 +528,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleTaxCatNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Save & Next
                   </button>
@@ -588,7 +588,7 @@ export default function OnboardingWizard() {
                 <div className="md:col-span-2 flex justify-end">
                   <button
                     onClick={handleTaxRuleNext}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Save & Next
                   </button>
@@ -601,7 +601,7 @@ export default function OnboardingWizard() {
                 <p className="text-sm text-muted-foreground">Import products using the CSV/Excel template. Validate before importing.</p>
                 <button
                   onClick={() => setShowImport({ open: true, scope: "products" })}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                 >
                   <Upload className="h-4 w-4" /> Import Products
                 </button>
@@ -623,7 +623,7 @@ export default function OnboardingWizard() {
                   </button>
                   <button
                     onClick={() => setStepIndex((i) => i + 1)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Next
                   </button>
@@ -636,7 +636,7 @@ export default function OnboardingWizard() {
                 <p className="text-sm text-muted-foreground">Import variants using the CSV/Excel template. Validate before importing.</p>
                 <button
                   onClick={() => setShowImport({ open: true, scope: "variants" })}
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                 >
                   <Upload className="h-4 w-4" /> Import Variants
                 </button>
@@ -658,7 +658,7 @@ export default function OnboardingWizard() {
                   </button>
                   <button
                     onClick={() => setStepIndex((i) => i + 1)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-indigo-600/30"
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow shadow-primary/30"
                   >
                     Next
                   </button>
@@ -671,7 +671,7 @@ export default function OnboardingWizard() {
                 <p>Onboarding complete. You can now use POS, catalog, and admin features.</p>
                 <button
                   onClick={handleFinish}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-foreground shadow shadow-emerald-600/30"
+                  className="inline-flex items-center gap-2 rounded-xl bg-success px-4 py-2 text-sm font-semibold text-success-foreground shadow shadow-success/30"
                 >
                   Mark Live
                 </button>

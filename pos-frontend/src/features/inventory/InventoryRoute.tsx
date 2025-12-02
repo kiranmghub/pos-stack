@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   X,
 } from "lucide-react";
+import { SimpleTabs } from "@/components/ui/tabs";
 
 // NEW: Transfers page import
 import TransfersPage from "@/features/inventory/TransfersPage";
@@ -108,14 +109,18 @@ export default function InventoryRoute() {
 
       {/* Tabs */}
       <div className="px-4 pt-3">
-        <div className="flex gap-2">
-          <TabButton active={active === "overview"} onClick={() => setActive("overview")} label="Overview" icon={<Activity className="h-4 w-4" />} />
-          <TabButton active={active === "stock"} onClick={() => setActive("stock")} label="Stock by Store" icon={<SlidersHorizontal className="h-4 w-4" />} />
-          <TabButton active={active === "ledger"} onClick={() => setActive("ledger")} label="Ledger" icon={<ListChecks className="h-4 w-4" />} />
-          {/* NEW: Transfers tab button */}
-          <TabButton active={active === "transfers"} onClick={() => setActive("transfers")} label="Transfers" icon={<svg className="h-4 w-4" viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>} />
-          <TabButton active={active === "counts"} onClick={() => setActive("counts")} label="Counts" icon={<ListChecks className="h-4 w-4" />} />
-        </div>
+        <SimpleTabs
+          variant="default"
+          value={active}
+          onValueChange={(value) => setActive(value as typeof active)}
+          tabs={[
+            { value: "overview", label: "Overview", icon: <Activity className="h-4 w-4" /> },
+            { value: "stock", label: "Stock by Store", icon: <SlidersHorizontal className="h-4 w-4" /> },
+            { value: "ledger", label: "Ledger", icon: <ListChecks className="h-4 w-4" /> },
+            { value: "transfers", label: "Transfers", icon: <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+            { value: "counts", label: "Counts", icon: <ListChecks className="h-4 w-4" /> },
+          ]}
+        />
       </div>
 
       {storeId ? (
@@ -136,30 +141,6 @@ export default function InventoryRoute() {
   );
 }
 
-function TabButton({
-  active,
-  onClick,
-  label,
-  icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-        active ? "bg-surface-raised shadow text-foreground" : "text-muted-foreground hover:bg-muted"
-      }`}
-    >
-      <span className="inline-flex items-center gap-2">
-        {icon} <span>{label}</span>
-      </span>
-    </button>
-  );
-}
 
 /* -------------------- Overview -------------------- */
 function OverviewTab({ storeId }: { storeId: number }) {
@@ -335,10 +316,10 @@ function StockTab({ storeId, currency, setCurrency }: { storeId: number; currenc
                   <span
                     className={`px-2 py-0.5 rounded text-xs ring-1 ring-inset ${
                       (r.low_stock || 0)
-                        ? "bg-amber-500/20 text-amber-300 ring-amber-500/30"
+                        ? "bg-badge-warning-bg text-badge-warning-text ring-warning/30"
                         : r.on_hand <= 0
-                        ? "bg-red-600/20 text-red-300 ring-red-600/30"
-                        : "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
+                        ? "bg-badge-error-bg text-badge-error-text ring-error/30"
+                        : "bg-badge-success-bg text-badge-success-text ring-success/30"
                     }`}
                   >
                     {r.on_hand}
@@ -486,7 +467,7 @@ function AdjustModal({
                 setSaving(false);
               }
             }}
-            className="rounded-lg px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+            className="rounded-lg px-3 py-2 bg-success hover:bg-success/90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
           </button>

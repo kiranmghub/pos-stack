@@ -42,14 +42,14 @@ export function DiscountRulesTable({ rows, loading, onSelect }: Props) {
                     <div className="text-sm text-foreground">{row.name}</div>
                     <div className="text-xs text-muted-foreground">{row.code}</div>
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-amber-200">
+                  <td className="px-3 py-3 text-right tabular-nums text-warning">
                     {row.total_discount_amount}
                   </td>
                   <td className="px-3 py-3 text-center tabular-nums text-foreground">{row.sales_count}</td>
                   <td className="px-3 py-3 text-right">
                     <button
                       type="button"
-                      className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-500"
+                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                       onClick={() => onSelect(row)}
                     >
                       View sales

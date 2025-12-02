@@ -18,9 +18,9 @@ type Props = {
 };
 
 const statusColors: Record<ReturnListRow["status"], string> = {
-  draft: "bg-amber-500/20 text-amber-200 border-amber-500/40",
-  finalized: "bg-emerald-500/15 text-emerald-200 border-emerald-500/30",
-  void: "bg-rose-500/15 text-rose-200 border-rose-500/30",
+  draft: "bg-badge-warning-bg text-badge-warning-text border-warning/40",
+  finalized: "bg-badge-success-bg text-badge-success-text border-success/30",
+  void: "bg-badge-error-bg text-badge-error-text border-error/30",
 };
 
 export function ReturnsManagementTable({
@@ -109,7 +109,7 @@ export function ReturnsManagementTable({
                     <div className="flex flex-col gap-2 text-xs">
                       <button
                         type="button"
-                        className="rounded-md bg-blue-600 px-3 py-1 font-medium text-white hover:bg-blue-500"
+                        className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground hover:bg-primary/90"
                         onClick={() => onSelect(row)}
                       >
                         View sale
@@ -126,7 +126,7 @@ export function ReturnsManagementTable({
                           <div className="flex items-center justify-end gap-2">
                             <button
                               type="button"
-                              className="rounded-md border border-amber-500/50 px-2 py-1 text-amber-200 hover:bg-amber-500/10"
+                              className="rounded-md border border-warning/50 px-2 py-1 text-warning hover:bg-warning/10"
                               onClick={() => onVoidDraft(row)}
                             >
                               Void

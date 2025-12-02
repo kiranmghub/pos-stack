@@ -48,7 +48,7 @@ export function SalesTable(props: {
                   {(r as any).total_returns > 0 ? (
                     <button
                       type="button"
-                      className="text-blue-300 hover:underline"
+                      className="text-info hover:underline"
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenReturns(r.id);
@@ -76,11 +76,11 @@ export function SalesTable(props: {
               <span
                 className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium ${
                   r.status === "completed"
-                    ? "bg-emerald-600/20 text-emerald-300"
+                    ? "bg-badge-success-bg text-badge-success-text"
                     : r.status === "pending"
-                    ? "bg-amber-500/20 text-amber-300"
+                    ? "bg-badge-warning-bg text-badge-warning-text"
                     : r.status === "void"
-                    ? "bg-red-600/30 text-red-300"
+                    ? "bg-badge-error-bg text-badge-error-text"
                     : "bg-muted/40 text-muted-foreground"
                 }`}
               >
@@ -90,8 +90,8 @@ export function SalesTable(props: {
 
             <div className="justify-self-end text-muted-foreground tabular-nums">{r.lines_count}</div>
             <div className="justify-self-end text-foreground tabular-nums">{safeMoney(r.subtotal)}</div>
-            <div className="justify-self-end text-amber-300 tabular-nums">-{safeMoney(r.discount_total)}</div>
-            <div className="justify-self-end text-blue-300 tabular-nums">{safeMoney(r.tax_total)}</div>
+            <div className="justify-self-end text-warning tabular-nums">-{safeMoney(r.discount_total)}</div>
+            <div className="justify-self-end text-info tabular-nums">{safeMoney(r.tax_total)}</div>
             <div className="justify-self-end text-foreground tabular-nums font-semibold">{safeMoney(r.total)}</div>
           </button>
         ))}

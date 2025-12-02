@@ -232,7 +232,7 @@ export default function OwnerDashboard() {
 
   const revenueChangeColor = useMemo(() => {
     const d = summary?.delta_revenue_pct ?? 0;
-    return d >= 0 ? "text-emerald-400" : "text-rose-400";
+    return d >= 0 ? "text-success" : "text-error";
   }, [summary?.delta_revenue_pct]);
 
   if (role !== "owner") {

@@ -122,7 +122,7 @@ export default function LoginPage() {
               <div className="absolute inset-0 -z-10 rounded-3xl bg-gradient-to-tr from-muted/20 to-muted/10 blur-xl" />
               <div className="rounded-3xl border border-border bg-card p-6 shadow-2xl backdrop-blur-xl md:p-8">
                 <div className="mb-6 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/20 ring-1 ring-white/15">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/20 ring-1 ring-white/15">
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div>
@@ -190,7 +190,7 @@ export default function LoginPage() {
                   </label>
 
                   {error && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    <div className="rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-error-foreground">
                       {error}
                     </div>
                   )}
@@ -200,7 +200,7 @@ export default function LoginPage() {
                       <input type="checkbox" className="h-4 w-4 rounded border-border/40 bg-transparent" />
                       Remember me
                     </label>
-                    <a href="#" className="text-sm text-indigo-300 hover:text-indigo-200">Forgot password?</a>
+                    <a href="#" className="text-sm text-primary hover:text-primary/80">Forgot password?</a>
                   </div>
 
                   <button
@@ -209,14 +209,14 @@ export default function LoginPage() {
                     className={classNames(
                       "group relative mt-2 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl px-4 py-3 text-sm font-semibold",
                       submitEnabled && !loading
-                        ? "bg-indigo-500 text-foreground hover:bg-indigo-400"
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "bg-muted text-muted-foreground/70"
                     )}
                   >
                     <span className="relative z-10">{loading ? "Signing in…" : "Sign in"}</span>
                     <motion.span
                       aria-hidden
-                      className="absolute inset-0 -z-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/20 to-fuchsia-500/0"
+                      className="absolute inset-0 -z-0 bg-gradient-to-r from-primary/0 via-primary/20 to-accent/0"
                       initial={{ x: "-100%" }}
                       animate={{ x: loading ? ["-100%", "100%"] : "-100%" }}
                       transition={{ duration: 1.2, repeat: loading ? Infinity : 0, ease: "linear" }}
@@ -224,7 +224,7 @@ export default function LoginPage() {
                   </button>
 
                   <p className="pt-2 text-center text-sm text-muted-foreground">
-                    Need an account? <a href="#" className="text-indigo-300 hover:text-indigo-200">Contact your tenant admin</a>
+                    Need an account? <a href="#" className="text-primary hover:text-primary/80">Contact your tenant admin</a>
                   </p>
                 </form>
               </div>

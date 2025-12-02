@@ -208,11 +208,11 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         Returns:{" "}
-                        <span className="text-amber-200">
+                        <span className="text-warning">
                           {safeMoney(detail.total_returns || 0)}
                         </span>{" "}
                         · Net:{" "}
-                        <span className="text-emerald-200">
+                        <span className="text-success">
                           {safeMoney(detail.net_spend || 0)}
                         </span>
                       </div>
@@ -441,9 +441,9 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
                             <span
                               className={`rounded-full px-2 py-0.5 ${
                                 tx.type === "EARN"
-                                  ? "bg-emerald-600/20 text-emerald-200"
+                                  ? "bg-badge-success-bg text-badge-success-text"
                                   : tx.type === "RETURN"
-                                  ? "bg-amber-600/20 text-amber-200"
+                                  ? "bg-badge-warning-bg text-badge-warning-text"
                                   : "bg-muted/40 text-foreground"
                               }`}
                             >
@@ -460,7 +460,7 @@ export const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
                             {tx.sale_id ? (
                               <button
                                 type="button"
-                                className="text-xs text-blue-300 hover:text-blue-200"
+                                className="text-xs text-info hover:text-info/80"
                                 onClick={() =>
                                   onOpenSale && onOpenSale(tx.sale_id!)
                                 }

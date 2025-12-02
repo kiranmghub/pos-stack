@@ -5,7 +5,7 @@ import * as React from "react";
 function StepPill({ n, active, label }: { n: number; active: boolean; label: string }) {
   return (
     <div className={`flex items-center gap-2 text-xs ${active ? "text-white" : "text-muted-foreground"}`}>
-      <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-blue-600" : "bg-muted"}`}>{n}</div>
+      <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-primary" : "bg-muted"}`}>{n}</div>
       <div>{label}</div>
     </div>
   );
@@ -74,7 +74,7 @@ export function ReturnBuilder({
                 <button
                   disabled={state.busy || totalSelected === 0}
                   onClick={saveSelections}
-                  className="rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white"
+                  className="rounded-md bg-primary hover:bg-primary/90 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-primary-foreground"
                 >
                   Continue
                 </button>
@@ -122,7 +122,7 @@ export function ReturnBuilder({
               </div>
               <div className="flex items-center justify-between">
                 <button className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-white/5" onClick={() => setState({ step: 1 })}>Back</button>
-                <button disabled={state.busy} onClick={finalize} className="rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white">
+                <button disabled={state.busy} onClick={finalize} className="rounded-md bg-success hover:bg-success/90 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-success-foreground">
                   Finalize return
                 </button>
               </div>

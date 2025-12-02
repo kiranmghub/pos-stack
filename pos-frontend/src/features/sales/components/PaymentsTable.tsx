@@ -17,9 +17,9 @@ type Props = {
 };
 
 const methodColors: Record<PaymentListRow["type"], string> = {
-  CASH: "bg-amber-500/15 text-amber-200 border-amber-400/40",
-  CARD: "bg-blue-500/15 text-blue-200 border-blue-400/40",
-  STORE_CREDIT: "bg-emerald-500/15 text-emerald-200 border-emerald-400/40",
+  CASH: "bg-badge-warning-bg text-badge-warning-text border-warning/40",
+  CARD: "bg-badge-info-bg text-badge-info-text border-info/40",
+  STORE_CREDIT: "bg-badge-success-bg text-badge-success-text border-success/40",
   OTHER: "bg-muted/20 text-foreground border-border/40",
 };
 
@@ -98,14 +98,14 @@ export function PaymentsTable({
                     <div className="flex flex-col gap-2 text-xs">
                       <button
                         type="button"
-                        className="rounded-md bg-blue-600 px-3 py-1 font-medium text-white hover:bg-blue-500"
+                        className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground hover:bg-primary/90"
                         onClick={() => onSelect(row)}
                       >
                         View sale
                       </button>
                       <button
                         type="button"
-                        className="rounded-md border border-emerald-500/60 px-3 py-1 text-emerald-200 hover:bg-emerald-500/10"
+                        className="rounded-md border border-success/60 px-3 py-1 text-success hover:bg-success/10"
                         onClick={() => onStartRefund(row)}
                       >
                         Start refund

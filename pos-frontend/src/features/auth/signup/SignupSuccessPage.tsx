@@ -17,14 +17,14 @@ export default function SignupSuccessPage() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-lg rounded-3xl border border-border bg-card p-8 shadow-2xl backdrop-blur text-center"
       >
-        <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-300" />
+        <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
         <h1 className="mt-4 text-3xl font-semibold">You’re all set!</h1>
         <p className="mt-2 text-muted-foreground">
           Your tenant and trial subscription are ready. Sign in to continue onboarding.
         </p>
         <Link
           to="/login"
-          className="mt-6 inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500"
+          className="mt-6 inline-flex items-center justify-center rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:bg-primary/90"
         >
           Go to login
         </Link>

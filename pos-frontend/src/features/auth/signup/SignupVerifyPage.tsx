@@ -59,7 +59,7 @@ export default function SignupVerifyPage() {
             </div>
           </label>
 
-          {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+          {error && <p className="rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-error-foreground">{error}</p>}
 
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="inline-flex items-center gap-1">
@@ -67,7 +67,7 @@ export default function SignupVerifyPage() {
             </div>
             <button
               type="button"
-              className="text-indigo-300 hover:text-indigo-200"
+              className="text-primary hover:text-primary/80"
               onClick={() => navigate("/signup/start")}
             >
               Change email
@@ -77,7 +77,7 @@ export default function SignupVerifyPage() {
           <button
             type="submit"
             disabled={code.length < 4 || loading}
-            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Verifying..." : "Verify and continue"}
           </button>

@@ -81,7 +81,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                                                 {row.full_name || "Unnamed customer"}
                                             </span>
                                             {row.is_loyalty_member && (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/15 px-2 py-0.5 text-[10px] font-medium text-emerald-200">
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-badge-success-bg px-2 py-0.5 text-[10px] font-medium text-badge-success-text">
                                                 <span aria-hidden="true" className="text-[11px]">
                                                     ★
                                                 </span>
@@ -117,15 +117,15 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                                 <td className="px-3 py-2 align-middle text-right tabular-nums text-foreground">
                                     {safeMoney(row.total_spend || 0)}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-right tabular-nums text-amber-200">
+                                <td className="px-3 py-2 align-middle text-right tabular-nums text-warning">
                                     {Number(row.total_returns || 0) > 0
                                         ? safeMoney(row.total_returns || 0)
                                         : "—"}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-right tabular-nums text-emerald-200">
+                                <td className="px-3 py-2 align-middle text-right tabular-nums text-success">
                                     {safeMoney(row.net_spend || 0)}
                                 </td>
-                                <td className="px-3 py-2 align-middle text-right tabular-nums text-sky-200">
+                                <td className="px-3 py-2 align-middle text-right tabular-nums text-info">
                                     {row.loyalty_points ?? 0}
                                 </td>
                                 <td className="px-3 py-2 align-middle text-right text-foreground tabular-nums">

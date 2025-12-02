@@ -9,6 +9,19 @@ import {
   type SaleRow, type SaleDetail, type ReturnListRow, type PaymentListRow, type RefundListRow, type DiscountRuleSummary, type TaxRuleSummary, type AuditLogEntry, type CurrencyInfo,
   listAuditLogs, getAuditLog,
 } from "./api";
+import {
+  LayoutDashboard,
+  RotateCcw,
+  CreditCard,
+  Tag,
+  Users,
+  Receipt,
+  FileSearch,
+  BarChart,
+  AlertTriangle,
+  Paperclip,
+  Download,
+} from "lucide-react";
 
 import { useMoney } from "./useMoney";
 import { SalesToolbar } from "./components/SalesToolbar";
@@ -38,6 +51,7 @@ import { useNotify } from "@/lib/notify"; // toasts, same as Catalogs :contentRe
 import { getRole } from "@/lib/auth";
 import { ensureAuthedFetch } from "@/components/AppShell";
 import { CustomerEditDrawer } from "./components/CustomerEditDrawer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 
@@ -851,41 +865,38 @@ export default function SalesPage() {
     <div className="min-h-[calc(100vh-3rem)] bg-background">
     <div className="space-y-4 px-4 py-6">
       {/* Main tabs per roadmap */}
-      <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-background/70 p-1">
-        {[
-          { id: "overview", label: "Overview", ready: true },
-          { id: "returns", label: "Returns", ready: true },
-          { id: "payments", label: "Payments", ready: canViewPayments },
-          { id: "discounts", label: "Discounts", ready: canViewDiscounts },
-          { id: "customers", label: "Customers", ready: true },
-          { id: "taxes", label: "Taxes", ready: canViewTaxes },
-          { id: "audit", label: "Audit", ready: canViewAudit },
-          { id: "analytics", label: "Analytics", ready: false },
-          { id: "risk", label: "Risk", ready: false },
-          { id: "attachments", label: "Attachments", ready: false },
-          { id: "exports", label: "Exports", ready: false },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => tab.ready && setMainTab(tab.id as MainSalesTab)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${mainTab === tab.id
-              ? "bg-blue-600 text-white shadow"
-              : tab.ready
-                ? "text-muted-foreground hover:bg-white/5"
-                : "text-muted-foreground cursor-not-allowed"
-              }`}
-            disabled={!tab.ready}
-          >
-            {tab.label}
-            {!tab.ready && (
-              <span className="ml-1 text-[10px] uppercase tracking-wide">
-                {tab.id === "payments" ? "locked" : "soon"}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as MainSalesTab)} variant="default">
+        <TabsList className="flex flex-wrap gap-1">
+          {[
+            { id: "overview", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" />, ready: true },
+            { id: "returns", label: "Returns", icon: <RotateCcw className="h-4 w-4" />, ready: true },
+            { id: "payments", label: "Payments", icon: <CreditCard className="h-4 w-4" />, ready: canViewPayments },
+            { id: "discounts", label: "Discounts", icon: <Tag className="h-4 w-4" />, ready: canViewDiscounts },
+            { id: "customers", label: "Customers", icon: <Users className="h-4 w-4" />, ready: true },
+            { id: "taxes", label: "Taxes", icon: <Receipt className="h-4 w-4" />, ready: canViewTaxes },
+            { id: "audit", label: "Audit", icon: <FileSearch className="h-4 w-4" />, ready: canViewAudit },
+            { id: "analytics", label: "Analytics", icon: <BarChart className="h-4 w-4" />, ready: false },
+            { id: "risk", label: "Risk", icon: <AlertTriangle className="h-4 w-4" />, ready: false },
+            { id: "attachments", label: "Attachments", icon: <Paperclip className="h-4 w-4" />, ready: false },
+            { id: "exports", label: "Exports", icon: <Download className="h-4 w-4" />, ready: false },
+          ].map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              icon={tab.icon}
+              disabled={!tab.ready}
+              className={!tab.ready ? "cursor-not-allowed" : ""}
+            >
+              {tab.label}
+              {!tab.ready && (
+                <span className="ml-1 text-[10px] uppercase tracking-wide">
+                  {tab.id === "payments" ? "locked" : "soon"}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {mainTab === "overview" && (
         <>
@@ -909,14 +920,14 @@ export default function SalesPage() {
 
               <div className="text-center">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Tax</div>
-                <div className="text-lg font-semibold text-blue-300">
+                <div className="text-lg font-semibold text-info">
                   {safeMoney(rows.reduce((sum, r) => sum + Number(r.tax_total || 0), 0))}
                 </div>
               </div>
 
               <div className="text-center">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total Refunded</div>
-                <div className="text-lg font-semibold text-amber-300">
+                <div className="text-lg font-semibold text-warning">
                   {safeMoney(
                     rows.reduce((sum, r) => sum + (r.total_returns > 0 ? 1 : 0), 0)
                   )}
@@ -951,19 +962,19 @@ export default function SalesPage() {
           <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground md:grid-cols-4">
             <div>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Drafts (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-amber-200 tabular-nums">{returnDraftCount}</div>
+              <div className="mt-1 text-2xl font-semibold text-warning tabular-nums">{returnDraftCount}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Finalized (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">{returnFinalizedCount}</div>
+              <div className="mt-1 text-2xl font-semibold text-success tabular-nums">{returnFinalizedCount}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Void (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">{returnVoidCount}</div>
+              <div className="mt-1 text-2xl font-semibold text-error tabular-nums">{returnVoidCount}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Refund total (page)</div>
-              <div className="mt-1 text-2xl font-semibold text-blue-200 tabular-nums">{safeMoney(returnRefundTotal)}</div>
+              <div className="mt-1 text-2xl font-semibold text-info tabular-nums">{safeMoney(returnRefundTotal)}</div>
             </div>
           </div>
 
@@ -994,17 +1005,17 @@ export default function SalesPage() {
                   type="button"
                   onClick={() => setReturnStatus(chip.value)}
                   className={`rounded-full px-3 py-1 font-medium ${returnStatus === chip.value
-                    ? "bg-blue-600 text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-card text-muted-foreground border border-border hover:bg-white/5"
                     }`}
                 >
                   {chip.label}
                   {chip.value === "draft" ? (
-                    <span className="ml-1 text-[10px] text-amber-200">{returnDraftCount}</span>
+                    <span className="ml-1 text-[10px] text-warning">{returnDraftCount}</span>
                   ) : chip.value === "finalized" ? (
-                    <span className="ml-1 text-[10px] text-emerald-200">{returnFinalizedCount}</span>
+                    <span className="ml-1 text-[10px] text-success">{returnFinalizedCount}</span>
                   ) : chip.value === "void" ? (
-                    <span className="ml-1 text-[10px] text-rose-200">{returnVoidCount}</span>
+                    <span className="ml-1 text-[10px] text-error">{returnVoidCount}</span>
                   ) : null}
                 </button>
               ))}
@@ -1012,7 +1023,7 @@ export default function SalesPage() {
             {latestDraft && (
               <button
                 type="button"
-                className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-amber-400"
+                className="rounded-md bg-warning px-3 py-1.5 text-xs font-semibold text-warning-foreground hover:bg-warning/90"
                 onClick={() => handleResumeDraft(latestDraft)}
               >
                 Resume latest draft
@@ -1046,19 +1057,19 @@ export default function SalesPage() {
             <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground md:grid-cols-4">
               <div>
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Collected (page)</div>
-                <div className="mt-1 text-2xl font-semibold text-emerald-200 tabular-nums">
+                <div className="mt-1 text-2xl font-semibold text-success tabular-nums">
                   {loadingPaymentSummary ? "…" : safeMoney(paymentTotalCollected)}
                 </div>
               </div>
               <div>
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Refunded (page)</div>
-                <div className="mt-1 text-2xl font-semibold text-rose-200 tabular-nums">
+                <div className="mt-1 text-2xl font-semibold text-error tabular-nums">
                   {loadingPaymentSummary ? "…" : safeMoney(refundTotalAmount)}
                 </div>
               </div>
               <div>
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Net (page)</div>
-                <div className={`mt-1 text-2xl font-semibold tabular-nums ${netPaymentTotal >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
+                <div className={`mt-1 text-2xl font-semibold tabular-nums ${netPaymentTotal >= 0 ? "text-success" : "text-error"}`}>
                   {loadingPaymentSummary ? "…" : safeMoney(netPaymentTotal)}
                 </div>
               </div>
@@ -1158,8 +1169,8 @@ export default function SalesPage() {
             />
           </div>
         ) : (
-          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
-            You don’t have permission to view Payments & Refunds. Ask an owner or finance admin to grant access.
+          <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-sm text-error-foreground">
+            You don't have permission to view Payments & Refunds. Ask an owner or finance admin to grant access.
           </div>
         )
       )}
@@ -1170,7 +1181,7 @@ export default function SalesPage() {
             <div className="grid gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground md:grid-cols-3">
               <div className="text-center">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Total discount</div>
-                <div className="mt-1 text-2xl font-semibold text-amber-200 tabular-nums">
+                <div className="mt-1 text-2xl font-semibold text-warning tabular-nums">
                   {loadingDiscountSummary ? "…" : safeMoney(totalDiscountAmount)}
                 </div>
               </div>
@@ -1178,7 +1189,7 @@ export default function SalesPage() {
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Top rules</div>
                 <div className="mt-1 flex flex-wrap justify-center gap-2 text-xs text-foreground">
                   {(discountSummary?.rules || []).slice(0, 3).map((rule) => (
-                    <span key={rule.code} className="rounded-full border border-amber-500/30 px-2 py-0.5 text-amber-100">
+                    <span key={rule.code} className="rounded-full border border-warning/30 px-2 py-0.5 text-warning">
                       {rule.name} · {safeMoney(Number(rule.total_discount_amount || 0))}
                     </span>
                   ))}
@@ -1229,7 +1240,7 @@ export default function SalesPage() {
                   </div>
                   <button
                     type="button"
-                    className="text-xs text-blue-300 hover:text-blue-200"
+                    className="text-xs text-info hover:text-info/80"
                     onClick={() => setSelectedDiscountRule(null)}
                   >
                     Clear selection
@@ -1263,8 +1274,8 @@ export default function SalesPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
-            You don’t have permission to view Discounts & Promotions.
+          <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-sm text-error-foreground">
+            You don't have permission to view Discounts & Promotions.
           </div>
         )
       )}
@@ -1282,22 +1293,22 @@ export default function SalesPage() {
       {mainTab === "taxes" && (
         canViewTaxes ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-2xl border border-cyan-500/30 bg-card px-4 py-3 text-sm text-cyan-100 md:grid-cols-3">
+            <div className="grid gap-3 rounded-2xl border border-info/30 bg-card px-4 py-3 text-sm text-info md:grid-cols-3">
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Total tax</div>
-                <div className="mt-2 text-3xl font-bold text-cyan-300 tabular-nums">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-info/70">Total tax</div>
+                <div className="mt-2 text-3xl font-bold text-info tabular-nums">
                   {loadingTaxSummary ? "…" : safeMoney(Number(taxSummary?.total_tax || 0))}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Taxed receipts</div>
-                <div className="mt-2 text-3xl font-bold text-white tabular-nums">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-info/70">Taxed receipts</div>
+                <div className="mt-2 text-3xl font-bold text-foreground tabular-nums">
                   {loadingTaxSummary ? "…" : taxSummary?.taxed_sales || 0}
                 </div>
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Compliance tips</div>
-                <div className="mt-2 text-xs text-cyan-100/70">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-info/70">Compliance tips</div>
+                <div className="mt-2 text-xs text-info/70">
                   Review filings for spikes, confirm jurisdiction codes, and export rule-level worksheets before closing the period.
                 </div>
               </div>
@@ -1326,13 +1337,13 @@ export default function SalesPage() {
 
             {selectedTaxRule && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-cyan-100">
+                <div className="flex items-center justify-between text-sm text-info">
                   <div>
                     Filings for <span className="font-semibold">{selectedTaxRule.name}</span>
                   </div>
                   <button
                     type="button"
-                    className="text-xs text-cyan-300 hover:text-cyan-200"
+                    className="text-xs text-info hover:text-info/80"
                     onClick={() => setSelectedTaxRule(null)}
                   >
                     Clear selection
@@ -1356,8 +1367,8 @@ export default function SalesPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
-            You don’t have permission to view Taxes & Compliance.
+          <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-sm text-error-foreground">
+            You don't have permission to view Taxes & Compliance.
           </div>
         )
       )}
@@ -1365,18 +1376,18 @@ export default function SalesPage() {
       {mainTab === "audit" && (
         canViewAudit ? (
           <div className="space-y-4">
-            <div className="grid gap-3 rounded-2xl border border-fuchsia-500/40 bg-card px-4 py-3 text-sm text-fuchsia-100 md:grid-cols-3">
+            <div className="grid gap-3 rounded-2xl border border-accent/40 bg-card px-4 py-3 text-sm text-accent md:grid-cols-3">
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200/70">Events</div>
-                <div className="mt-2 text-3xl font-bold text-white tabular-nums">{auditCount}</div>
+                <div className="text-[11px] uppercase tracking-[0.3em] text-accent/70">Events</div>
+                <div className="mt-2 text-3xl font-bold text-foreground tabular-nums">{auditCount}</div>
               </div>
               <div className="text-center">
-                <div className="text-[11px] uppercase tracking-[0.3em] text-fuchsia-200/70">Critical</div>
-                <div className="mt-2 text-3xl font-bold text-rose-300 tabular-nums">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-accent/70">Critical</div>
+                <div className="mt-2 text-3xl font-bold text-error tabular-nums">
                   {auditLogs.filter((log) => log.severity === "critical").length}
                 </div>
               </div>
-              <div className="text-xs text-fuchsia-100/80 md:text-left">
+              <div className="text-xs text-accent/80 md:text-left">
                 Track approvals, overrides, and anomaly alerts across all stores. Each audit row links to the full sale or return record for deeper investigation.
               </div>
             </div>
@@ -1393,8 +1404,8 @@ export default function SalesPage() {
             <AuditTimeline entries={auditLogs} loading={loadingAudit} onSelect={handleSelectAuditEntry} />
           </div>
         ) : (
-          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-6 text-sm text-rose-100">
-            You don’t have permission to view Audit & Activity.
+          <div className="rounded-xl border border-error/40 bg-error/10 p-6 text-sm text-error-foreground">
+            You don't have permission to view Audit & Activity.
           </div>
         )
       )}

@@ -77,7 +77,7 @@ export function SaleDetailsTab(props: {
       </div>
 
       <div className="mt-3">
-        <button className="rounded-md bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-sm font-medium text-white" onClick={onStartReturn}>
+        <button className="rounded-md bg-primary hover:bg-primary/90 px-3 py-1.5 text-sm font-medium text-primary-foreground" onClick={onStartReturn}>
           Start return
         </button>
       </div>
@@ -111,15 +111,15 @@ export function SaleDetailsTab(props: {
                     </div>
                   </div>
                   <div className="justify-self-end text-foreground">{safeMoney(ln.line_subtotal ?? 0)}</div>
-                  <div className="justify-self-end text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</div>
-                  <div className="justify-self-end text-blue-300">{safeMoney(ln.tax ?? 0)}</div>
+                  <div className="justify-self-end text-warning">-{safeMoney(ln.line_discount ?? 0)}</div>
+                  <div className="justify-self-end text-info">{safeMoney(ln.tax ?? 0)}</div>
                   <div className="justify-self-end font-medium text-foreground">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</div>
                 </div>
                 {showBreakdown && (
                   <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <div>Subtotal: <span className="text-foreground">{safeMoney(ln.line_subtotal ?? 0)}</span></div>
-                    <div>Discount: <span className="text-amber-300">-{safeMoney(ln.line_discount ?? 0)}</span></div>
-                    <div>Tax: <span className="text-blue-300">{safeMoney(ln.tax ?? 0)}</span></div>
+                    <div>Discount: <span className="text-warning">-{safeMoney(ln.line_discount ?? 0)}</span></div>
+                    <div>Tax: <span className="text-info">{safeMoney(ln.tax ?? 0)}</span></div>
                     <div>Fee: <span className="text-foreground">{safeMoney(ln.fee ?? 0)}</span></div>
                     <div>Net (pre-tax): <span className="text-foreground">{safeMoney(ln.line_net ?? 0)}</span></div>
                     <div>Gross after tax: <span className="text-foreground">{safeMoney(ln.line_gross_after_tax ?? ln.line_total ?? 0)}</span></div>
@@ -172,9 +172,9 @@ export function SaleDetailsTab(props: {
       {/* Totals */}
       <div className="grid gap-2 text-sm justify-end">
         <div className="justify-self-end text-muted-foreground">Subtotal: <span className="text-foreground">{safeMoney(detail.subtotal)}</span></div>
-        <div className="justify-self-end text-muted-foreground">Discounts: <span className="text-amber-300">-{safeMoney(detail.discount_total)}</span></div>
+        <div className="justify-self-end text-muted-foreground">Discounts: <span className="text-warning">-{safeMoney(detail.discount_total)}</span></div>
         <div className="justify-self-end text-muted-foreground">Fees: <span className="text-foreground">{safeMoney(detail.fee_total)}</span></div>
-        <div className="justify-self-end text-muted-foreground">Tax: <span className="text-blue-300">{safeMoney(detail.tax_total)}</span></div>
+        <div className="justify-self-end text-muted-foreground">Tax: <span className="text-info">{safeMoney(detail.tax_total)}</span></div>
         <div className="justify-self-end text-lg font-semibold">Total: <span>{safeMoney(detail.total)}</span></div>
       </div>
 
@@ -184,9 +184,9 @@ export function SaleDetailsTab(props: {
           <div className="p-3 space-y-3 text-sm">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div><span className="text-muted-foreground">Subtotal:</span> <span className="text-foreground">{safeMoney((detail as any).receipt_data.totals?.subtotal)}</span></div>
-              <div><span className="text-muted-foreground">Discount:</span> <span className="text-amber-300">-{safeMoney((detail as any).receipt_data.totals?.discount)}</span></div>
+              <div><span className="text-muted-foreground">Discount:</span> <span className="text-warning">-{safeMoney((detail as any).receipt_data.totals?.discount)}</span></div>
               <div><span className="text-muted-foreground">Fees:</span> <span className="text-foreground">{safeMoney((detail as any).receipt_data.totals?.fees)}</span></div>
-              <div><span className="text-muted-foreground">Tax:</span> <span className="text-blue-300">{safeMoney((detail as any).receipt_data.totals?.tax)}</span></div>
+              <div><span className="text-muted-foreground">Tax:</span> <span className="text-info">{safeMoney((detail as any).receipt_data.totals?.tax)}</span></div>
               <div className="col-span-2 md:col-span-4 justify-self-end font-medium">Grand total: <span className="text-foreground">{safeMoney((detail as any).receipt_data.totals?.grand_total)}</span></div>
             </div>
 
@@ -201,7 +201,7 @@ export function SaleDetailsTab(props: {
                         <span className="font-medium">{d.name}</span>
                         {d.code ? <span className="text-xs text-muted-foreground ml-2">({d.code})</span> : null}
                       </div>
-                      <div className="text-amber-300">-{safeMoney(d.amount)}</div>
+                      <div className="text-warning">-{safeMoney(d.amount)}</div>
                     </div>
                   ))}
                 </div>
@@ -220,7 +220,7 @@ export function SaleDetailsTab(props: {
                             <span className="font-medium">{t.name}</span>
                             {t.code ? <span className="text-xs text-muted-foreground ml-2">({t.code})</span> : null}
                           </div>
-                          <div className="text-blue-300">{safeMoney(t.amount)}</div>
+                          <div className="text-info">{safeMoney(t.amount)}</div>
                         </div>
                       ))}
                     </div>

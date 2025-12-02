@@ -39,10 +39,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [list]);
 
   const colorMap = {
-    success: "bg-emerald-900/80 border-emerald-600 text-emerald-50",
-    error: "bg-red-900/80 border-red-600 text-red-50",
-    info: "bg-muted/90 border-border text-foreground",
-    warn: "bg-amber-900/80 border-amber-600 text-amber-50",
+    success: "bg-success/80 border-success text-success-foreground",
+    error: "bg-error/80 border-error text-error-foreground",
+    info: "bg-info/80 border-info text-info-foreground",
+    warn: "bg-warning/80 border-warning text-warning-foreground",
   } as const;
 
   const iconMap = {

@@ -421,10 +421,10 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         {/* On-hand count */}
         <div
           className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${v.on_hand === 0
-              ? "bg-red-500/15 text-red-300"
+              ? "bg-badge-error-bg text-badge-error-text"
               : v.on_hand < 5
-                ? "bg-amber-500/15 text-amber-300"
-                : "bg-emerald-500/15 text-emerald-300"
+                ? "bg-badge-warning-bg text-badge-warning-text"
+                : "bg-badge-success-bg text-badge-success-text"
             }`}
         >
           {v.on_hand}
@@ -433,7 +433,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
         {/* Status */}
         <div className="justify-self-end">
           <span
-            className={`rounded-full px-2 py-0.5 text-xs ${(v as any).active ? "bg-indigo-500/15 text-indigo-300" : "bg-muted/20 text-muted-foreground"
+            className={`rounded-full px-2 py-0.5 text-xs ${(v as any).active ? "bg-badge-primary-bg text-badge-primary-text" : "bg-muted/20 text-muted-foreground"
               }`}
           >
             {(v as any).active ? "Active" : "Inactive"}
@@ -489,7 +489,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                 <>
                   <div className="my-1 h-px bg-muted" />
                   <button
-                    className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                    className="block w-full px-3 py-1 text-left text-sm text-error hover:bg-error/10"
                     onClick={() => { setOpenMenu(null); }}
                     data-action="delete"
                   >
@@ -610,7 +610,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
             + New Variant
           </button>
           <button
-            className="rounded-xl bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            className="rounded-xl bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             onClick={onNewProduct}
           >
             + New Product
@@ -672,17 +672,17 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                     </div>
                     <div
                       className={`justify-self-end rounded-full px-2 py-0.5 text-xs ${p.on_hand_sum === 0
-                          ? "bg-red-500/15 text-red-300"
+                          ? "bg-badge-error-bg text-badge-error-text"
                           : p.on_hand_sum < 5
-                            ? "bg-amber-500/15 text-amber-300"
-                            : "bg-emerald-500/15 text-emerald-300"
+                            ? "bg-badge-warning-bg text-badge-warning-text"
+                            : "bg-badge-success-bg text-badge-success-text"
                         }`}
                     >
                       {p.on_hand_sum}
                     </div>
                     <div className="justify-self-end flex items-center gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${p.active ? "bg-indigo-500/15 text-indigo-300" : "bg-muted/20 text-muted-foreground"
+                        className={`rounded-full px-2 py-0.5 text-xs ${p.active ? "bg-badge-primary-bg text-badge-primary-text" : "bg-muted/20 text-muted-foreground"
                           }`}
                       >
                         {p.active ? "Active" : "Inactive"}
@@ -740,7 +740,7 @@ export function ProductTable({ onEditProduct, onNewProduct, onNewVariant, onEdit
                               <>
                                 <div className="my-1 h-px bg-muted" />
                                 <button
-                                  className="block w-full px-3 py-1 text-left text-sm text-red-300 hover:bg-red-500/10"
+                                  className="block w-full px-3 py-1 text-left text-sm text-error hover:bg-error/10"
                                   title="Only allowed if not used in sales"
                                   onClick={async () => {
                                     setOpenProdMenu(null);

@@ -222,7 +222,7 @@ export default function CouponModal({ open, onClose, onSaved, editing }: Props) 
           <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">
             Cancel
           </button>
-          <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+          <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground">
             {saving ? "Saving…" : isEdit ? "Save" : "Create"}
           </button>
         </div>

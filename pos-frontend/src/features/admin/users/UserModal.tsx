@@ -235,7 +235,7 @@ const handleSubmit = async () => {
           <button
             disabled={saving}
             onClick={handleSubmit}
-            className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white"
+            className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground"
           >
             {saving ? "Saving..." : isEdit ? "Save Changes" : "Create User"}
           </button>

@@ -213,7 +213,7 @@ export default function TransfersPage() {
       {/* Left: Create / Send */}
       <div className="rounded-2xl border border-border bg-muted/40">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <PackagePlus className="h-5 w-5 text-indigo-300" />
+          <PackagePlus className="h-5 w-5 text-primary" />
           <div className="font-semibold">Create transfer</div>
         </div>
 
@@ -291,10 +291,10 @@ export default function TransfersPage() {
                       {typeof v.on_hand === "number" && (
                         <span className={`px-1.5 py-0.5 rounded ring-1 ring-inset text-[11px] ${
                           v.on_hand <= 0
-                            ? "bg-red-600/20 text-red-300 ring-red-600/30"
+                            ? "bg-badge-error-bg text-badge-error-text ring-error/30"
                             : v.on_hand <= 5
-                            ? "bg-amber-500/20 text-amber-300 ring-amber-500/30"
-                            : "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
+                            ? "bg-badge-warning-bg text-badge-warning-text ring-warning/30"
+                            : "bg-badge-success-bg text-badge-success-text ring-success/30"
                         }`}>
                           on hand: {v.on_hand}
                         </span>
@@ -334,7 +334,7 @@ export default function TransfersPage() {
                     <td className="px-3 py-2">
                       <button
                         onClick={() => removeLine(ln.v.id)}
-                        className="rounded bg-red-700 px-2 py-1 hover:bg-red-600"
+                        className="rounded bg-error px-2 py-1 hover:bg-error/90"
                       >
                         Remove
                       </button>
@@ -364,7 +364,7 @@ export default function TransfersPage() {
             <button
               disabled={saving || !fromStoreId || !toStoreId || fromStoreId === toStoreId || lines.length === 0}
               onClick={() => onCreate(true)}
-              className="rounded bg-indigo-600 px-3 py-2 hover:bg-indigo-500 disabled:opacity-50"
+              className="rounded bg-primary px-3 py-2 hover:bg-primary/90 disabled:opacity-50"
             >
               <Send className="h-4 w-4 inline" /> Send Now
             </button>
@@ -427,9 +427,9 @@ export default function TransfersPage() {
                     <td className="px-3 py-2 text-center">
                       <span className={`px-2 py-0.5 rounded text-xs ring-1 ring-inset ${
                         t.status === "RECEIVED"
-                          ? "bg-emerald-500/20 text-emerald-300 ring-emerald-500/30"
+                          ? "bg-badge-success-bg text-badge-success-text ring-success/30"
                           : t.status === "SENT"
-                          ? "bg-amber-500/20 text-amber-300 ring-amber-500/30"
+                          ? "bg-badge-warning-bg text-badge-warning-text ring-warning/30"
                           : "bg-muted/40 text-muted-foreground ring-border/30"
                       }`}>
                         {t.status}
@@ -440,7 +440,7 @@ export default function TransfersPage() {
                         {t.status === "DRAFT" && (
                           <button
                             onClick={async () => { await sendTransfer(t.id); fetchTransfers(); }}
-                            className="rounded bg-indigo-600 px-2 py-1 hover:bg-indigo-500"
+                            className="rounded bg-primary px-2 py-1 hover:bg-primary/90"
                           >
                             <Send className="h-4 w-4 inline" /> Send
                           </button>
@@ -448,7 +448,7 @@ export default function TransfersPage() {
                         {t.status === "SENT" && (
                           <button
                             onClick={() => openReceive(t)}
-                            className="rounded bg-emerald-600 px-2 py-1 hover:bg-emerald-500"
+                            className="rounded bg-success px-2 py-1 hover:bg-success/90"
                           >
                             <CheckCircle2 className="h-4 w-4 inline" /> Receive
                           </button>
@@ -544,7 +544,7 @@ export default function TransfersPage() {
               <button
                 disabled={recvSaving}
                 onClick={doReceive}
-                className="rounded-lg px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50"
+                className="rounded-lg px-3 py-2 bg-success hover:bg-success/90 disabled:opacity-50"
               >
                 {recvSaving ? "Receiving…" : "Receive"}
               </button>

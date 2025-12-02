@@ -165,7 +165,7 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
                 placeholder="0.0000"
                 className={`w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none ${rateErr ? "ring-1 ring-destructive" : ""}`}
               />
-              <p className={`text-xs mt-1 ${rateErr ? "text-red-400" : "text-muted-foreground"}`}>
+              <p className={`text-xs mt-1 ${rateErr ? "text-error" : "text-muted-foreground"}`}>
                 {rateErr ? rateErr : "Use decimal format (e.g., 0.0825 for 8.25%)."}
               </p>
             </div>
@@ -185,7 +185,7 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
 
         <div className="flex items-center justify-end gap-2 border-t border-border p-3">
           <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">Cancel</button>
-          <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+          <button onClick={save} disabled={saving} className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground">
             {saving ? "Saving…" : isEdit ? "Save" : "Create"}
           </button>
         </div>

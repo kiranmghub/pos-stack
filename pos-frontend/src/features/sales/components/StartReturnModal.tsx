@@ -86,27 +86,27 @@ export default function StartReturnModal({ open, onClose, sale, onSubmit }: Prop
           </div>
 
           {/* (Optional) Policy notice */}
-          <div className="rounded-lg border border-amber-600/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <div className="rounded-lg border border-warning/30 bg-badge-warning-bg px-3 py-2 text-xs text-badge-warning-text">
             Returns are subject to your store policy and return window.
           </div>
 
           {/* Form */}
           <div className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Reason<span className="text-red-400">*</span></span>
+              <span className="mb-1 block text-muted-foreground">Reason<span className="text-error">*</span></span>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, reason: true }))}
                 className={`w-full rounded-md border bg-card px-2 py-2 text-sm text-foreground ${
-                  touched.reason && reasonMissing ? "border-red-600" : "border-border"
+                  touched.reason && reasonMissing ? "border-error" : "border-border"
                 }`}
               >
                 <option value="">Select a reason…</option>
                 {REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
               {touched.reason && reasonMissing && (
-                <div className="mt-1 text-xs text-red-400">Reason is required.</div>
+                <div className="mt-1 text-xs text-error">Reason is required.</div>
               )}
             </label>
 
@@ -119,14 +119,14 @@ export default function StartReturnModal({ open, onClose, sale, onSubmit }: Prop
                 rows={4}
                 placeholder="Add any context for the return (max 250 chars)…"
                 className={`w-full resize-y rounded-md border bg-card px-2 py-2 text-sm text-foreground ${
-                  touched.notes && notesTooLong ? "border-red-600" : "border-border"
+                  touched.notes && notesTooLong ? "border-error" : "border-border"
                 }`}
               />
               <div className="mt-1 flex items-center justify-between text-xs">
-                <span className={notesTooLong ? "text-red-400" : "text-muted-foreground"}>
+                <span className={notesTooLong ? "text-error" : "text-muted-foreground"}>
                   {notes.trim().length}/250
                 </span>
-                {notesTooLong && <span className="text-red-400">Too long</span>}
+                {notesTooLong && <span className="text-error">Too long</span>}
               </div>
             </label>
           </div>
@@ -142,7 +142,7 @@ export default function StartReturnModal({ open, onClose, sale, onSubmit }: Prop
             Cancel
           </button>
           <button
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onClick={handleSubmit}
             disabled={submitting}
           >

@@ -36,10 +36,48 @@ export default {
   				DEFAULT: 'hsl(var(--accent))',
   				foreground: 'hsl(var(--accent-foreground))'
   			},
-  			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
-  			},
+			destructive: {
+				DEFAULT: 'hsl(var(--destructive))',
+				foreground: 'hsl(var(--destructive-foreground))'
+			},
+			success: {
+				DEFAULT: 'hsl(var(--success))',
+				foreground: 'hsl(var(--success-foreground))'
+			},
+			warning: {
+				DEFAULT: 'hsl(var(--warning))',
+				foreground: 'hsl(var(--warning-foreground))'
+			},
+			info: {
+				DEFAULT: 'hsl(var(--info))',
+				foreground: 'hsl(var(--info-foreground))'
+			},
+			error: {
+				DEFAULT: 'hsl(var(--error))',
+				foreground: 'hsl(var(--error-foreground))'
+			},
+			badge: {
+				success: {
+					bg: 'hsl(var(--badge-success-bg))',
+					text: 'hsl(var(--badge-success-text))'
+				},
+				warning: {
+					bg: 'hsl(var(--badge-warning-bg))',
+					text: 'hsl(var(--badge-warning-text))'
+				},
+				info: {
+					bg: 'hsl(var(--badge-info-bg))',
+					text: 'hsl(var(--badge-info-text))'
+				},
+				error: {
+					bg: 'hsl(var(--badge-error-bg))',
+					text: 'hsl(var(--badge-error-text))'
+				},
+				primary: {
+					bg: 'hsl(var(--badge-primary-bg))',
+					text: 'hsl(var(--badge-primary-text))'
+				}
+			},
 			border: 'hsl(var(--border))',
 			input: 'hsl(var(--input))',
 			ring: 'hsl(var(--ring))',

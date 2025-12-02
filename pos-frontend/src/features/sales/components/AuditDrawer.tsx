@@ -15,27 +15,27 @@ export function AuditDrawer({ entry, onClose, onOpenSale }: Props) {
       <div className="h-full w-full max-w-md overflow-auto bg-background text-foreground shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
-            <div className="text-xs uppercase tracking-[0.4em] text-fuchsia-200/70">Audit event</div>
+            <div className="text-xs uppercase tracking-[0.4em] text-info/70">Audit event</div>
             <div className="text-lg font-semibold">{entry.action.replace(/_/g, " ")}</div>
           </div>
-          <button className="text-sm text-fuchsia-200 hover:text-white" onClick={onClose}>Close</button>
+          <button className="text-sm text-info hover:text-foreground" onClick={onClose}>Close</button>
         </div>
         <div className="space-y-4 p-4 text-sm">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-fuchsia-200/70">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-info/70">
             <span className="rounded-full bg-muted px-2 py-0.5 text-white">{entry.severity}</span>
             <span>{new Date(entry.created_at).toLocaleString()}</span>
           </div>
           <div className="rounded-xl border border-white/5 bg-muted/60 p-3">
-            <div className="text-xs text-fuchsia-200/70">Actor</div>
+            <div className="text-xs text-info/70">Actor</div>
             <div className="text-base">{entry.user_name || "System"}</div>
           </div>
           {entry.sale_id ? (
             <div className="rounded-xl border border-white/5 bg-muted/60 p-3">
-              <div className="text-xs text-fuchsia-200/70">Related sale</div>
+              <div className="text-xs text-info/70">Related sale</div>
               <div className="flex items-center justify-between text-base">
                 <span>{entry.sale_receipt_no || `#${entry.sale_id}`}</span>
                 <button
-                  className="text-xs text-fuchsia-200 hover:text-white"
+                  className="text-xs text-info hover:text-foreground"
                   onClick={() => onOpenSale(entry.sale_id!)}
                 >
                   Open sale
@@ -44,8 +44,8 @@ export function AuditDrawer({ entry, onClose, onOpenSale }: Props) {
             </div>
           ) : null}
           <div>
-            <div className="text-xs uppercase tracking-[0.3em] text-fuchsia-200/70 mb-2">Payload</div>
-            <pre className="rounded-xl border border-white/5 bg-muted/80 p-3 text-xs text-fuchsia-100 overflow-auto">
+            <div className="text-xs uppercase tracking-[0.3em] text-info/70 mb-2">Payload</div>
+            <pre className="rounded-xl border border-white/5 bg-muted/80 p-3 text-xs text-info/90 overflow-auto">
               {JSON.stringify(meta, null, 2)}
             </pre>
           </div>

@@ -221,7 +221,7 @@ export default function UsersTab() {
                   : r.is_active ? "Deactivate user" : "Activate user"
               }
             />
-            <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-badge-success-bg text-badge-success-text" : "bg-muted/30 text-muted-foreground"}`}>
               {r.is_active ? "Active" : "Inactive"}
             </span>
           </label>
@@ -265,13 +265,13 @@ export default function UsersTab() {
           <div className="flex items-center gap-3 justify-end">
             <button
               onClick={() => { setEditUser(r); setShowUserModal(true); }}
-              className="text-xs text-blue-400 hover:underline"
+              className="text-xs text-info hover:underline"
             >
               Edit
             </button>
             <button
               onClick={() => setDeleteUser(r)}
-              className="text-xs text-red-400 hover:text-red-300"
+              className="text-xs text-error hover:text-error/80"
               title="Delete user"
             >
               <Trash2 className="h-4 w-4" />
@@ -297,7 +297,7 @@ export default function UsersTab() {
             <div className="text-xs text-muted-foreground mt-2">Role</div>
             <div className="text-muted-foreground">{r.role || "—"}</div>
             <div className="text-xs text-muted-foreground mt-2">Active</div>
-            <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-amber-600/30 text-amber-300"}`}>
+            <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-badge-success-bg text-badge-success-text" : "bg-badge-warning-bg text-badge-warning-text"}`}>
               {r.is_active ? "Yes" : "No"}
             </span>
           </div>
@@ -322,7 +322,7 @@ export default function UsersTab() {
         <div className="mt-3 flex items-center justify-between">
           <div className="text-xs text-muted-foreground" />
           <div>
-            <button className="text-xs text-blue-400 hover:underline"
+            <button className="text-xs text-info hover:underline"
                     onClick={() => { setEditUser(r); setShowUserModal(true); }}>
               Edit
             </button>
@@ -389,7 +389,7 @@ export default function UsersTab() {
         {/* Right: add new user */}
         <button
           onClick={() => { setEditUser(null); setShowUserModal(true); }}
-          className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+          className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground text-sm"
         >
           + New User
         </button>
@@ -410,7 +410,7 @@ export default function UsersTab() {
                   <button
                     disabled={bulkLoading}
                     onClick={() => bulkSetActive(false)}
-                    className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white"
+                    className="px-2 py-1 rounded-md bg-warning hover:bg-warning/90 text-warning-foreground"
                   >
                     Deactivate Selected
                   </button>
@@ -429,7 +429,7 @@ export default function UsersTab() {
                   <button
                     disabled={bulkLoading}
                     onClick={() => bulkSetActive(true)}
-                    className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white"
+                    className="px-2 py-1 rounded-md bg-success hover:bg-success/90 text-success-foreground"
                   >
                     Activate Selected
                   </button>
@@ -447,14 +447,14 @@ export default function UsersTab() {
                 <button
                   disabled={bulkLoading}
                   onClick={() => bulkSetActive(true)}
-                  className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white"
+                  className="px-2 py-1 rounded-md bg-success hover:bg-success/90 text-success-foreground"
                 >
                   Activate Inactive
                 </button>
                 <button
                   disabled={bulkLoading}
                   onClick={() => bulkSetActive(false)}
-                  className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white"
+                  className="px-2 py-1 rounded-md bg-warning hover:bg-warning/90 text-warning-foreground"
                 >
                   Deactivate Active
                 </button>

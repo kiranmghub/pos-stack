@@ -41,7 +41,7 @@ export function ReturnsTab(props: {
                     <div className="text-foreground">{r.return_no || r.id}</div>
                     <div className="text-muted-foreground">{new Date(r.created_at).toLocaleString()}</div>
                     {/* <div className="truncate text-muted-foreground">
-                      <span className={`mr-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs ${r.status === "finalized" ? "bg-emerald-600/20 text-emerald-300" : "bg-muted/40 text-muted-foreground"}`}>
+                      <span className={`mr-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs ${r.status === "finalized" ? "bg-badge-success-bg text-badge-success-text" : "bg-muted/40 text-muted-foreground"}`}>
                         {r.status}
                       </span>
                       <span className="text-muted-foreground">{r.reason_code || "—"}</span>
@@ -50,9 +50,9 @@ export function ReturnsTab(props: {
                     <span
                       className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${
                         r.status === "finalized"
-                          ? "bg-emerald-600/20 text-emerald-300"
+                          ? "bg-badge-success-bg text-badge-success-text"
                           : r.status === "draft"
-                          ? "bg-blue-600/20 text-blue-200"
+                          ? "bg-badge-info-bg text-badge-info-text"
                           : "bg-muted/40 text-muted-foreground"
                       }`}
                     >
@@ -74,7 +74,7 @@ export function ReturnsTab(props: {
                         {confirmDeleteId === r.id ? (
                           <div className="flex items-center gap-1">
                             <button
-                              className="rounded-md bg-red-700 hover:bg-red-600 px-2 py-0.5 text-[11px] font-medium text-white"
+                              className="rounded-md bg-error hover:bg-error/90 px-2 py-0.5 text-[11px] font-medium text-error-foreground"
                               onClick={async (e) => { e.stopPropagation?.(); await onDeleteDraftReturn(r.id); setConfirmDeleteId(null); }}
                             >
                               Delete
@@ -89,7 +89,7 @@ export function ReturnsTab(props: {
                         ) : (
                           <button
                             title="Delete draft return"
-                            className="rounded-md p-1.5 text-red-300 hover:bg-red-900/40"
+                            className="rounded-md p-1.5 text-error hover:bg-error/40"
                             onClick={(e) => { e.stopPropagation?.(); setConfirmDeleteId(r.id); }}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -114,7 +114,7 @@ export function ReturnsTab(props: {
                         {expandedReturn.status === "draft" && (
                           <div className="mb-2 flex items-center justify-end">
                             <button
-                              className="rounded-md bg-red-700 hover:bg-red-600 px-2.5 py-1 text-xs font-medium text-white"
+                              className="rounded-md bg-error hover:bg-error/90 px-2.5 py-1 text-xs font-medium text-error-foreground"
                               onClick={() => onVoidDraftReturn(expandedReturn.id)}
                             >
                               Void draft
@@ -178,8 +178,8 @@ export function ReturnsTab(props: {
                                             <div className="grid grid-cols-5 gap-2 text-center mt-1">
                                               <div className="tabular-nums text-foreground">{safeMoney(it.original_unit_price)}</div>
                                               <div className="tabular-nums text-foreground">{safeMoney(it.original_subtotal)}</div>
-                                              <div className="tabular-nums text-amber-300">-{safeMoney(it.original_discount)}</div>
-                                              <div className="tabular-nums text-blue-300">{safeMoney(it.original_tax)}</div>
+                                              <div className="tabular-nums text-warning">-{safeMoney(it.original_discount)}</div>
+                                              <div className="tabular-nums text-info">{safeMoney(it.original_tax)}</div>
                                               <div className="tabular-nums text-foreground">{safeMoney(it.original_total)}</div>
                                             </div>
                                           </div>
@@ -197,7 +197,7 @@ export function ReturnsTab(props: {
                                             type="button"
                                             title="Delete line"
                                             aria-label="Delete return line"
-                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-red-300 hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-600/40"
+                                            className="inline-flex items-center justify-center rounded-md p-1.5 text-error hover:bg-error/40 focus:outline-none focus:ring-2 focus:ring-error/40"
                                             onClick={() => onDeleteReturnItem(it.id)}
                                           >
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -212,7 +212,7 @@ export function ReturnsTab(props: {
                                     </div>
                                     <div className="mt-1 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                                       <div>Return subtotal: <span className="text-foreground">{safeMoney(it.refund_subtotal || 0)}</span></div>
-                                      <div>Tax: <span className="text-blue-300">{safeMoney(it.refund_tax || 0)}</span></div>
+                                      <div>Tax: <span className="text-info">{safeMoney(it.refund_tax || 0)}</span></div>
                                       <div>Total: <span className="text-foreground">{safeMoney(it.refund_total || 0)}</span></div>
                                     </div>
                                     <div className="mt-1 text-xs text-muted-foreground">
@@ -260,7 +260,7 @@ export function ReturnsTab(props: {
                           </div>
                           <div className="mt-1 flex items-center justify-between">
                             <div className="text-muted-foreground">Tax</div>
-                            <div className="tabular-nums text-blue-300">
+                            <div className="tabular-nums text-info">
                               {safeMoney(expandedReturn.refund_tax_total || 0)}
                             </div>
                           </div>

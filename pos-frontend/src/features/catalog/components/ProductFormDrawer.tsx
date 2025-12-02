@@ -354,7 +354,7 @@ export function ProductFormDrawer({
           isView ? (
             <button
               type="button"
-              className="rounded-lg px-3 py-1 text-sm text-indigo-300 hover:bg-indigo-600/10"
+              className="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
               onClick={() => setMode("edit")}
             >
               Edit
@@ -366,7 +366,7 @@ export function ProductFormDrawer({
 
 
         {errors._non_field && (
-          <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200 mb-2">
+          <div className="rounded-md border border-error bg-error/50 p-2 text-sm text-error-foreground mb-2">
             {errors._non_field}
           </div>
         )}
@@ -400,7 +400,7 @@ export function ProductFormDrawer({
               <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
                 <button
                   type="button"
-                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-indigo-600 hover:text-white transition"
+                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-primary hover:text-primary-foreground transition"
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
@@ -410,7 +410,7 @@ export function ProductFormDrawer({
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-red-600 hover:text-white transition"
+                  className="rounded-lg bg-muted/80 px-3 py-1 text-sm text-foreground hover:bg-error hover:text-error-foreground transition"
                   onClick={(e) => {
                     e.stopPropagation();
                     setNewImage(null);
@@ -447,7 +447,7 @@ export function ProductFormDrawer({
             <label className="mb-1 block text-sm font-medium">Name</label>
             <input
               className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                errors.name ? "border-red-500" : "border-border"
+                errors.name ? "border-error" : "border-border"
               }`}
               value={form.name}
               onChange={(e) => {
@@ -456,7 +456,7 @@ export function ProductFormDrawer({
               }}
               disabled={isView}
             />
-            {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
+            {errors.name && <div className="mt-1 text-xs text-error">{errors.name}</div>}
           </div>
 
           <div>
@@ -466,7 +466,7 @@ export function ProductFormDrawer({
               {!isView && (
                 <button
                   type="button"
-                  className="text-xs text-indigo-300 hover:text-indigo-200"
+                  className="text-xs text-primary hover:text-primary/80"
                   onClick={async () => {
                     try {
                       const r = await generateProductCode(form.name || "");
@@ -480,7 +480,7 @@ export function ProductFormDrawer({
             </div>
             <input
               className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                errors.code ? "border-red-500" : "border-border"
+                errors.code ? "border-error" : "border-border"
               }`}
               value={form.code || ""}
               onChange={(e) => {
@@ -489,7 +489,7 @@ export function ProductFormDrawer({
               }}
               disabled={isView}
             />
-            {errors.code && <div className="mt-1 text-xs text-red-400">{errors.code}</div>}
+            {errors.code && <div className="mt-1 text-xs text-error">{errors.code}</div>}
           </div>
 
           <div>
@@ -603,7 +603,7 @@ export function ProductFormDrawer({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               disabled={busy}
             >
               {isEdit ? "Save Changes" : "Create Product"}

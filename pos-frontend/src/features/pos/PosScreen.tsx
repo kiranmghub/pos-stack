@@ -573,20 +573,20 @@ img{display:block;margin:8px auto}
   const StockBadge: React.FC<{ remaining: number }> = ({ remaining }) => {
     if (remaining <= 0) {
       return (
-        <span className="mt-1 inline-flex items-center rounded-md bg-red-600/20 px-2 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-600/30">
+        <span className="mt-1 inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text ring-1 ring-inset ring-error/30">
           Out of stock
         </span>
       );
     }
     if (remaining <= LOW_STOCK_THRESHOLD) {
       return (
-        <span className="mt-1 inline-flex items-center rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+        <span className="mt-1 inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text ring-1 ring-inset ring-warning/30">
           Low: {remaining}
         </span>
       );
     }
     return (
-      <span className="mt-1 inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
+      <span className="mt-1 inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text ring-1 ring-inset ring-success/30">
         Stock: {remaining}
       </span>
     );
@@ -933,7 +933,7 @@ img{display:block;margin:8px auto}
             )}
 
             {couponMsg && (
-              <div className={`px-4 pb-2 text-sm ${couponOk ? "text-emerald-400" : "text-red-400"}`}>
+              <div className={`px-4 pb-2 text-sm ${couponOk ? "text-success" : "text-error"}`}>
                 {couponMsg}
               </div>
             )}
@@ -972,7 +972,7 @@ img{display:block;margin:8px auto}
                               <span
                                 key={b.id}
                                 className={`pointer-events-auto rounded-full px-2 py-0.5 text-[11px] font-semibold shadow max-w-[14rem] truncate
-                                              ${b.kind === "coupon" ? "bg-indigo-500 text-white" : "bg-emerald-500 text-foreground"}`}
+                                              ${b.kind === "coupon" ? "bg-info text-info-foreground" : "bg-success text-success-foreground"}`}
                                 title={b.label}   // full on native hover as well
                               >
                                 {b.label}
@@ -993,7 +993,7 @@ img{display:block;margin:8px auto}
                                     {list.slice(shown.length).map(b => (
                                       <li key={`more-${b.id}`} className="flex items-center gap-2">
                                         <span className={`inline-block h-2.5 w-2.5 rounded-full
-                                                            ${b.kind === "coupon" ? "bg-indigo-400" : "bg-emerald-400"}`} />
+                                                            ${b.kind === "coupon" ? "bg-info" : "bg-success"}`} />
                                         <span className="truncate">{b.label}</span>
                                       </li>
                                     ))}
@@ -1041,7 +1041,7 @@ img{display:block;margin:8px auto}
                             {pv.final < pv.orig ? (
                               <>
                                 <span className="text-muted-foreground line-through mr-2">{money(orig)}</span>
-                                <span className="text-emerald-300 font-semibold">{money(fin)}</span>
+                                <span className="text-success font-semibold">{money(fin)}</span>
                                 {pv.hasReceipt && (
                                   <span className="ml-2 text-xs text-muted-foreground">(more at checkout)</span>
                                 )}
@@ -1079,7 +1079,7 @@ img{display:block;margin:8px auto}
                     <span
                       className="
                     absolute -top-2 -right-2 min-w-[1.1rem] h-[1.1rem]
-                    rounded-full bg-emerald-500 px-1 text-[0.70rem] leading-[1.1rem]
+                    rounded-full bg-success px-1 text-[0.70rem] leading-[1.1rem]
                     text-foreground font-bold text-center shadow
                     ring-2 ring-background
                     animate-[pop_150ms_ease-in-out]
@@ -1134,7 +1134,7 @@ img{display:block;margin:8px auto}
                   style={{ scrollMarginBottom: footerH ? footerH + 16 : undefined }}
                   className={`flex flex-col gap-2 rounded-xl p-4 shadow-sm border border-border bg-muted/90 transition-colors
                               ${l.variant.id === lastAddedId && flashToken
-                      ? "bg-emerald-500/10 ring-2 ring-emerald-400/60 animate-[pop_150ms_ease-in-out]"
+                      ? "bg-success/10 ring-2 ring-success/60 animate-[pop_150ms_ease-in-out]"
                       : "bg-muted"
                     }`}
                 >
@@ -1167,12 +1167,12 @@ img{display:block;margin:8px auto}
                         return (
                           <span className="ml-2">
                             {dSum > 0 && (
-                              <span className="text-emerald-400/90">
+                              <span className="text-success/90">
                                 {" "}–{money(dSum)} discounts
                               </span>
                             )}
                             {tSum > 0 && (
-                              <span className="text-amber-400/90">
+                              <span className="text-warning/90">
                                 {dSum > 0 ? ", " : " "}
                                 +{money(tSum)} tax
                               </span>
@@ -1203,7 +1203,7 @@ img{display:block;margin:8px auto}
                           <div className="rounded-lg bg-muted/80 border border-border p-3 shadow-inner space-y-1">
                             {hasDisc && (
                               <>
-                                <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1">
+                                <div className="text-[11px] font-semibold text-success uppercase tracking-wide mb-1">
                                   Discounts
                                 </div>
                                 <ul className="mb-2 space-y-0.5">
@@ -1222,7 +1222,7 @@ img{display:block;margin:8px auto}
 
                             {hasTax && (
                               <>
-                                <div className="text-[11px] font-semibold text-amber-400 uppercase tracking-wide mb-1">
+                                <div className="text-[11px] font-semibold text-warning uppercase tracking-wide mb-1">
                                   Taxes
                                 </div>
                                 <ul className="space-y-0.5">
@@ -1266,7 +1266,7 @@ img{display:block;margin:8px auto}
                             changeQty(l.variant.id, delta);
                           }
                         }}
-                        className="w-14 rounded bg-card px-1.5 py-1 text-center text-sm tabular-nums border border-border focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-14 rounded bg-card px-1.5 py-1 text-center text-sm tabular-nums border border-border focus:outline-none focus:ring-1 focus:ring-success"
                       />
                     <button
                       onClick={() => changeQty(l.variant.id, +1)}
@@ -1276,7 +1276,7 @@ img{display:block;margin:8px auto}
                     </button>
                     <button
                       onClick={() => removeLine(l.variant.id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-error hover:text-error/80"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1303,7 +1303,7 @@ img{display:block;margin:8px auto}
             >
               {/* Optional error from quote */}
               {quoteError && (
-                <div className="mb-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
+                <div className="mb-2 rounded-md border border-error/30 bg-error/10 px-3 py-2 text-error">
                   {quoteError}
                 </div>
               )}
@@ -1350,28 +1350,28 @@ img{display:block;margin:8px auto}
                 <button
                   onClick={() => setShowCash(true)}
                   disabled={paying || cart.length === 0}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2 font-medium hover:bg-green-500 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-success py-2 font-medium hover:bg-success/90 disabled:opacity-50"
                 >
                   <Wallet className="h-4 w-4" /> Cash
                 </button>
                 <button
                   onClick={() => setShowCard(true)}
                   disabled={paying || cart.length === 0}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-info py-2 font-medium hover:bg-info/90 disabled:opacity-50"
                 >
                   <CreditCard className="h-4 w-4" /> Card
                 </button>
                 <button
                   onClick={() => setMsg("Order placed on hold (client-only for now)")}
                   disabled={cart.length === 0}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-yellow-600 py-2 font-medium hover:bg-yellow-500 col-span-2 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-warning py-2 font-medium hover:bg-warning/90 col-span-2 disabled:opacity-50"
                 >
                   <PauseCircle className="h-4 w-4" /> Hold
                 </button>
                 <button
                   onClick={() => { clearCart(); setMsg("Order voided (client-only)"); }}
                   disabled={cart.length === 0}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500 col-span-2 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-error py-2 font-medium hover:bg-error/90 col-span-2 disabled:opacity-50"
                 >
                   <XCircle className="h-4 w-4" /> Void
                 </button>
@@ -1540,7 +1540,7 @@ img{display:block;margin:8px auto}
                       const html = buildReceiptHtml(lastReceipt, lastQR);
                       printHtml(html);
                     }}
-                    className="rounded-lg bg-indigo-600 px-3 py-2 font-medium hover:bg-indigo-500"
+                    className="rounded-lg bg-primary px-3 py-2 font-medium hover:bg-primary/90"
                   >
                     Print
                   </button>
@@ -1598,7 +1598,7 @@ function CashModal({
             <span>Change</span>
             <span className="font-semibold">{m(change)}</span>
           </div>
-          {!canPay && (<div className="text-amber-300 text-sm">Insufficient cash. Total is {m(total)}.</div>)}
+          {!canPay && (<div className="text-warning text-sm">Insufficient cash. Total is {m(total)}.</div>)}
           <div className="pt-2 flex gap-2">
             <button onClick={() => setTendered(toMoney(total))} className="rounded-lg bg-muted px-3 py-2 text-sm">
               Exact {m(total)}
@@ -1611,7 +1611,7 @@ function CashModal({
         <div className="flex justify-end gap-2 border-t border-border p-4">
           <button onClick={onClose} className="rounded-lg px-4 py-2 bg-muted hover:bg-muted">Cancel</button>
           <button onClick={() => canPay && onSubmit(amount)} disabled={!canPay}
-            className="rounded-lg px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50">
+            className="rounded-lg px-4 py-2 bg-success hover:bg-success/90 disabled:opacity-50">
             Take Cash
           </button>
         </div>
@@ -1676,7 +1676,7 @@ function CardModal({
         <div className="flex justify-end gap-2 border-t border-border p-4">
           <button onClick={onClose} className="rounded-lg px-4 py-2 bg-muted hover:bg-muted">Cancel</button>
           <button onClick={() => canPay && onSubmit({ brand, last4, auth, reference })}
-            disabled={!canPay} className="rounded-lg px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50">
+            disabled={!canPay} className="rounded-lg px-4 py-2 bg-info hover:bg-info/90 disabled:opacity-50">
             Charge Card
           </button>
         </div>
@@ -1806,7 +1806,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
             className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           {errorMsg && (
-            <div className="rounded-md border border-red-500/40 bg-red-900/20 px-3 py-2 text-xs text-red-200">
+            <div className="rounded-md border border-error/40 bg-error/20 px-3 py-2 text-xs text-error-foreground">
               {errorMsg}
             </div>
           )}
@@ -1864,7 +1864,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
                 />
               </div>
               {createError && (
-                <div className="text-xs text-red-300">
+                <div className="text-xs text-error">
                   {createError}
                 </div>
               )}
@@ -1872,7 +1872,7 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ open, onClose, onSelect }
                 <button
                   type="submit"
                   disabled={creating}
-                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                  className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-success-foreground hover:bg-success/90 disabled:opacity-50"
                 >
                   {creating ? "Creating…" : "Create & select"}
                 </button>

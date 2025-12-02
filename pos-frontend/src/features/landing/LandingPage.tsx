@@ -140,7 +140,7 @@ export default function LandingPage() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="text-lg font-medium text-foreground transition hover:text-emerald-400"
+                className="text-lg font-medium text-foreground transition hover:text-success"
               >
                 {link.label}
               </a>
@@ -148,7 +148,7 @@ export default function LandingPage() {
             <div className="mt-6 flex flex-col gap-3">
               <Link
                 to="/signup"
-                className="rounded-full bg-emerald-500 px-6 py-3 text-center font-semibold text-foreground transition hover:bg-emerald-400"
+                className="rounded-full bg-success px-6 py-3 text-center font-semibold text-success-foreground transition hover:bg-success/90"
                 onClick={() => setMobileOpen(false)}
               >
                 Create account
@@ -181,7 +181,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 to="/signup"
-                className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-foreground transition hover:bg-emerald-400"
+                className="rounded-full bg-success px-5 py-2 text-sm font-semibold text-success-foreground transition hover:bg-success/90"
               >
                 Create account
               </Link>
@@ -190,7 +190,7 @@ export default function LandingPage() {
 
           <div className="mt-16 grid gap-12 lg:grid-cols-[3fr_2fr] lg:items-center">
             <div className="max-w-2xl space-y-6">
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-500/30">
+              <span className="inline-flex items-center gap-2 rounded-full bg-badge-success-bg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-badge-success-text ring-1 ring-success/30">
                 <ShieldCheck className="h-4 w-4" /> Retail-ready POS + owner HQ
               </span>
               <h1 className="text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl">
@@ -203,7 +203,7 @@ export default function LandingPage() {
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
                   to="/signup"
-                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-7 py-3.5 font-semibold text-foreground shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5 hover:bg-emerald-400"
+                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-success px-7 py-3.5 font-semibold text-success-foreground shadow-lg shadow-success/30 transition-all hover:-translate-y-0.5 hover:bg-success/90"
                 >
                   Start a free trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
@@ -217,7 +217,7 @@ export default function LandingPage() {
             </div>
 
             <div className="rounded-3xl border border-border bg-gradient-to-br from-white/8 to-white/2 p-8 shadow-2xl backdrop-blur-xl">
-              <p className="mb-6 text-xs uppercase tracking-widest text-emerald-400">Trusted metrics</p>
+              <p className="mb-6 text-xs uppercase tracking-widest text-success">Trusted metrics</p>
               <div className="grid grid-cols-3 gap-4">
                 {proof.map((item) => (
                   <div
@@ -229,7 +229,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <blockquote className="mt-6 rounded-xl border-l-4 border-emerald-500/50 bg-muted/50 p-5 text-sm italic text-muted-foreground">
+              <blockquote className="mt-6 rounded-xl border-l-4 border-success/50 bg-muted/50 p-5 text-sm italic text-muted-foreground">
                 <p>“POS Stack gives every associate the same playbook and lets me run the business from anywhere.”</p>
                 <footer className="mt-2 text-xs uppercase tracking-widest text-muted-foreground">
                   — Retail leadership survey
@@ -243,7 +243,7 @@ export default function LandingPage() {
       {/* Features */}
       <section id="features" className="mx-auto max-w-7xl px-6 py-20">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-widest text-emerald-400">Built for modern retail</p>
+          <p className="text-xs uppercase tracking-widest text-success">Built for modern retail</p>
           <h2 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">
             Everything teams need, nothing they don’t.
           </h2>
@@ -256,9 +256,9 @@ export default function LandingPage() {
           {features.map((f) => (
             <div
               key={f.title}
-              className="group rounded-2xl border border-border bg-muted p-8 backdrop-blur transition-all hover:border-emerald-500/30 hover:bg-muted"
+              className="group rounded-2xl border border-border bg-muted p-8 backdrop-blur transition-all hover:border-success/30 hover:bg-muted"
             >
-              <f.icon className="h-12 w-12 text-emerald-400 transition-transform group-hover:scale-110" />
+              <f.icon className="h-12 w-12 text-success transition-transform group-hover:scale-110" />
               <h3 className="mt-5 text-xl font-semibold text-foreground">{f.title}</h3>
               <p className="mt-3 text-sm text-muted-foreground">{f.copy}</p>
             </div>
@@ -271,7 +271,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
-              <p className="text-xs uppercase tracking-widest text-emerald-400">How it works</p>
+              <p className="text-xs uppercase tracking-widest text-success">How it works</p>
               <h2 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">
                 From sale to stock, every moment stays connected.
               </h2>
@@ -284,9 +284,9 @@ export default function LandingPage() {
                 {flows.map((flow) => (
                   <div
                     key={flow.title}
-                    className="flex gap-5 rounded-2xl border border-border bg-muted p-6 backdrop-blur transition hover:border-emerald-500/30"
+                    className="flex gap-5 rounded-2xl border border-border bg-muted p-6 backdrop-blur transition hover:border-success/30"
                   >
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-badge-success-bg text-badge-success-text">
                       <flow.icon className="h-8 w-8" />
                     </div>
                     <div>
@@ -304,7 +304,7 @@ export default function LandingPage() {
                 {testimonials.map((t, i) => (
                   <div key={i} className={i > 0 ? "pt-8" : ""}>
                     <blockquote className="text-base italic text-foreground">“{t.quote}”</blockquote>
-                    <p className="mt-4 text-xs uppercase tracking-widest text-emerald-400">
+                    <p className="mt-4 text-xs uppercase tracking-widest text-success">
                       {t.author} · {t.role}
                     </p>
                   </div>
@@ -318,7 +318,7 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="mx-auto max-w-7xl px-6 py-20">
         <div className="text-center">
-          <p className="text-xs uppercase tracking-widest text-emerald-400">Simple pricing</p>
+          <p className="text-xs uppercase tracking-widest text-success">Simple pricing</p>
           <h2 className="mt-3 text-3xl font-bold text-foreground sm:text-4xl">Scale up without surprise fees.</h2>
         </div>
 
@@ -328,7 +328,7 @@ export default function LandingPage() {
               key={tier}
               className={`rounded-2xl border p-8 transition-all ${
                 i === 1
-                  ? "border-emerald-500/50 bg-emerald-500/10 shadow-2xl shadow-emerald-500/20"
+                  ? "border-success/50 bg-success/10 shadow-2xl shadow-success/20"
                   : "border-border bg-muted backdrop-blur hover:border-border/40"
               }`}
             >
@@ -347,7 +347,7 @@ export default function LandingPage() {
                 to={i === 2 ? "/contact" : "/signup"}
                 className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${
                   i === 1
-                    ? "bg-emerald-500 text-foreground hover:bg-emerald-400"
+                    ? "bg-success text-success-foreground hover:bg-success/90"
                     : "bg-muted text-foreground ring-1 ring-border/30 hover:bg-muted/80"
                 }`}
               >
@@ -366,11 +366,11 @@ export default function LandingPage() {
             {faqs.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-2xl border border-border bg-muted p-6 backdrop-blur transition hover:border-emerald-500/30"
+                className="group rounded-2xl border border-border bg-muted p-6 backdrop-blur transition hover:border-success/30"
               >
                 <summary className="flex cursor-pointer items-center justify-between text-lg font-semibold text-foreground">
                   {item.q}
-                  <ChevronRight className="h-5 w-5 text-emerald-400 transition-transform group-open:rotate-90" />
+                  <ChevronRight className="h-5 w-5 text-success transition-transform group-open:rotate-90" />
                 </summary>
                 <p className="mt-4 text-sm text-muted-foreground">{item.a}</p>
               </details>
@@ -392,7 +392,7 @@ export default function LandingPage() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 py-3 font-semibold text-foreground transition hover:bg-emerald-400"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-success px-6 py-3 font-semibold text-success-foreground transition hover:bg-success/90"
               >
                 Create account
               </Link>

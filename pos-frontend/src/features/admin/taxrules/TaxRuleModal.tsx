@@ -327,7 +327,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         </div>
 
         <div className="p-4 space-y-3">
-          {topErr ? <div className="rounded-md border border-red-600 bg-red-900/40 text-red-100 px-3 py-2 text-sm">{topErr}</div> : null}
+          {topErr ? <div className="rounded-md border border-error bg-error/40 text-error-foreground px-3 py-2 text-sm">{topErr}</div> : null}
 
           {step === 1 && (
             <div className="grid grid-cols-2 gap-4">
@@ -425,7 +425,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       placeholder="0.0000"
                       className={`w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none ${rateErr ? "ring-1 ring-destructive" : ""}`}
                     />
-                    <p className={`text-xs mt-1 ${rateErr ? "text-red-400" : "text-muted-foreground"}`}>
+                    <p className={`text-xs mt-1 ${rateErr ? "text-error" : "text-muted-foreground"}`}>
                       {rateErr || "Percent as fraction (e.g., 8.25% → 0.0825). You can type 8.25; we’ll save 0.0825."}
                     </p>
                   </div>
@@ -440,7 +440,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
                       placeholder="0.00"
                       className={`w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none ${amountErr ? "ring-1 ring-destructive" : ""}`}
                     />
-                    <p className={`text-xs mt-1 ${amountErr ? "text-red-400" : "text-muted-foreground"}`}>
+                    <p className={`text-xs mt-1 ${amountErr ? "text-error" : "text-muted-foreground"}`}>
                       {amountErr || "Fixed currency amount (e.g., 2.00)."}
                     </p>
                   </div>
@@ -515,7 +515,7 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
               {" • "}
               Prio <span className="text-muted-foreground">{priority || 0}</span>
               {" • "}
-              {isActive ? <span className="text-emerald-300">Active</span> : <span className="text-muted-foreground">Inactive</span>}
+              {isActive ? <span className="text-success">Active</span> : <span className="text-muted-foreground">Inactive</span>}
               {" • "}
               <span className="text-muted-foreground">{windowLabel}</span>
               {" • "}
@@ -541,12 +541,12 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
             )}
             {step === 1 ? (
               <button onClick={next}
-                      className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+                      className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground">
                 Next
               </button>
             ) : (
               <button onClick={save} disabled={saving}
-                      className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+                      className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground">
                 {saving ? "Saving…" : isEdit ? "Save" : "Create"}
               </button>
             )}

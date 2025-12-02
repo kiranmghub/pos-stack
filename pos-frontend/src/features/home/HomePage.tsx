@@ -119,7 +119,7 @@ export default function HomePage() {
                   isDark ? "bg-muted/20 text-muted-foreground border-border/70" : "bg-muted text-muted-foreground border-border"
                 )}
               >
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
+                <ShieldCheck className="h-3.5 w-3.5 text-success" />
                 Tenant <span className="font-semibold text-foreground">{tenantCode}</span>
               </div>
             ) : null}
@@ -127,9 +127,7 @@ export default function HomePage() {
               <div
                 className={cn(
                   "mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs border",
-                  isDark
-                    ? "bg-amber-500/10 text-amber-200 border-amber-400/30"
-                    : "bg-amber-50 text-amber-900 border-amber-200"
+                  "bg-badge-warning-bg text-badge-warning-text border-warning/30"
                 )}
               >
                 <Flag className="h-3.5 w-3.5" />
@@ -138,7 +136,7 @@ export default function HomePage() {
                   to="/onboarding"
                   className={cn(
                     "underline ml-2",
-                    isDark ? "text-amber-100 hover:text-white" : "text-amber-700 hover:text-amber-900"
+                    isDark ? "text-warning hover:text-foreground" : "text-warning hover:text-warning/80"
                   )}
                 >
                   Continue
@@ -173,7 +171,7 @@ export default function HomePage() {
                 >
                   <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{metric.label}</div>
                   <div className="text-lg font-semibold text-foreground">{metric.value}</div>
-                  <div className="text-xs font-semibold text-emerald-500">{metric.change}</div>
+                  <div className="text-xs font-semibold text-success">{metric.change}</div>
                 </div>
               ))}
             </div>

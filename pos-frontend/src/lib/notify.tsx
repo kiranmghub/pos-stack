@@ -7,10 +7,10 @@ type Kind = "success" | "error" | "info" | "warn";
 type PushArgs = { kind: Kind; msg: string; duration?: number };
 
 const styleByKind: Record<Kind, string> = {
-  success: "bg-emerald-900/80 border border-emerald-600 text-emerald-50",
-  error:   "bg-red-900/80 border border-red-600 text-red-50",
-  info:    "bg-muted/80 border border-border text-foreground",
-  warn:    "bg-amber-900/80 border border-amber-600 text-amber-50",
+  success: "bg-success/80 border border-success text-success-foreground",
+  error:   "bg-error/80 border border-error text-error-foreground",
+  info:    "bg-info/80 border border-info text-info-foreground",
+  warn:    "bg-warning/80 border border-warning text-warning-foreground",
 };
 
 const iconByKind: Record<Kind, React.ReactNode> = {

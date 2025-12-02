@@ -147,7 +147,7 @@ export default function StoreModal({ open, onClose, onSaved, editing }: Props) {
 
         <div className="flex items-center justify-end gap-2 border-t border-border p-3">
           <button onClick={onClose} disabled={saving} className="px-3 py-1.5 rounded-md bg-muted hover:bg-muted text-foreground">Cancel</button>
-          <button onClick={submit} disabled={saving} className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">
+          <button onClick={submit} disabled={saving} className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground">
             {saving ? "Saving…" : isEdit ? "Save" : "Create"}
           </button>
         </div>

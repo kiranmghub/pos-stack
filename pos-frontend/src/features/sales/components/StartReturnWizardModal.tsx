@@ -7,7 +7,7 @@ type RefundLine = { method: "CASH" | "CARD" | "STORE_CREDIT" | "OTHER"; amount: 
 function StepPill({ n, active, label }: { n: number; active: boolean; label: string }) {
     return (
         <div className={`flex items-center gap-2 text-xs ${active ? "text-white" : "text-muted-foreground"}`}>
-            <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-blue-600" : "bg-muted"}`}>{n}</div>
+            <div className={`h-5 w-5 rounded-full grid place-items-center ${active ? "bg-primary" : "bg-muted"}`}>{n}</div>
             <div>{label}</div>
         </div>
     );
@@ -354,14 +354,14 @@ export default function StartReturnWizardModal({
                                                             </div>
                                                             <div className="text-center">
                                                                 <div className="text-muted-foreground uppercase">Returned</div>
-                                                                <div className="tabular-nums text-amber-300 font-medium">
+                                                                <div className="tabular-nums text-warning font-medium">
                                                                     {returned}
                                                                 </div>
                                                             </div>
                                                             <div className="text-center">
                                                                 <div className="text-muted-foreground uppercase">Remaining</div>
                                                                 <div
-                                                                    className={`tabular-nums font-medium ${remaining === 0 ? "text-red-400" : "text-emerald-300"
+                                                                    className={`tabular-nums font-medium ${remaining === 0 ? "text-error" : "text-success"
                                                                         }`}
                                                                 >
                                                                     {remaining}
@@ -419,10 +419,10 @@ export default function StartReturnWizardModal({
                                                             Subtotal <span className="text-foreground">{safeMoney(ln.line_subtotal)}</span>
                                                         </span>
                                                         <span className="mr-2">
-                                                            Discount <span className="text-amber-300">-{safeMoney(ln.discount || 0)}</span>
+                                                            Discount <span className="text-warning">-{safeMoney(ln.discount || 0)}</span>
                                                         </span>
                                                         <span className="mr-2">
-                                                            Tax <span className="text-blue-300">{safeMoney(ln.tax || 0)}</span>
+                                                            Tax <span className="text-info">{safeMoney(ln.tax || 0)}</span>
                                                         </span>
                                                         <span>
                                                             Total <span className="text-foreground">{safeMoney(ln.line_total)}</span>
@@ -440,8 +440,8 @@ export default function StartReturnWizardModal({
                                                     <div className="grid grid-cols-5 gap-2 text-center mt-1">
                                                         <div className="tabular-nums text-foreground">{safeMoney(ln.unit_price)}</div>
                                                         <div className="tabular-nums text-foreground">{safeMoney(ln.line_subtotal)}</div>
-                                                        <div className="tabular-nums text-amber-300">-{safeMoney(ln.discount || 0)}</div>
-                                                        <div className="tabular-nums text-blue-300">{safeMoney(ln.tax || 0)}</div>
+                                                        <div className="tabular-nums text-warning">-{safeMoney(ln.discount || 0)}</div>
+                                                        <div className="tabular-nums text-info">{safeMoney(ln.tax || 0)}</div>
                                                         <div className="tabular-nums text-foreground">{safeMoney(ln.line_total)}</div>
                                                     </div>
                                                     </div> */}
@@ -453,7 +453,7 @@ export default function StartReturnWizardModal({
                                                             {/* Reason */}
                                                             <label className="text-xs block">
                                                                 <span className="mb-1 block text-muted-foreground">
-                                                                    Reason<span className="text-red-400">*</span>
+                                                                    Reason<span className="text-error">*</span>
                                                                 </span>
                                                                 <select
                                                                     value={lineReason[ln.id] || ""}
@@ -472,7 +472,7 @@ export default function StartReturnWizardModal({
                                                                     ref={(el) => {
                                                                         reasonRefs.current[ln.id] = el;
                                                                     }}
-                                                                    className={`w-full rounded-md border bg-card px-2 py-1.5 text-sm text-foreground ${qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-red-600" : "border-border"
+                                                                    className={`w-full rounded-md border bg-card px-2 py-1.5 text-sm text-foreground ${qty > 0 && !(lineReason[ln.id]?.trim()) ? "border-error" : "border-border"
                                                                         }`}
                                                                 >
                                                                     <option value="">Select a reason…</option>
@@ -567,7 +567,7 @@ export default function StartReturnWizardModal({
                                 {/* Right: help / policy / quick actions */}
                                 <div className="space-y-3">
                                     {/* Policy note with (i) hover/focus info */}
-                                    <div className="rounded-lg border border-amber-600/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 relative">
+                                    <div className="rounded-lg border border-warning/30 bg-badge-warning-bg px-3 py-2 text-xs text-badge-warning-text relative">
                                         <div className="flex items-start gap-2">
                                             <span>
                                                 Reason is required for each returned line. Notes are optional (max 250 chars).
@@ -579,7 +579,7 @@ export default function StartReturnWizardModal({
                                             >
                                                 <button
                                                     type="button"
-                                                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-600/20 text-amber-200"
+                                                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-badge-warning-bg text-badge-warning-text"
                                                     aria-haspopup="dialog"
                                                     aria-expanded="false"
                                                 >
@@ -626,7 +626,7 @@ export default function StartReturnWizardModal({
                                                         return next;
                                                     });
                                                 }}
-                                                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                                                className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                                             >
                                                 Copy reason to selected
                                             </button>
@@ -668,7 +668,7 @@ export default function StartReturnWizardModal({
                                                     });
                                                 }}
                                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${restockAll
-                                                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40"
+                                                        ? "bg-badge-success-bg text-badge-success-text border border-success/40"
                                                         : "bg-muted text-muted-foreground border border-border"
                                                     } disabled:opacity-50`}
                                             >
@@ -685,7 +685,7 @@ export default function StartReturnWizardModal({
                                             onClick={() => setShowSelectedOnly((prev) => !prev)}
                                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                                             showSelectedOnly
-                                                ? "bg-blue-600/30 text-blue-200 border border-blue-500/60"
+                                                ? "bg-badge-primary-bg text-badge-primary-text border border-primary/60"
                                                 : "bg-muted text-muted-foreground border border-border"
                                             } disabled:opacity-50`}
                                         >
@@ -700,19 +700,19 @@ export default function StartReturnWizardModal({
                                     <div className="text-xs text-muted-foreground font-medium">Legend</div>
                                     <div className="flex items-center justify-between">
                                         <span className="flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                                        <span className="h-2 w-2 rounded-full bg-success" />
                                         Remaining / OK
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                                        <span className="h-2 w-2 rounded-full bg-warning" />
                                         Discount / warning
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-full bg-blue-400" />
+                                        <span className="h-2 w-2 rounded-full bg-info" />
                                         Tax amounts
                                         </span>
                                     </div>
@@ -732,7 +732,7 @@ export default function StartReturnWizardModal({
                                 <button
                                     disabled={busy || totalSelected === 0}
                                     onClick={handleSaveItems}
-                                    className="rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white"
+                                    className="rounded-md bg-primary hover:bg-primary/90 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-primary-foreground"
                                 >
                                     Save & Continue
                                 </button>
@@ -782,8 +782,8 @@ export default function StartReturnWizardModal({
                                                     {/* NEW: original line context */}
                                                     <div className="mt-1 text-[11px] text-muted-foreground">
                                                         Original: Subtotal {safeMoney(it.original_subtotal)}
-                                                        {" • "}Discount <span className="text-amber-300">-{safeMoney(it.original_discount || 0)}</span>
-                                                        {" • "}Tax <span className="text-blue-300">{safeMoney(it.original_tax || 0)}</span>
+                                                        {" • "}Discount <span className="text-warning">-{safeMoney(it.original_discount || 0)}</span>
+                                                        {" • "}Tax <span className="text-info">{safeMoney(it.original_tax || 0)}</span>
                                                         {" • "}Total <span className="text-foreground">{safeMoney(it.original_total)}</span>
                                                         {" • "}Qty {it.original_quantity}
                                                     </div>
@@ -796,7 +796,7 @@ export default function StartReturnWizardModal({
                                                         of {it.original_quantity}
                                                     </div>
                                                 </div>
-                                                <div className="text-center tabular-nums text-blue-300">
+                                                <div className="text-center tabular-nums text-info">
                                                     {safeMoney(it.refund_tax || 0)}
                                                 </div>
                                                 <div className="text-center tabular-nums text-foreground font-medium">
@@ -804,7 +804,7 @@ export default function StartReturnWizardModal({
                                                 </div>
                                                 {/*                                                 
                                                 <div className="text-center tabular-nums text-foreground">{it.qty_returned}</div>
-                                                <div className="text-center tabular-nums text-blue-300">{safeMoney(it.refund_tax || 0)}</div>
+                                                <div className="text-center tabular-nums text-info">{safeMoney(it.refund_tax || 0)}</div>
                                                 <div className="text-center tabular-nums text-foreground font-medium">{safeMoney(it.refund_total || 0)}</div> */}
                                             </div>
                                         ))}
@@ -813,7 +813,7 @@ export default function StartReturnWizardModal({
                                     {/* <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-border text-sm">
                                         <div className="text-muted-foreground">Totals</div>
                                         <div />
-                                        <div className="text-center tabular-nums text-blue-300">
+                                        <div className="text-center tabular-nums text-info">
                                             {safeMoney(reviewItems.reduce((s, it) => s + Number(it.refund_tax || 0), 0))}
                                         </div>
                                         <div className="text-center tabular-nums text-white font-semibold">
@@ -824,7 +824,7 @@ export default function StartReturnWizardModal({
                                     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 px-3 py-2 border-t border-border text-sm">
                                         <div className="text-muted-foreground">Totals (this return)</div>
                                         <div />
-                                        <div className="text-center tabular-nums text-blue-300">
+                                        <div className="text-center tabular-nums text-info">
                                             {safeMoney(returnTotals?.tax ?? 0)}  {/* from updated.refund_tax_total */}
                                         </div>
                                         <div className="text-center tabular-nums text-white font-semibold">
@@ -911,14 +911,14 @@ export default function StartReturnWizardModal({
 
                                         <div className="mt-1 flex items-center justify-between">
                                             <div className="text-muted-foreground">Methods sum</div>
-                                            <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-emerald-300" : "text-amber-300"}`}>
+                                            <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-success" : "text-warning"}`}>
                                                 {safeMoney(sumRefunds())}
                                             </div>
                                         </div>
 
                                         <div className="mt-1 flex items-center justify-between">
                                             <div className="text-muted-foreground">Remaining</div>
-                                            <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-emerald-300" : "text-amber-300"}`}>
+                                            <div className={`tabular-nums ${remainingToAllocate === 0 ? "text-success" : "text-warning"}`}>
                                                 {safeMoney(remainingToAllocate)}
                                             </div>
                                         </div>
@@ -934,7 +934,7 @@ export default function StartReturnWizardModal({
                                 <button
                                     disabled={busy}
                                     onClick={handleFinalize}
-                                    className="rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white"
+                                    className="rounded-md bg-success hover:bg-success/90 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-success-foreground"
                                 >
                                     Finalize return
                                 </button>

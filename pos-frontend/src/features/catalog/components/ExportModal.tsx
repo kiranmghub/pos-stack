@@ -226,7 +226,7 @@ export default function ExportModal({
           </label>
 
           {error && (
-            <div className="text-sm text-red-300 border border-red-900/40 bg-red-900/30 rounded-md px-3 py-2">
+            <div className="text-sm text-error-foreground border border-error/40 bg-error/30 rounded-md px-3 py-2">
               {error}
             </div>
           )}

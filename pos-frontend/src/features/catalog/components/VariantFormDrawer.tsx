@@ -483,7 +483,7 @@ React.useEffect(() => {
           <div className="flex gap-2">
             {isView && (
               <button
-                className="rounded-lg px-3 py-1 text-sm text-indigo-300 hover:bg-indigo-600/10"
+                className="rounded-lg px-3 py-1 text-sm text-primary hover:bg-primary/10"
                 onClick={() => setMode("edit")}
               >
                 Edit
@@ -498,7 +498,7 @@ React.useEffect(() => {
 
         <form className="h-[calc(100%-56px)] overflow-y-auto p-4 space-y-6" onSubmit={handleSubmit}>
           {errors._non_field && (
-            <div className="rounded-md border border-red-600 bg-red-950/50 p-2 text-sm text-red-200">
+            <div className="rounded-md border border-error bg-error/50 p-2 text-sm text-error-foreground">
               {errors._non_field}
             </div>
           )}
@@ -635,7 +635,7 @@ React.useEffect(() => {
               <input
                 ref={nameInputRef}
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                  errors.name ? "border-red-500" : "border-border"
+                  errors.name ? "border-error" : "border-border"
                 }`}
                 value={form.name}
                 onChange={(e) => {
@@ -644,7 +644,7 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              {errors.name && <div className="mt-1 text-xs text-red-400">{errors.name}</div>}
+              {errors.name && <div className="mt-1 text-xs text-error">{errors.name}</div>}
             </div>
 
             <div>
@@ -654,7 +654,7 @@ React.useEffect(() => {
                 {!isView && (
                   <button
                     type="button"
-                    className="text-xs text-indigo-300 hover:text-indigo-200"
+                    className="text-xs text-primary hover:text-primary/80"
                     onClick={async () => {
                       try {
                         const r = await generateVariantSku(form.product as any, form.name || "");
@@ -668,7 +668,7 @@ React.useEffect(() => {
               </div>
               <input
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                  errors.sku ? "border-red-500" : "border-border"
+                  errors.sku ? "border-error" : "border-border"
                 }`}
                 value={form.sku || ""}
                 onChange={(e) => {
@@ -678,7 +678,7 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              {errors.sku && <div className="mt-1 text-xs text-red-400">{errors.sku}</div>}
+              {errors.sku && <div className="mt-1 text-xs text-error">{errors.sku}</div>}
             </div>
 
             <div>
@@ -688,7 +688,7 @@ React.useEffect(() => {
                 {!isView && (
                   <button
                     type="button"
-                    className="text-xs text-indigo-300 hover:text-indigo-200"
+                    className="text-xs text-primary hover:text-primary/80"
                     onClick={async () => {
                       try {
                         const r = await generateBarcode(); // backend decides type by tenant config
@@ -702,7 +702,7 @@ React.useEffect(() => {
               </div>
               <input
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                  errors.barcode ? "border-red-500" : "border-border"
+                  errors.barcode ? "border-error" : "border-border"
                 }`}
                 value={form.barcode || ""}
                 onChange={(e) => {
@@ -711,7 +711,7 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              {errors.barcode && <div className="mt-1 text-xs text-red-400">{errors.barcode}</div>}
+              {errors.barcode && <div className="mt-1 text-xs text-error">{errors.barcode}</div>}
               {/* {form.barcode ? (
                 // <div className="mt-2 inline-block rounded-md bg-white/90 p-2 shadow-md">
                 //   <canvas ref={barcodeCanvasRef}/>
@@ -752,7 +752,7 @@ React.useEffect(() => {
                 type="number"
                 step="0.01"
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                  errors.cost ? "border-red-500" : "border-border"
+                  errors.cost ? "border-error" : "border-border"
                 }`}
                 value={form.cost ?? 0}
                 onChange={(e) => {
@@ -771,7 +771,7 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              {errors.cost && <div className="mt-1 text-xs text-red-400">{errors.cost}</div>}
+              {errors.cost && <div className="mt-1 text-xs text-error">{errors.cost}</div>}
               <p className="mt-1 text-xs text-muted-foreground">Enter cost first; margin % is optional.</p>
             </div>
 
@@ -781,7 +781,7 @@ React.useEffect(() => {
                 type="number"
                 step="0.01"
                 className={`w-full rounded-xl border px-3 py-2 text-sm bg-card text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40 ${
-                  errors.margin_percentage ? "border-red-500" : "border-border"
+                  errors.margin_percentage ? "border-error" : "border-border"
                 }`}
                 value={form.margin_percentage ?? ""}
                 onChange={(e) => {
@@ -803,7 +803,7 @@ React.useEffect(() => {
                 }}
                 disabled={isView}
               />
-              {errors.margin_percentage && <div className="mt-1 text-xs text-red-400">{errors.margin_percentage}</div>}
+              {errors.margin_percentage && <div className="mt-1 text-xs text-error">{errors.margin_percentage}</div>}
             </div>
 
             <div>
@@ -974,7 +974,7 @@ React.useEffect(() => {
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {isEdit ? "Save Changes" : "Create Variant"}
               </button>

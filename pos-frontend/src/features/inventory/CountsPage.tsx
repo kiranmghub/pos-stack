@@ -300,7 +300,7 @@ async function onScanSubmit(e: React.FormEvent) {
               <div className="flex-1" />
               <button
                 onClick={onCreate}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-1.5 hover:bg-indigo-500 shrink-0 min-w-[88px]"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 hover:bg-primary/90 shrink-0 min-w-[88px]"
               >
                 <FilePlus2 className="h-4 w-4" /> New
               </button>
@@ -344,9 +344,9 @@ async function onScanSubmit(e: React.FormEvent) {
                   </div>
                   <div className="text-xs mt-1">
                     {r.status === "FINALIZED" ? (
-                      <span className="text-emerald-300">Finalized</span>
+                      <span className="text-success">Finalized</span>
                     ) : r.status === "IN_PROGRESS" ? (
-                      <span className="text-amber-300">In Progress</span>
+                      <span className="text-warning">In Progress</span>
                     ) : (
                       <span className="text-muted-foreground">Draft</span>
                     )}
@@ -392,11 +392,11 @@ async function onScanSubmit(e: React.FormEvent) {
                     <ClipboardList className="h-5 w-5 text-muted-foreground" />
                     <div className="font-semibold">Count #{session.id}</div>
                     {session.status === "FINALIZED" ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-300">
+                      <span className="inline-flex items-center gap-1 text-success">
                         <CheckCircle2 className="h-4 w-4" /> Finalized
                       </span>
                     ) : session.status === "IN_PROGRESS" ? (
-                      <span className="inline-flex items-center gap-1 text-amber-300">
+                      <span className="inline-flex items-center gap-1 text-warning">
                         <Boxes className="h-4 w-4" /> In Progress
                       </span>
                     ) : (
@@ -409,7 +409,7 @@ async function onScanSubmit(e: React.FormEvent) {
                     {session.status !== "FINALIZED" && (
                       <button
                         onClick={onFinalize}
-                        className="inline-flex items-center gap-2 rounded bg-emerald-600 px-3 py-1.5 hover:bg-emerald-500"
+                        className="inline-flex items-center gap-2 rounded bg-success px-3 py-1.5 hover:bg-success/90"
                       >
                         <Check className="h-4 w-4" /> Finalize
                       </button>
@@ -494,7 +494,7 @@ async function onScanSubmit(e: React.FormEvent) {
                       placeholder="Location/bin"
                       className="rounded bg-muted px-3 py-2"
                     />
-                    <button className="rounded bg-indigo-600 hover:bg-indigo-500 px-3 py-2">Add</button>
+                    <button className="rounded bg-primary hover:bg-primary/90 px-3 py-2">Add</button>
                   </form>
                 )}
               </div>
@@ -537,7 +537,7 @@ async function onScanSubmit(e: React.FormEvent) {
                           </td>
                           <td
                             className={`px-3 py-2 text-right ${
-                              delta !== 0 ? "text-amber-300" : "text-muted-foreground"
+                              delta !== 0 ? "text-warning" : "text-muted-foreground"
                             }`}
                           >
                             {delta}

@@ -56,7 +56,7 @@ function StatCard({
   icon: React.ReactNode;
   accent?: string;
 }) {
-  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-emerald-300" : delta < 0 ? "text-rose-300" : "text-muted-foreground";
+  const deltaColor = delta === undefined ? "" : delta > 0 ? "text-success" : delta < 0 ? "text-error" : "text-muted-foreground";
   const deltaSign = delta === undefined ? "" : delta > 0 ? "▲" : delta < 0 ? "▼" : "■";
   const deltaText = delta === undefined ? "" : `${deltaSign} ${Math.abs(delta).toFixed(1)}% vs prev`;
   return (
@@ -213,7 +213,7 @@ export default function MetricsPage() {
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-error-foreground">
             {error}
           </div>
         )}
@@ -255,8 +255,8 @@ export default function MetricsPage() {
                         ? ((metrics.otp.sent - metrics.otp.prev_sent) / metrics.otp.prev_sent) * 100
                         : undefined
                     }
-                    icon={<ShieldAlert className="h-5 w-5 text-amber-200" />}
-                    accent="from-amber-500 to-yellow-500"
+                    icon={<ShieldAlert className="h-5 w-5 text-warning" />}
+                    accent="from-warning to-warning/80"
                   />
                   <StatCard
                     title="Signup completes"
@@ -267,8 +267,8 @@ export default function MetricsPage() {
                         ? ((metrics.signup.complete - metrics.signup.prev_total) / metrics.signup.prev_total) * 100
                         : undefined
                     }
-                    icon={<Activity className="h-5 w-5 text-emerald-200" />}
-                    accent="from-emerald-500 to-teal-500"
+                    icon={<Activity className="h-5 w-5 text-success" />}
+                    accent="from-success to-success/80"
                   />
                   <StatCard
                     title="Subscriptions created"
@@ -279,8 +279,8 @@ export default function MetricsPage() {
                         ? ((metrics.subscriptions.created - metrics.subscriptions.prev_total) / metrics.subscriptions.prev_total) * 100
                         : undefined
                     }
-                    icon={<BarChart3 className="h-5 w-5 text-sky-200" />}
-                    accent="from-sky-500 to-indigo-500"
+                    icon={<BarChart3 className="h-5 w-5 text-info" />}
+                    accent="from-info to-info/80"
                   />
                   <StatCard
                     title="Emails"
@@ -291,8 +291,8 @@ export default function MetricsPage() {
                         ? ((metrics.emails.sent - metrics.emails.prev_sent) / metrics.emails.prev_sent) * 100
                         : undefined
                     }
-                    icon={<MailWarning className="h-5 w-5 text-pink-200" />}
-                    accent="from-pink-500 to-rose-500"
+                    icon={<MailWarning className="h-5 w-5 text-error" />}
+                    accent="from-error to-error/80"
                   />
                 </div>
 

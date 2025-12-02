@@ -59,6 +59,7 @@
 // pos-frontend/src/features/admin/AdminPage.tsx
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
+import { SimpleTabs } from "@/components/ui/tabs";
 
 type TabKey =
   | "users"
@@ -121,33 +122,19 @@ export default function AdminPage() {
     window.history.replaceState({}, "", url.toString());
   }, [active]);
 
-  // a11y: aria-current for active button
-  const ariaFor = useMemo<Record<TabKey, "page" | undefined>>(
-    () => Object.fromEntries(tabs.map(t => [t.key, t.key === active ? "page" : undefined])) as Record<
-      TabKey,
-      "page" | undefined
-    >,
-    [active]
-  );
-
   return (
     <div className="p-4 space-y-4">
       {/* Tabs */}
-      <div className="flex items-center gap-2">
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setActive(t.key)}
-            aria-current={ariaFor[t.key]}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm
-              ${active === t.key
-                ? "bg-muted border-border text-white"
-                : "bg-card border-border text-muted-foreground hover:bg-muted/50"}`}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
+      <SimpleTabs
+        variant="default"
+        value={active}
+        onValueChange={(value) => setActive(value as TabKey)}
+        tabs={tabs.map(t => ({
+          value: t.key,
+          label: t.label,
+          icon: t.icon,
+        }))}
+      />
 
       {/* Content (lazy) */}
       <Suspense

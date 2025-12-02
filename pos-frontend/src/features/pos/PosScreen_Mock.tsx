@@ -144,7 +144,7 @@ export default function PosScreen() {
               key={c.id}
               onClick={() => setActiveCat(c.id)}
               className={`rounded-full px-3 py-1 text-sm ${
-                activeCat === c.id ? "bg-indigo-600" : "bg-muted hover:bg-muted"
+                activeCat === c.id ? "bg-primary" : "bg-muted hover:bg-muted"
               }`}
             >
               {c.name}
@@ -183,7 +183,7 @@ export default function PosScreen() {
           <h2 className="flex items-center gap-2 font-semibold">
             <ShoppingCart className="h-5 w-5" /> Cart
           </h2>
-          <button onClick={logout} className="flex items-center gap-1 text-red-400 hover:text-red-300">
+          <button onClick={logout} className="flex items-center gap-1 text-error hover:text-error/80">
             <LogOut className="h-4 w-4" /> Logout
           </button>
         </div>
@@ -218,7 +218,7 @@ export default function PosScreen() {
                 <button onClick={() => changeQty(l.product.id, +1)} className="rounded bg-muted p-1 hover:bg-muted">
                   <Plus className="h-4 w-4" />
                 </button>
-                <button onClick={() => removeLine(l.product.id)} className="text-red-400 hover:text-red-300">
+                <button onClick={() => removeLine(l.product.id)} className="text-error hover:text-error/80">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -243,28 +243,28 @@ export default function PosScreen() {
             <button
               onClick={payCash}
               disabled={paying || cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-2 font-medium hover:bg-green-500 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-success py-2 font-medium hover:bg-success/90 disabled:opacity-50"
             >
               <Wallet className="h-4 w-4" /> Cash
             </button>
             <button
               onClick={payCard}
               disabled={paying || cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary py-2 font-medium hover:bg-primary/90 disabled:opacity-50"
             >
               <CreditCard className="h-4 w-4" /> Card
             </button>
             <button
               onClick={() => setMessage("Order placed on hold")}
               disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-yellow-600 py-2 font-medium hover:bg-yellow-500 col-span-2 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-warning py-2 font-medium hover:bg-warning/90 col-span-2 disabled:opacity-50"
             >
               <PauseCircle className="h-4 w-4" /> Hold
             </button>
             <button
               onClick={() => { clearCart(); setMessage("Order voided"); }}
               disabled={cart.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500 col-span-2 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-lg bg-error py-2 font-medium hover:bg-error/90 col-span-2 disabled:opacity-50"
             >
               <XCircle className="h-4 w-4" /> Void
             </button>

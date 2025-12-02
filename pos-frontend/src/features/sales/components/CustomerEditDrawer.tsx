@@ -355,7 +355,7 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
             type="button"
             onClick={() => handleSubmit()}
             disabled={saving || loading}
-            className="rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="rounded-md bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
             {saving ? "Saving…" : "Save changes"}
         </button>
@@ -363,7 +363,7 @@ export const CustomerEditDrawer: React.FC<CustomerEditDrawerProps> = ({
         <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="rounded-md bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="rounded-md bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
             Edit
         </button>

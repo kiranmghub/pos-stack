@@ -176,7 +176,7 @@ export default function RegistersTab() {
       key: "is_active",
       header: "Active",
       render: (r: Register) => (
-        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-emerald-600/30 text-emerald-200" : "bg-muted/30 text-muted-foreground"}`}>
+        <span className={`px-2 py-0.5 rounded-full text-xs ${r.is_active ? "bg-badge-success-bg text-badge-success-text" : "bg-muted/30 text-muted-foreground"}`}>
           {r.is_active ? "Yes" : "No"}
         </span>
       ),
@@ -187,13 +187,13 @@ export default function RegistersTab() {
       render: (r: Register) => (
         <div className="flex items-center gap-2 justify-end">
           <button
-            className="text-xs text-blue-400 hover:underline"
+            className="text-xs text-info hover:underline"
             onClick={() => { setEditing(r); setCreating(false); }}
           >
             Edit
           </button>
           <button
-            className="text-xs text-red-400 hover:text-red-300"
+            className="text-xs text-error hover:text-error/80"
             onClick={() => setDeleting(r)}
             title="Delete register"
           >
@@ -229,7 +229,7 @@ export default function RegistersTab() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-end">
-            <button className="text-xs text-blue-400 hover:underline"
+            <button className="text-xs text-info hover:underline"
                     onClick={() => { setEditing(r); setCreating(false); }}>
               Edit
             </button>
@@ -281,15 +281,15 @@ export default function RegistersTab() {
           {selectedIds.length > 0 ? (
             <>
               <button disabled={bulkLoading} onClick={() => bulkSetActive(true)}
-                className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white">Activate Selected</button>
+                className="px-2 py-1 rounded-md bg-success hover:bg-success/90 text-success-foreground">Activate Selected</button>
               <button disabled={bulkLoading} onClick={() => bulkSetActive(false)}
-                className="px-2 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-white">Deactivate Selected</button>
+                className="px-2 py-1 rounded-md bg-warning hover:bg-warning/90 text-warning-foreground">Deactivate Selected</button>
               <button onClick={() => setSelectedIds([])}
                 className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
             <button onClick={() => { setEditing(null); setCreating(true); }}
-              className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm">+ New Register</button>
+              className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground text-sm">+ New Register</button>
           )}
         </div>
       </div>

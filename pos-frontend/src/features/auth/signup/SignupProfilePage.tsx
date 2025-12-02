@@ -114,12 +114,12 @@ export default function SignupProfilePage() {
             </div>
           </label>
 
-          {error && <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+          {error && <p className="rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-sm text-error-foreground">{error}</p>}
 
           <button
             type="submit"
             disabled={loading || !tenantName || !firstName || password.length < 6}
-            className="w-full rounded-2xl bg-indigo-600 px-4 py-3 text-center text-sm font-semibold text-foreground shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-2xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Creating..." : "Continue to plans"}
           </button>

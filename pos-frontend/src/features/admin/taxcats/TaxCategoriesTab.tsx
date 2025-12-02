@@ -122,10 +122,10 @@ export default function TaxCategoriesTab() {
       header: "",
       render: (r: TaxCategory) => (
         <div className="flex items-center gap-2 justify-end">
-          <button className="text-xs text-blue-400 hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
+          <button className="text-xs text-info hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>
             Edit
           </button>
-          <button className="text-xs text-red-400 hover:text-red-300" onClick={() => setDeleting(r)}>
+          <button className="text-xs text-error hover:text-error/80" onClick={() => setDeleting(r)}>
             Delete
           </button>
         </div>
@@ -151,7 +151,7 @@ export default function TaxCategoriesTab() {
             </div>
           </div>
           <div className="mt-3 flex items-center justify-end">
-            <button className="text-xs text-blue-400 hover:underline"
+            <button className="text-xs text-info hover:underline"
                     onClick={() => { setEditing(r); setCreating(false); }}>
               Edit
             </button>
@@ -203,7 +203,7 @@ export default function TaxCategoriesTab() {
               <button
                 onClick={() => setBulkOpen(true)}
                 disabled={bulkLoading}
-                className="px-2 py-1 rounded-md bg-red-600 hover:bg-red-500 text-white"
+                className="px-2 py-1 rounded-md bg-error hover:bg-error/90 text-error-foreground"
               >
                 Delete Selected
               </button>
@@ -217,7 +217,7 @@ export default function TaxCategoriesTab() {
           ) : (
             <button
               onClick={() => { setEditing(null); setCreating(true); }}
-              className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm"
+              className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground text-sm"
             >
               + New Tax Category
             </button>
