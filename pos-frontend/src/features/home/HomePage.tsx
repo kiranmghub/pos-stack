@@ -99,6 +99,16 @@ export default function HomePage() {
     fetchOnboardingState().then((res) => setOnboardingStatus(res?.status || null)).catch(() => {});
   }, []);
 
+  // Live date and time state
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
+
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -152,9 +162,9 @@ export default function HomePage() {
               )}
             >
               <Clock className="h-3 w-3" />
-              {new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+              {currentTime.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
               <span className="text-muted-foreground">•</span>
-              {new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+              {currentTime.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
             </div>
             <div className="flex flex-wrap gap-3 justify-start md:justify-end">
               {[

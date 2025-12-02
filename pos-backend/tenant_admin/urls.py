@@ -1,7 +1,7 @@
 # pos-backend/tenant_admin/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import tenant_roles
+from .views import tenant_roles, TenantDetailView, TenantLogoUploadView
 
 from .views import (
     TenantUserViewSet,
@@ -25,4 +25,6 @@ router.register("coupons", CouponViewSet, basename="admin-coupons")
 urlpatterns = [
     path("", include(router.urls)),
     path("roles/tenant", tenant_roles, name="tenant-roles"),
+    path("tenant", TenantDetailView.as_view(), name="tenant-detail"),
+    path("tenant/logo", TenantLogoUploadView.as_view(), name="tenant-logo-upload"),
 ]

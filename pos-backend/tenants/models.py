@@ -12,6 +12,13 @@ def tenant_doc_upload_path(instance, filename):
     return f"tenants/{tenant_code}/docs/{instance.id}.{ext}"
 
 
+def tenant_logo_upload_path(instance, filename):
+    # tenants/<TENANT_CODE>/logo/<tenant_id>.<ext>
+    ext = (filename.rsplit(".", 1)[-1] or "jpg").lower()
+    tenant_code = getattr(instance, "code", None) or f"t{instance.id}"
+    return f"tenants/{tenant_code}/logo/{instance.id}.{ext}"
+
+
 class Tenant(TimeStampedModel):
     """
     Company / brand. Other tables FK to this (via 'tenant').
@@ -40,6 +47,7 @@ class Tenant(TimeStampedModel):
     business_phone = models.CharField(max_length=32, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     logo_url = models.URLField(blank=True, null=True)
+    logo_file = models.ImageField(upload_to=tenant_logo_upload_path, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     additional_details = models.JSONField(default=dict, blank=True)
     signup_completed_at = models.DateTimeField(blank=True, null=True)

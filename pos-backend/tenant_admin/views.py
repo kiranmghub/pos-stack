@@ -1,12 +1,17 @@
 # pos-backend/tenant_admin/views.py
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.files.storage import default_storage
+from django.core.files.storage.filesystem import FileSystemStorage
+from django.conf import settings
 
-from tenants.models import TenantUser
+from tenants.models import TenantUser, Tenant
 from stores.models import Store, Register
 from catalog.models import TaxCategory
 from taxes.models import TaxRule
@@ -17,6 +22,7 @@ from rest_framework.response import Response
 from common.roles import TenantRole
 from rest_framework.decorators import action
 from rest_framework import status
+from common.permissions import IsOwnerOrAdmin
 
 
 from .serializers import (
@@ -196,3 +202,129 @@ def tenant_roles(request):
     """
     data = [{"value": c.value, "label": c.label} for c in TenantRole]
     return Response({"ok": True, "roles": data})
+
+
+class TenantDetailView(APIView):
+    """
+    GET /api/v1/tenant_admin/tenant
+    Returns tenant details including name, logo_url, logo_file URL, etc.
+    Permission: IsOwnerOrAdmin (owners and admins only)
+    """
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({"detail": "Tenant not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Build logo URL if logo_file exists
+        logo_file_url = None
+        if tenant.logo_file and tenant.logo_file.name:
+            try:
+                url = tenant.logo_file.url
+                # Convert relative URLs to absolute
+                if url and url.startswith("/"):
+                    logo_file_url = request.build_absolute_uri(url)
+                else:
+                    logo_file_url = url
+            except Exception:
+                # Fallback for local filesystem
+                if isinstance(default_storage, FileSystemStorage):
+                    try:
+                        relative_path = settings.MEDIA_URL.rstrip("/") + "/" + tenant.logo_file.name.lstrip("/")
+                        logo_file_url = request.build_absolute_uri(relative_path)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        url = default_storage.url(tenant.logo_file.name)
+                        # Convert relative URLs to absolute
+                        if url and url.startswith("/"):
+                            logo_file_url = request.build_absolute_uri(url)
+                        else:
+                            logo_file_url = url
+                    except Exception:
+                        pass
+
+        # Convert logo_url to absolute if it's relative
+        logo_url_absolute = None
+        if tenant.logo_url:
+            if tenant.logo_url.startswith("/"):
+                logo_url_absolute = request.build_absolute_uri(tenant.logo_url)
+            else:
+                logo_url_absolute = tenant.logo_url
+
+        return Response({
+            "id": tenant.id,
+            "name": tenant.name,
+            "code": tenant.code,
+            "logo_url": logo_url_absolute,
+            "logo_file_url": logo_file_url,
+            "email": tenant.email,
+            "business_phone": tenant.business_phone,
+            "description": tenant.description,
+            "currency_code": tenant.currency_code,
+            "currency_symbol": tenant.currency_symbol,
+            "country_code": tenant.country_code or tenant.business_country_code,
+        })
+
+
+class TenantLogoUploadView(APIView):
+    """
+    POST /api/v1/tenant_admin/tenant/logo
+    Upload a logo file for the tenant.
+    Permission: IsOwnerOrAdmin (owners and admins only)
+    """
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        tenant = request.tenant
+        if not tenant:
+            return Response({"detail": "Tenant not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"detail": "No file provided as 'file'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save to default storage (local dev or S3 prod)
+        tenant.logo_file.save(file.name, file, save=False)
+        tenant.save(update_fields=["logo_file"])
+
+        # Refresh tenant from database to get updated logo_file
+        tenant.refresh_from_db()
+
+        # Build a URL that works on both FS and S3
+        url = None
+        if tenant.logo_file and tenant.logo_file.name:
+            try:
+                url = tenant.logo_file.url
+                # Convert relative URLs to absolute
+                if url and url.startswith("/"):
+                    url = request.build_absolute_uri(url)
+            except Exception:
+                # Fallback for local filesystem
+                if isinstance(default_storage, FileSystemStorage):
+                    try:
+                        relative_path = settings.MEDIA_URL.rstrip("/") + "/" + tenant.logo_file.name.lstrip("/")
+                        url = request.build_absolute_uri(relative_path)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        url = default_storage.url(tenant.logo_file.name)
+                        # Convert relative URLs to absolute
+                        if url and url.startswith("/"):
+                            url = request.build_absolute_uri(url)
+                    except Exception:
+                        pass
+
+        # Also keep logo_url in sync (optional but convenient)
+        if url and url != (tenant.logo_url or ""):
+            tenant.logo_url = url
+            tenant.save(update_fields=["logo_url"])
+
+        if not url:
+            return Response({"detail": "Failed to generate logo URL"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"image_url": url, "logo_file_url": url}, status=status.HTTP_200_OK)

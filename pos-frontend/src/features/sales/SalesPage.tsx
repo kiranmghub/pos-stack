@@ -49,7 +49,7 @@ import { AuditDrawer } from "./components/AuditDrawer";
 import { CustomerDrawer } from "./components/CustomerDrawer";
 import { useNotify } from "@/lib/notify"; // toasts, same as Catalogs :contentReference[oaicite:2]{index=2}
 import { getRole } from "@/lib/auth";
-import { ensureAuthedFetch } from "@/components/AppShell";
+import { ensureAuthedFetch, PageHeading } from "@/components/AppShell";
 import { CustomerEditDrawer } from "./components/CustomerEditDrawer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -863,9 +863,16 @@ export default function SalesPage() {
 
   return (
     <div className="min-h-[calc(100vh-3rem)] bg-background">
-    <div className="space-y-4 px-4 py-6">
+      <div className="px-4 py-3 flex items-center justify-between bg-background">
+        <PageHeading
+          title="Sales"
+          subtitle="View sales, returns, payments, discounts, and customer information"
+        />
+      </div>
+
       {/* Main tabs per roadmap */}
-      <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as MainSalesTab)} variant="default">
+      <div className="px-4 pt-3">
+        <Tabs value={mainTab} onValueChange={(value) => setMainTab(value as MainSalesTab)} variant="default">
         <TabsList className="flex flex-wrap gap-1">
           {[
             { id: "overview", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" />, ready: true },
@@ -896,8 +903,10 @@ export default function SalesPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-      </Tabs>
+        </Tabs>
+      </div>
 
+      <div className="space-y-4 px-4 py-6">
       {mainTab === "overview" && (
         <>
           <SalesToolbar
@@ -1508,10 +1517,7 @@ export default function SalesPage() {
           setCustomersRefreshKey((x) => x + 1);
         }}
       />
-
-
-
-    </div>
+      </div>
     </div>
   );
 }

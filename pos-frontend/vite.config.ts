@@ -15,7 +15,9 @@ export default defineConfig({
         port: 5173,
         proxy: {
           // Only used in dev; in prod we serve /api via nginx → gunicorn
-          "/api": { target: "http://127.0.0.1:8000", changeOrigin: true }
+          "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
+          // Proxy media files to backend
+          "/media": { target: "http://127.0.0.1:8000", changeOrigin: true }
         }
       }
     : undefined,

@@ -58,8 +58,9 @@
 
 // pos-frontend/src/features/admin/AdminPage.tsx
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent } from "lucide-react";
+import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent, Settings } from "lucide-react";
 import { SimpleTabs } from "@/components/ui/tabs";
+import { PageHeading } from "@/components/AppShell";
 
 type TabKey =
   | "users"
@@ -68,7 +69,8 @@ type TabKey =
   | "taxcats"
   | "taxrules"
   | "discrules"
-  | "coupons";
+  | "coupons"
+  | "settings";
 
 const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "users",     label: "Users",            icon: <Users className="h-4 w-4" /> },
@@ -78,6 +80,7 @@ const tabs: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "taxrules",  label: "Tax Rules",        icon: <Percent className="h-4 w-4" /> },
   { key: "discrules", label: "Discount Rules",   icon: <BadgePercent className="h-4 w-4" /> },
   { key: "coupons",   label: "Coupons",          icon: <TicketPercent className="h-4 w-4" /> },
+  { key: "settings",  label: "Settings",         icon: <Settings className="h-4 w-4" /> },
 ];
 
 // ---- Code-splitting (lazy load each tab) ----
@@ -88,6 +91,7 @@ const TaxCategoriesTab = lazy(() => import("./taxcats/TaxCategoriesTab"));
 const TaxRulesTab    = lazy(() => import("./taxrules/TaxRulesTab"));
 const DiscountRulesTab = lazy(() => import("./discounts/DiscountRulesTab"));
 const CouponsTab     = lazy(() => import("./coupons/CouponsTab"));
+const SettingsTab    = lazy(() => import("./settings/SettingsTab"));
 
 // ---- helpers for URL/localStorage persistence ----
 const TAB_PARAM = "tab";
@@ -123,35 +127,48 @@ export default function AdminPage() {
   }, [active]);
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="min-h-[calc(100vh-3rem)] bg-background">
+      <div className="px-4 py-3 flex items-center justify-between bg-background">
+        <PageHeading
+          title="Tenant Administration"
+          subtitle="Manage users, stores, registers, tax rules, and discounts"
+        />
+      </div>
+
       {/* Tabs */}
-      <SimpleTabs
-        variant="default"
-        value={active}
-        onValueChange={(value) => setActive(value as TabKey)}
-        tabs={tabs.map(t => ({
-          value: t.key,
-          label: t.label,
-          icon: t.icon,
-        }))}
-      />
+      <div className="px-4 pt-3">
+        <SimpleTabs
+          variant="default"
+          value={active}
+          onValueChange={(value) => setActive(value as TabKey)}
+          tabs={tabs.map(t => ({
+            value: t.key,
+            label: t.label,
+            icon: t.icon,
+          }))}
+        />
+      </div>
 
       {/* Content (lazy) */}
-      <Suspense
-        fallback={
-          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-            Loading…
-          </div>
-        }
-      >
-        {active === "users" && <UsersTab />}
-        {active === "stores" && <StoresTab />}
-        {active === "registers" && <RegistersTab />}
-        {active === "taxcats" && <TaxCategoriesTab />}
-        {active === "taxrules" && <TaxRulesTab />}
-        {active === "discrules" && <DiscountRulesTab />}
-        {active === "coupons" && <CouponsTab />}
-      </Suspense>
+      <div className="p-4">
+
+        <Suspense
+          fallback={
+            <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+              Loading…
+            </div>
+          }
+        >
+          {active === "users" && <UsersTab />}
+          {active === "stores" && <StoresTab />}
+          {active === "registers" && <RegistersTab />}
+          {active === "taxcats" && <TaxCategoriesTab />}
+          {active === "taxrules" && <TaxRulesTab />}
+          {active === "discrules" && <DiscountRulesTab />}
+          {active === "coupons" && <CouponsTab />}
+          {active === "settings" && <SettingsTab />}
+        </Suspense>
+      </div>
     </div>
   );
 }
