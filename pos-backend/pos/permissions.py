@@ -22,10 +22,30 @@ class RegisterSessionRequired(BasePermission):
     message = "A valid register session is required."
 
     def has_permission(self, request, view):
+        # Check if register_session_id was set by middleware (preferred)
+        if hasattr(request, "register_session_id") and request.register_session_id:
+            return True
+        
+        # Fallback: Check Authorization header directly
         auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Register "):
+        register_token = None
+        
+        # Handle comma-separated values: "Bearer <token>, Register <register_token>"
+        if ", Register " in auth:
+            parts = auth.split(", Register ", 1)
+            if len(parts) == 2:
+                register_token = parts[1].strip()
+        elif auth.startswith("Register "):
+            register_token = auth.replace("Register ", "").strip()
+        
+        # Fallback: Check custom header
+        if not register_token:
+            register_token = request.headers.get("X-Register-Token", "").strip()
+        
+        if not register_token:
             return False
-        ok, data, _ = decode_register_token(auth.replace("Register ", "").strip())
+        
+        ok, data, _ = decode_register_token(register_token)
         if not ok:
             return False
         # optional tenant check is done in middleware; we allow here

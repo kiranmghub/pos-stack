@@ -1,6 +1,6 @@
 # tenant_admin/api.py
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
 from rest_framework.views import APIView
@@ -99,34 +99,86 @@ class AdminUsersView(APIView):
     @transaction.atomic
     def post(self, request):
         tenant = _resolve_request_tenant(request)
+        if not tenant:
+            return Response({"detail": "Tenant not found"}, status=status.HTTP_400_BAD_REQUEST)
+        
         ser = TenantUserCreateUpdateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
 
-        # Create or update User
-        user = User.objects.filter(username=data["username"]).first()
-        if not user:
-            user = User(username=data["username"])
-        for f in ("email", "first_name", "last_name"):
-            if f in data:
-                setattr(user, f, data.get(f) or "")
-        if data.get("password"):
-            user.set_password(data["password"])
-        user.is_active = True
-        user.save()
+        tenant_name = getattr(tenant, "name", None) or getattr(tenant, "code", None) or "this tenant"
 
-        # Ensure TenantUser link
-        tu, _ = TenantUser.objects.get_or_create(tenant=tenant, user=user, defaults={"role": data["role"]})
-        if tu.role != data["role"]:
-            tu.role = data["role"]
-            tu.save(update_fields=["role"])
+        try:
+            # Check if user already exists globally
+            existing_user = User.objects.filter(username=data["username"]).first()
+            
+            # If user exists, check if they're already linked to this tenant
+            if existing_user:
+                existing_tu = TenantUser.objects.filter(tenant=tenant, user=existing_user).first()
+                if existing_tu:
+                    return Response(
+                        {"detail": f"The user '{data['username']}' already exists for {tenant_name}. Please choose a different username."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # User exists but not linked to this tenant - we can link them
+                user = existing_user
+            else:
+                # Create new user
+                user = User(username=data["username"])
+            
+            # Update user fields
+            for f in ("email", "first_name", "last_name"):
+                if f in data:
+                    setattr(user, f, data.get(f) or "")
+            if data.get("password"):
+                user.set_password(data["password"])
+            user.is_active = True
+            user.save()
 
-        out = {
-            "id": tu.id,
-            "user": UserMiniSerializer(user).data,
-            "role": tu.role,
-        }
-        return Response(out, status=status.HTTP_201_CREATED)
+            # Ensure TenantUser link
+            tu, created = TenantUser.objects.get_or_create(tenant=tenant, user=user, defaults={"role": data["role"]})
+            if not created and tu.role != data["role"]:
+                tu.role = data["role"]
+                tu.save(update_fields=["role"])
+
+            out = {
+                "id": tu.id,
+                "user": UserMiniSerializer(user).data,
+                "role": tu.role,
+            }
+            return Response(out, status=status.HTTP_201_CREATED)
+        except IntegrityError as e:
+            error_msg = str(e).lower()
+            # Check if it's a duplicate username error
+            if "username" in error_msg or "auth_user_username_key" in error_msg:
+                return Response(
+                    {"detail": f"The user '{data['username']}' already exists for {tenant_name}. Please choose a different username."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Check if it's a duplicate email error
+            elif "email" in error_msg:
+                email_val = data.get("email", "")
+                return Response(
+                    {"detail": f"Email '{email_val}' is already in use. Please use a different email."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Generic integrity error - log the actual error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"IntegrityError creating user: {e}")
+            return Response(
+                {"detail": f"A user with this information already exists for {tenant_name}. Please check username and email."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            # Catch any other unexpected errors
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error creating user: {e}", exc_info=True)
+            return Response(
+                {"detail": f"Failed to create user: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class AdminUserDetailView(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]

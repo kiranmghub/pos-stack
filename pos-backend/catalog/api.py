@@ -251,6 +251,7 @@ class VariantWriteSerializer(serializers.ModelSerializer):
             "uom",
             "tax_category",
             "active",
+            "reorder_point",  # low stock threshold
             "image_url",    # file handled by /api/catalog/variants/:id/image later
         )
 
@@ -411,6 +412,7 @@ class VariantMiniSerializer(serializers.ModelSerializer):
             "cost",
             "margin_percentage",
             "active",
+            "reorder_point",
             "tax_category",
             "tax_rate",
             "on_hand",
@@ -465,7 +467,7 @@ class VariantPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Variant
-        fields = ("id", "name", "sku", "barcode", "price", "cost", "margin_percentage", "on_hand", "active", "image_url", "product", "created_at", "updated_at")
+        fields = ("id", "name", "sku", "barcode", "price", "cost", "margin_percentage", "on_hand", "active", "reorder_point", "image_url", "product", "created_at", "updated_at")
 
     def get_on_hand(self, obj):
         # Sum inventory from InventoryItem via reverse accessor used elsewhere (inventoryitem)

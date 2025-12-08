@@ -9,10 +9,16 @@ class CountSession(models.Model):
         ("IN_PROGRESS", "In Progress"),
         ("FINALIZED", "Finalized"),
     ]
+    SCOPE_CHOICES = [
+        ("FULL_STORE", "Full Store"),
+        ("ZONE", "Zone"),
+    ]
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
     store = models.ForeignKey("stores.Store", on_delete=models.CASCADE, db_index=True)
     code = models.CharField(max_length=40, blank=True, db_index=True)  # optional human code
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="DRAFT", db_index=True)
+    scope = models.CharField(max_length=20, choices=SCOPE_CHOICES, default="FULL_STORE", db_index=True, help_text="FULL_STORE or ZONE")
+    zone_name = models.CharField(max_length=100, blank=True, help_text="Required if scope is ZONE")
     note = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="count_sessions_created")
     started_at = models.DateTimeField(null=True, blank=True)
@@ -22,10 +28,11 @@ class CountSession(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [models.Index(fields=["tenant", "store", "status"])]
+        indexes = [models.Index(fields=["tenant", "store", "status"]), models.Index(fields=["tenant", "store", "scope", "status"])]
 
     def __str__(self):
-        return f"CountSession #{self.id} ({self.status})"
+        scope_str = f" ({self.scope}" + (f": {self.zone_name}" if self.zone_name else "") + ")" if self.scope == "ZONE" else ""
+        return f"CountSession #{self.id} ({self.status}){scope_str}"
 
 
 class CountLine(models.Model):

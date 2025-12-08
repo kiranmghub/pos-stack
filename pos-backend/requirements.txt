@@ -10,3 +10,5 @@ celery==5.4.0
 redis==5.0.7
 psycopg2-binary==2.9.9   # if Postgres
 python-dotenv==1.0.1
+requests==2.32.5
+urllib3<2.0  # Pin to v1.x for LibreSSL compatibility on macOS

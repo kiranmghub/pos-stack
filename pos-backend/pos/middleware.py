@@ -16,11 +16,27 @@ class RegisterSessionMiddleware(MiddlewareMixin):
         request.register_id = None
         request.register_session_id = None
 
+        # Check Authorization header for "Register " prefix
         auth = request.headers.get("Authorization", "")
-        if not auth.startswith("Register "):
+        register_token = None
+        
+        # Try to extract Register token from Authorization header
+        # Handle comma-separated values: "Bearer <token>, Register <register_token>"
+        if ", Register " in auth:
+            parts = auth.split(", Register ", 1)
+            if len(parts) == 2:
+                register_token = parts[1].strip()
+        elif auth.startswith("Register "):
+            register_token = auth.replace("Register ", "").strip()
+        
+        # Fallback: Check custom header X-Register-Token
+        if not register_token:
+            register_token = request.headers.get("X-Register-Token", "").strip()
+        
+        if not register_token:
             return
 
-        ok, data, _ = decode_register_token(auth.replace("Register ", "").strip())
+        ok, data, _ = decode_register_token(register_token)
         if not ok:
             return
 

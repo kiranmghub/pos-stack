@@ -112,7 +112,14 @@ interface Summary {
 interface TrendPoint { date: string; revenue: number; orders: number; }
 interface StoreRevenue { store_code: string; store_name: string; revenue: number; orders: number; }
 interface TopProduct { sku: string; name: string; revenue: number; qty: number; }
-interface LowStock { store: string; sku: string; variant: string; on_hand: number; min_stock: number; }
+interface LowStock {
+  store: string;
+  sku: string;
+  variant: string;
+  on_hand: number;
+  min_stock?: number;
+  low_stock_threshold?: number;
+}
 interface RecentSale {
   id: number;
   store?: string;
@@ -383,7 +390,7 @@ export default function OwnerDashboard() {
                     <th className="pb-2">Store</th>
                     <th className="pb-2">Variant</th>
                     <th className="pb-2 text-right">On hand</th>
-                    <th className="pb-2 text-right">Min</th>
+                    <th className="pb-2 text-right">Threshold</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/80">
@@ -392,7 +399,7 @@ export default function OwnerDashboard() {
                       <td className="py-2 pr-3">{r.store}</td>
                       <td className="py-2 pr-3 text-muted-foreground">{r.variant} <span className="text-muted-foreground">({r.sku})</span></td>
                       <td className="py-2 pr-3 text-right">{r.on_hand}</td>
-                      <td className="py-2 text-right">{r.min_stock}</td>
+                      <td className="py-2 text-right">{r.low_stock_threshold ?? r.min_stock ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -522,9 +529,9 @@ function sampleTopProducts(): TopProduct[] {
 
 function sampleLowStock(): LowStock[] {
   return [
-    { store: "Chicago Loop", sku: "PAINT-GL-RED", variant: "Acrylic Red Gallon", on_hand: 6, min_stock: 12 },
-    { store: "Dallas Uptown", sku: "BRUSH-SET-5", variant: "Brush Set 5pc", on_hand: 8, min_stock: 15 },
-    { store: "Austin SoCo", sku: "ROLLER-PRO", variant: "9\" Roller Pro", on_hand: 4, min_stock: 10 },
+    { store: "Chicago Loop", sku: "PAINT-GL-RED", variant: "Acrylic Red Gallon", on_hand: 6, low_stock_threshold: 12 },
+    { store: "Dallas Uptown", sku: "BRUSH-SET-5", variant: "Brush Set 5pc", on_hand: 8, low_stock_threshold: 15 },
+    { store: "Austin SoCo", sku: "ROLLER-PRO", variant: "9\" Roller Pro", on_hand: 4, low_stock_threshold: 10 },
   ];
 }
 

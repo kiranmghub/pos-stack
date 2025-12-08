@@ -2,8 +2,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ShoppingCart, Search, Minus, Plus, Trash2,
-  CreditCard, Wallet, PauseCircle, XCircle, LogOut, ScanLine, Store, X
+  CreditCard, Wallet, PauseCircle, XCircle, LogOut, ScanLine, Store, X,
+  List, ChevronRight, Columns, HelpCircle
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { logout } from "@/lib/auth";
 import {
   getMyStores,
@@ -19,7 +21,15 @@ import {
   getActiveDiscountRules,
   type DiscountRule,
   type CurrencyInfo,
+  getRegisterSessionInfo,
+  isRegisterSessionExpired,
+  clearRegisterSession,
+  endRegisterSession,
+  getVariantStockAcrossStores,
+  type StockAvailability,
 } from "./api";
+import RegisterLoginModal from "./RegisterLoginModal";
+import StoreSelectionModal from "./StoreSelectionModal";
 
 import type { PosCustomer } from "./api";
 
@@ -28,7 +38,7 @@ import type { PosCustomer } from "./api";
 // ---------- tiny utils ----------
 const CART_KEY = "pos_cart_v2";
 const STORE_KEY = "pos_active_store";
-const LOW_STOCK_THRESHOLD = 5;
+const LOCKED_STORE_KEY = "pos_locked_store_id"; // Store is locked after selection
 
 function toMoney(n: number | string) {
   const x = typeof n === "string" ? parseFloat(n) : n;
@@ -75,12 +85,26 @@ type ReceiptInfo = {
 };
 
 export default function PosScreen() {
+  const navigate = useNavigate();
   const [stores, setStores] = useState<StoreLite[]>([]);
-  const [storeId, setStoreId] = useState<number | null>(() => {
-    const s = localStorage.getItem(STORE_KEY);
+  // Locked store ID - cannot be changed after initial selection
+  const [lockedStoreId, setLockedStoreId] = useState<number | null>(() => {
+    const s = localStorage.getItem(LOCKED_STORE_KEY);
     return s ? Number(s) : null;
   });
+  const [storeId, setStoreId] = useState<number | null>(lockedStoreId);
   const [currency, setCurrency] = useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
+  
+  // Store selection state
+  const [showStoreSelection, setShowStoreSelection] = useState(false);
+  
+  // Register session state
+  const [showRegisterLogin, setShowRegisterLogin] = useState(false);
+  const [registerSession, setRegisterSession] = useState<{
+    registerId: number | null;
+    registerName: string | null;
+    expiresAt: string | null;
+  } | null>(null);
 
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<VariantLite[]>([]);
@@ -120,6 +144,39 @@ export default function PosScreen() {
   // --- Customer selection for POS checkout ---
   const [customer, setCustomer] = useState<PosCustomer | null>(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
+
+  // --- Cross-store stock lookup ---
+  const [showStockLookup, setShowStockLookup] = useState(false);
+  const [stockLookupVariant, setStockLookupVariant] = useState<VariantLite | null>(null);
+  const [stockLookupData, setStockLookupData] = useState<StockAvailability[]>([]);
+  const [stockLookupLoading, setStockLookupLoading] = useState(false);
+
+  // --- Product search modal for cross-store lookup ---
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<VariantLite[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  
+  // View mode for product search modal: "replace" | "expandable" | "split"
+  const PRODUCT_SEARCH_VIEW_MODE_KEY = "pos_product_search_view_mode";
+  const [viewMode, setViewMode] = useState<"replace" | "expandable" | "split">(() => {
+    const saved = localStorage.getItem(PRODUCT_SEARCH_VIEW_MODE_KEY);
+    return (saved === "replace" || saved === "expandable" || saved === "split") ? saved : "replace";
+  });
+  
+  // Selected product for replace view (Option 1)
+  const [selectedProductForStock, setSelectedProductForStock] = useState<VariantLite | null>(null);
+  const [selectedProductStockData, setSelectedProductStockData] = useState<StockAvailability[]>([]);
+  const [selectedProductStockLoading, setSelectedProductStockLoading] = useState(false);
+
+  // Expanded products for expandable view (Option 2)
+  const [expandedProductIds, setExpandedProductIds] = useState<Set<number>>(new Set());
+  const [productStockData, setProductStockData] = useState<Record<number, StockAvailability[]>>({});
+  const [productStockLoading, setProductStockLoading] = useState<Set<number>>(new Set());
+
+  // Selected product for split view (Option 3)
+  const [selectedProductForSplit, setSelectedProductForSplit] = useState<VariantLite | null>(null);
+  const [splitViewStockLoading, setSplitViewStockLoading] = useState(false);
 
 
   const LineToggle: React.FC<{ open: boolean; onClick: () => void }> = ({ open, onClick }) => (
@@ -258,44 +315,77 @@ img{display:block;margin:8px auto}
     }
   }, []);
 
-  // fetch stores once
+  // Check if store selection is needed and handle session
   useEffect(() => {
+    if (stores.length === 0) return; // Wait for stores to load
+
+    // If user has multiple stores and no locked store, show selection
+    if (stores.length > 1 && !lockedStoreId) {
+      setShowStoreSelection(true);
+      return;
+    }
+
+    // If single store, auto-select it
+    if (stores.length === 1 && !lockedStoreId) {
+      const firstStore = stores[0];
+      setLockedStoreId(firstStore.id);
+      setStoreId(firstStore.id);
+      localStorage.setItem(LOCKED_STORE_KEY, String(firstStore.id));
+      localStorage.setItem(STORE_KEY, String(firstStore.id));
+      setCurrency({
+        code: firstStore.currency_code || "USD",
+        symbol: firstStore.currency_symbol || undefined,
+        precision: firstStore.currency_precision ?? 2,
+      });
+      return;
+    }
+
+    // If store is locked, check register session
+    if (lockedStoreId) {
+      const sessionInfo = getRegisterSessionInfo();
+      const expired = isRegisterSessionExpired();
+
+      // Check if session is valid and belongs to locked store
+      if (
+        sessionInfo.token &&
+        !expired &&
+        sessionInfo.storeId === lockedStoreId &&
+        sessionInfo.registerId
+      ) {
+        // Session is valid
+        setRegisterSession({
+          registerId: sessionInfo.registerId,
+          registerName: null,
+          expiresAt: sessionInfo.expiresAt,
+        });
+        setShowRegisterLogin(false);
+      } else {
+        // No valid session - show login modal
+        setRegisterSession(null);
+        setShowRegisterLogin(true);
+      }
+    }
+  }, [stores, lockedStoreId]);
+
+  // fetch stores once - always start fresh (clear locked store on mount)
+  useEffect(() => {
+    // Clear locked store on mount to force fresh selection
+    setLockedStoreId(null);
+    localStorage.removeItem(LOCKED_STORE_KEY);
+    
     (async () => {
       try {
         const list = await getMyStores();
         const safe = Array.isArray(list) ? list : (list as any).results || [];
-        // setStores(safe);
-        // if (!storeId && safe.length > 0) {
-        //   const first = safe[0];
-        //   setStoreId(first.id);
-        //   localStorage.setItem(STORE_KEY, String(first.id));
-        // }
         setStores(safe);
-        const current = safe.find(s => s.id === storeId) || safe[0];
-        if (current) {
-          setCurrency({
-            code: current.currency_code || "USD",
-            symbol: current.currency_symbol || undefined,
-            precision: current.currency_precision ?? 2,
-          });
-        }
-        if (safe.length > 0) {
-          if (!storeId) {
-            const first = safe[0];
-            setStoreId(first.id);
-            localStorage.setItem(STORE_KEY, String(first.id));
-          } else if (!safe.some(s => s.id === storeId)) {
-            // previously selected store is no longer accessible
-            const first = safe[0];
-            setStoreId(first.id);
-            localStorage.setItem(STORE_KEY, String(first.id));
-          }
-        } else {
-          // no stores accessible for this user
+
+        if (safe.length === 0) {
+          // No stores accessible
           setStoreId(null);
           localStorage.removeItem(STORE_KEY);
+          return;
         }
-
+        // Store selection logic is handled in the other useEffect
       } catch (e: any) {
         setMsg(e.message || "Failed to load stores");
         setStores([]);
@@ -570,24 +660,37 @@ img{display:block;margin:8px auto}
   }, [cart, receiptOpen]);
 
   // tiny badge for stock state
-  const StockBadge: React.FC<{ remaining: number }> = ({ remaining }) => {
-    if (remaining <= 0) {
+  const StockBadge: React.FC<{ remaining: number; threshold?: number | null; presetLow?: boolean }> = ({
+    remaining,
+    threshold,
+    presetLow,
+  }) => {
+    const safeRemaining = Number.isFinite(remaining) ? remaining : 0;
+    const normalizedThreshold =
+      typeof threshold === "number" && Number.isFinite(threshold) ? Math.max(0, threshold) : 0;
+    // Use presetLow if explicitly provided (true or false), otherwise calculate from threshold
+    const isLow = presetLow !== undefined ? presetLow : (normalizedThreshold > 0 && safeRemaining <= normalizedThreshold);
+    if (safeRemaining <= 0) {
       return (
         <span className="mt-1 inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text ring-1 ring-inset ring-error/30">
           Out of stock
         </span>
       );
     }
-    if (remaining <= LOW_STOCK_THRESHOLD) {
+    if (isLow) {
       return (
         <span className="mt-1 inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text ring-1 ring-inset ring-warning/30">
-          Low: {remaining}
+          {normalizedThreshold > 0 ? (
+            <>Stock: {safeRemaining} / Reorder: {normalizedThreshold}</>
+          ) : (
+            <>Low: {safeRemaining}</>
+          )}
         </span>
       );
     }
     return (
       <span className="mt-1 inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text ring-1 ring-inset ring-success/30">
-        Stock: {remaining}
+        Stock: {safeRemaining}
       </span>
     );
   };
@@ -753,12 +856,954 @@ img{display:block;margin:8px auto}
     return { orig, final, hasReceipt: receiptRulesExist };
   }
 
+  // Handle store selection
+  const handleStoreSelect = (storeId: number) => {
+    const selectedStore = stores.find((s) => s.id === storeId);
+    if (!selectedStore) return;
 
+    setLockedStoreId(storeId);
+    setStoreId(storeId);
+    localStorage.setItem(LOCKED_STORE_KEY, String(storeId));
+    localStorage.setItem(STORE_KEY, String(storeId));
+    setCurrency({
+      code: selectedStore.currency_code || "USD",
+      symbol: selectedStore.currency_symbol || undefined,
+      precision: selectedStore.currency_precision ?? 2,
+    });
+    setShowStoreSelection(false);
+    // Register login will be shown by the useEffect that watches lockedStoreId
+  };
 
+  // Handle register login success
+  const handleRegisterLoginSuccess = () => {
+    const sessionInfo = getRegisterSessionInfo();
+    setRegisterSession({
+      registerId: sessionInfo.registerId,
+      registerName: null,
+      expiresAt: sessionInfo.expiresAt,
+    });
+    setShowRegisterLogin(false);
+  };
 
+  // Handle end session (with confirmation)
+  const [showEndSessionConfirm, setShowEndSessionConfirm] = useState(false);
+  
+  const handleEndSessionClick = () => {
+    setShowEndSessionConfirm(true);
+  };
+
+  const handleEndSessionConfirm = async () => {
+    try {
+      await endRegisterSession();
+    } catch (err: any) {
+      // Ignore API errors - we'll still clear local state and navigate
+      console.error("Failed to end session on server:", err);
+    }
+    
+    // Always clear local state and navigate, even if API call fails
+    // Only clear register session tokens, NOT user authentication
+    clearRegisterSession();
+    setRegisterSession(null);
+    // Clear locked store - user will need to select again
+    setLockedStoreId(null);
+    setStoreId(null);
+    localStorage.removeItem(LOCKED_STORE_KEY);
+    localStorage.removeItem(STORE_KEY);
+    // Clear cart as well
+    setCart([]);
+    localStorage.removeItem(CART_KEY);
+    setShowEndSessionConfirm(false);
+    // Navigate to home page (not "/" which might be landing page)
+    navigate("/home");
+  };
+
+  // Check stock across stores
+  const handleCheckStock = async (variant: VariantLite) => {
+    setStockLookupVariant(variant);
+    setShowStockLookup(true);
+    setStockLookupLoading(true);
+    setStockLookupData([]);
+
+    try {
+      const data = await getVariantStockAcrossStores(variant.id);
+      setStockLookupData(data);
+    } catch (err: any) {
+      setMsg(err?.message || "Failed to load stock information");
+    } finally {
+      setStockLookupLoading(false);
+    }
+  };
+
+  // Debounced search
+  useEffect(() => {
+    if (!showProductSearch || !lockedStoreId) {
+      setSearchResults([]);
+      return;
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Search products in the current store (tenant isolation is handled by backend)
+        const response = await searchProducts({ store_id: lockedStoreId, query: searchQuery.trim() });
+        setSearchResults(response.products || []);
+      } catch (err: any) {
+        setMsg(err?.message || "Failed to search products");
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, showProductSearch, lockedStoreId]);
+
+  // Handle view mode change - preserve search state and stock data cache
+  const handleViewModeChange = (mode: "replace" | "expandable" | "split") => {
+    setViewMode(mode);
+    localStorage.setItem(PRODUCT_SEARCH_VIEW_MODE_KEY, mode);
+    // Preserve search query and results when switching views
+    // Only reset view-specific state (selected products, expanded items)
+    // Stock data cache is preserved for performance
+    
+    // Reset selected product when switching away from replace view
+    if (mode !== "replace") {
+      setSelectedProductForStock(null);
+      setSelectedProductStockData([]);
+    }
+    // Reset expanded products when switching away from expandable view
+    if (mode !== "expandable") {
+      setExpandedProductIds(new Set());
+      // Keep productStockData cache - don't clear it
+      setProductStockLoading(new Set());
+    }
+    // Reset selected product when switching away from split view
+    if (mode !== "split") {
+      setSelectedProductForSplit(null);
+    }
+  };
+
+  // Handle selecting a product from search to check stock
+  const handleSelectProductForStockCheck = async (variant: VariantLite) => {
+    if (viewMode === "replace") {
+      // Option 1: Replace content with stock view
+      setSelectedProductForStock(variant);
+      
+      // Check cache first for performance
+      if (productStockData[variant.id]) {
+        setSelectedProductStockData(productStockData[variant.id]);
+        setSelectedProductStockLoading(false);
+      } else {
+        setSelectedProductStockLoading(true);
+        setSelectedProductStockData([]);
+        
+        try {
+          const data = await getVariantStockAcrossStores(variant.id);
+          setSelectedProductStockData(data);
+          // Cache the data for future use
+          setProductStockData(prev => ({ ...prev, [variant.id]: data }));
+        } catch (err: any) {
+          setMsg(err?.message || "Failed to load stock information");
+          setSelectedProductStockData([]);
+        } finally {
+          setSelectedProductStockLoading(false);
+        }
+      }
+    } else if (viewMode === "expandable") {
+      // Option 2: Toggle expand/collapse inline
+      const isExpanded = expandedProductIds.has(variant.id);
+      
+      if (isExpanded) {
+        // Collapse: remove from expanded set
+        setExpandedProductIds(prev => {
+          const next = new Set(prev);
+          next.delete(variant.id);
+          return next;
+        });
+      } else {
+        // Expand: add to expanded set and load stock data if not already loaded
+        setExpandedProductIds(prev => new Set(prev).add(variant.id));
+        
+        // Only fetch if we don't already have the data
+        if (!productStockData[variant.id]) {
+          setProductStockLoading(prev => new Set(prev).add(variant.id));
+          
+          try {
+            const data = await getVariantStockAcrossStores(variant.id);
+            setProductStockData(prev => ({ ...prev, [variant.id]: data }));
+          } catch (err: any) {
+            setMsg(err?.message || "Failed to load stock information");
+            setProductStockData(prev => ({ ...prev, [variant.id]: [] }));
+          } finally {
+            setProductStockLoading(prev => {
+              const next = new Set(prev);
+              next.delete(variant.id);
+              return next;
+            });
+          }
+        }
+      }
+    } else if (viewMode === "split") {
+      // Option 3: Split view - show stock in right panel
+      setSelectedProductForSplit(variant);
+      
+      // Check cache first for performance
+      if (productStockData[variant.id]) {
+        setSplitViewStockLoading(false);
+      } else {
+        setSplitViewStockLoading(true);
+        
+        try {
+          const data = await getVariantStockAcrossStores(variant.id);
+          // Cache the data for future use
+          setProductStockData(prev => ({ ...prev, [variant.id]: data }));
+        } catch (err: any) {
+          setMsg(err?.message || "Failed to load stock information");
+          setProductStockData(prev => ({ ...prev, [variant.id]: [] }));
+        } finally {
+          setSplitViewStockLoading(false);
+        }
+      }
+    }
+  };
+
+  // Handle back to search (for replace view)
+  const handleBackToSearch = () => {
+    setSelectedProductForStock(null);
+    setSelectedProductStockData([]);
+  };
+
+  // Reset expanded products when view mode changes or modal closes
+  useEffect(() => {
+    if (!showProductSearch) {
+      setExpandedProductIds(new Set());
+      setProductStockData({});
+      setProductStockLoading(new Set());
+    }
+  }, [showProductSearch]);
+
+  // Check session expiry before critical operations
+  useEffect(() => {
+    if (lockedStoreId && registerSession) {
+      if (isRegisterSessionExpired()) {
+        setRegisterSession(null);
+        setShowRegisterLogin(true);
+        setMsg("Register session expired. Please sign in again.");
+      }
+    }
+  }, [lockedStoreId, registerSession]);
+
+  // End session on navigation away
+  useEffect(() => {
+    if (!registerSession) return;
+
+    const handleBeforeUnload = () => {
+      // End session when page is being unloaded
+      endRegisterSession().catch(() => {
+        // Ignore errors on page unload
+      });
+      clearRegisterSession();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      // Also end session when component unmounts (navigation away)
+      if (registerSession) {
+        endRegisterSession().catch(() => {
+          // Ignore errors on navigation
+        });
+        clearRegisterSession();
+      }
+    };
+  }, [registerSession]);
 
   return (
     <>
+      {/* Store Selection Modal */}
+      <StoreSelectionModal
+        open={showStoreSelection}
+        stores={stores}
+        onSelect={handleStoreSelect}
+        onCancel={() => {
+          // If user cancels store selection, navigate to home
+          setShowStoreSelection(false);
+          navigate("/home");
+        }}
+      />
+
+      {/* Register Login Modal */}
+      <RegisterLoginModal
+        open={showRegisterLogin}
+        storeId={lockedStoreId}
+        storeName={stores.find(s => s.id === lockedStoreId)?.name || ""}
+        onSuccess={handleRegisterLoginSuccess}
+        onCancel={() => {
+          // If user cancels register login, navigate to home
+          setShowRegisterLogin(false);
+          navigate("/home");
+        }}
+      />
+
+      {/* End Session Confirmation Dialog */}
+      {showEndSessionConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold mb-2">End Register Session?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              This will end your current register session. You will need to sign in again to continue processing sales.
+            </p>
+            {cart.length > 0 && (
+              <div className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3">
+                <p className="text-sm text-warning">
+                  Warning: You have {cart.length} item(s) in your cart. Ending the session will clear your cart.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowEndSessionConfirm(false)}
+                className="flex-1 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEndSessionConfirm}
+                className="flex-1 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
+              >
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Search Modal for Cross-Store Stock Lookup */}
+      {showProductSearch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-3xl rounded-2xl border border-border bg-card shadow-2xl max-h-[80vh] flex flex-col">
+            <button
+              onClick={() => {
+                setShowProductSearch(false);
+                setSearchQuery("");
+                setSearchResults([]);
+                setSelectedProductForStock(null);
+                setSelectedProductStockData([]);
+                setExpandedProductIds(new Set());
+                setProductStockData({});
+                setProductStockLoading(new Set());
+                setSelectedProductForSplit(null);
+                setSplitViewStockData([]);
+              }}
+              className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header with view mode toggle */}
+            <div className="flex-shrink-0 p-6 pb-4 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h2 className="text-2xl font-semibold">
+                    {selectedProductForStock ? "Stock Availability" : viewMode === "split" ? "Search & Stock" : "Search Products"}
+                  </h2>
+                  {selectedProductForStock && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedProductForStock.name} ({selectedProductForStock.sku || "N/A"})
+                    </p>
+                  )}
+                </div>
+                {(!selectedProductForStock || viewMode === "split") && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/50 p-1">
+                      <button
+                        onClick={() => handleViewModeChange("replace")}
+                        className={`p-2 rounded transition-all duration-200 ${
+                          viewMode === "replace"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                        title="Detail View: Click a product to see full stock details"
+                      >
+                        <List className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleViewModeChange("expandable")}
+                        className={`p-2 rounded transition-all duration-200 ${
+                          viewMode === "expandable"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                        title="Expandable View: Click products to expand stock inline"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleViewModeChange("split")}
+                        className={`p-2 rounded transition-all duration-200 ${
+                          viewMode === "split"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:bg-muted"
+                        }`}
+                        title="Split View: Search on left, stock details on right"
+                      >
+                        <Columns className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="group relative">
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                      <div className="absolute right-0 top-full mt-2 w-64 p-3 rounded-lg border border-border bg-card shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div className="text-xs space-y-1">
+                          <div className="font-semibold text-foreground mb-2">View Modes:</div>
+                          <div><strong>Detail:</strong> Full-screen stock view</div>
+                          <div><strong>Expandable:</strong> Inline stock expansion</div>
+                          <div><strong>Split:</strong> Side-by-side layout</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {!selectedProductForStock && viewMode !== "split" && (
+                <p className="text-sm text-muted-foreground">
+                  Search for a product to check stock availability across all stores
+                </p>
+              )}
+              {viewMode === "split" && (
+                <p className="text-sm text-muted-foreground">
+                  Search products on the left, view stock details on the right
+                </p>
+              )}
+            </div>
+
+            {/* Content based on view mode and state */}
+            <div className="flex-1 overflow-y-auto p-6 transition-all duration-300 ease-in-out">
+            {viewMode === "split" ? (
+              /* Option 3: Split View - Side by Side */
+              <div className="flex flex-col md:flex-row gap-4">
+                {/* Left Panel: Search Results */}
+                <div className="flex-1 flex flex-col md:w-1/2">
+                  {/* Search input */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 border border-border">
+                      <Search className="h-5 w-5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by name, SKU, or barcode..."
+                        className="flex-1 bg-transparent placeholder:text-muted-foreground focus:outline-none text-foreground"
+                        autoFocus
+                      />
+                      {searchLoading && (
+                        <div className="text-xs text-muted-foreground">Searching...</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Search results */}
+                  <div className="space-y-2">
+                    {searchQuery.trim() === "" ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Enter a search term to find products
+                      </div>
+                    ) : searchLoading ? (
+                      <div className="text-center py-8 text-muted-foreground">Searching...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No products found matching "{searchQuery}"
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {searchResults.map((variant) => {
+                          const imgUrl = (variant as any).image_url || (variant as any).representative_image_url || "";
+                          const isSelected = selectedProductForSplit?.id === variant.id;
+                          
+                          return (
+                            <button
+                              key={variant.id}
+                              onClick={() => handleSelectProductForStockCheck(variant)}
+                              className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                                isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border bg-background hover:bg-muted"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                {/* Product image */}
+                                <div className="h-12 w-12 flex-shrink-0 rounded-lg bg-muted/40 flex items-center justify-center overflow-hidden">
+                                  {imgUrl ? (
+                                    <img
+                                      src={imgUrl}
+                                      alt={variant.name}
+                                      className="h-full w-full object-contain"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">🛒</span>
+                                  )}
+                                </div>
+
+                                {/* Product info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm text-foreground truncate">
+                                    {variant.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {variant.sku || "No SKU"}
+                                  </div>
+                                  <div className="text-xs font-medium text-foreground mt-0.5">
+                                    {money(variant.price)}
+                                  </div>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Panel: Stock Information */}
+                <div className="flex-1 flex flex-col md:w-1/2 border-t md:border-t-0 md:border-l border-border pt-4 md:pt-0 md:pl-4">
+                  {!selectedProductForSplit ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center text-muted-foreground">
+                        <div className="text-sm mb-2">Select a product to view stock</div>
+                        <div className="text-xs">Stock availability will appear here</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mb-4">
+                        <h3 className="font-semibold text-foreground mb-1">
+                          {selectedProductForSplit.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          SKU: {selectedProductForSplit.sku || "N/A"}
+                        </p>
+                      </div>
+
+                      {splitViewStockLoading ? (
+                        <div className="text-center py-8 text-sm text-muted-foreground">
+                          Loading stock information...
+                        </div>
+                      ) : !selectedProductForSplit || !productStockData[selectedProductForSplit.id] || productStockData[selectedProductForSplit.id].length === 0 ? (
+                        <div className="text-center py-8 text-sm text-muted-foreground">
+                          No stock information available
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {productStockData[selectedProductForSplit.id].map((item) => (
+                            <div
+                              key={item.store_id}
+                              className={`rounded-lg border p-3 ${
+                                item.store_id === lockedStoreId
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border bg-muted/50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-sm text-foreground">
+                                    {item.store_name} ({item.store_code})
+                                    {item.store_id === lockedStoreId && (
+                                      <span className="ml-2 text-xs text-primary">(Current Store)</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs mt-1">
+                                    <span className="text-muted-foreground">Stock: </span>
+                                    <span className={`font-semibold ${
+                                      item.on_hand <= 0
+                                        ? "text-badge-error-text"
+                                        : item.low_stock
+                                        ? "text-badge-warning-text"
+                                        : "text-badge-success-text"
+                                    }`}>
+                                      {item.on_hand}
+                                    </span>
+                                    <span className="text-muted-foreground"> units</span>
+                                    {item.low_stock_threshold !== null && (
+                                      <span className="text-muted-foreground"> • Reorder Point: <span className="font-medium">{item.low_stock_threshold}</span></span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  {item.on_hand <= 0 ? (
+                                    <span className="inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text">
+                                      Out of Stock
+                                    </span>
+                                  ) : item.low_stock ? (
+                                    <span className="inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text">
+                                      Low Stock
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text">
+                                      In Stock
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : selectedProductForStock ? (
+              /* Option 1: Replace View - Stock Details */
+              <div>
+                {/* Back button */}
+                <div className="mb-4">
+                  <button
+                    onClick={handleBackToSearch}
+                    className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted hover:border-primary/50 transition-all"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                    Back to search
+                  </button>
+                </div>
+
+                {/* Stock information */}
+                <div>
+                  {selectedProductStockLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading stock information...</div>
+                  ) : selectedProductStockData.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No stock information available</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedProductStockData.map((item) => (
+                        <div
+                          key={item.store_id}
+                          className={`rounded-lg border p-3 ${
+                            item.store_id === lockedStoreId
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm text-foreground">
+                                {item.store_name} ({item.store_code})
+                                {item.store_id === lockedStoreId && (
+                                  <span className="ml-2 text-xs text-primary">(Current Store)</span>
+                                )}
+                              </div>
+                              <div className="text-xs mt-1">
+                                <span className="text-muted-foreground">Stock: </span>
+                                <span className={`font-semibold ${
+                                  item.on_hand <= 0
+                                    ? "text-badge-error-text"
+                                    : item.low_stock
+                                    ? "text-badge-warning-text"
+                                    : "text-badge-success-text"
+                                }`}>
+                                  {item.on_hand}
+                                </span>
+                                <span className="text-muted-foreground"> units</span>
+                                {item.low_stock_threshold !== null && (
+                                  <span className="text-muted-foreground"> • Reorder Point: <span className="font-medium">{item.low_stock_threshold}</span></span>
+                                )}
+                              </div>
+                            </div>
+                            <div>
+                              {item.on_hand <= 0 ? (
+                                <span className="inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text">
+                                  Out of Stock
+                                </span>
+                              ) : item.low_stock ? (
+                                <span className="inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text">
+                                  Low Stock
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text">
+                                  In Stock
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Search View */
+              <div>
+                {/* Search input */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 border border-border">
+                    <Search className="h-5 w-5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by name, SKU, or barcode..."
+                      className="flex-1 bg-transparent placeholder:text-muted-foreground focus:outline-none text-foreground"
+                      autoFocus
+                    />
+                    {searchLoading && (
+                      <div className="text-xs text-muted-foreground">Searching...</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Search results */}
+                <div className="space-y-2">
+                  {searchQuery.trim() === "" ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Enter a search term to find products
+                    </div>
+                  ) : searchLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Searching...</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No products found matching "{searchQuery}"
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {searchResults.map((variant) => {
+                        const imgUrl = (variant as any).image_url || (variant as any).representative_image_url || "";
+                        const isExpanded = expandedProductIds.has(variant.id);
+                        const stockData = productStockData[variant.id] || [];
+                        const isLoadingStock = productStockLoading.has(variant.id);
+                        
+                        return (
+                          <div
+                            key={variant.id}
+                            className="rounded-lg border border-border bg-background overflow-hidden"
+                          >
+                            <button
+                              onClick={() => handleSelectProductForStockCheck(variant)}
+                              className="w-full p-3 text-left hover:bg-muted transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                {/* Product image */}
+                                <div className="h-16 w-16 flex-shrink-0 rounded-lg bg-muted/40 flex items-center justify-center overflow-hidden">
+                                  {imgUrl ? (
+                                    <img
+                                      src={imgUrl}
+                                      alt={variant.name}
+                                      className="h-full w-full object-contain"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                      }}
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">🛒</span>
+                                  )}
+                                </div>
+
+                                {/* Product info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-foreground truncate">
+                                    {variant.name}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground truncate">
+                                    {variant.sku || "No SKU"}
+                                  </div>
+                                  <div className="text-sm font-medium text-foreground mt-1">
+                                    {money(variant.price)}
+                                  </div>
+                                </div>
+
+                                {/* Expand/Collapse indicator */}
+                                <div className="flex-shrink-0 flex items-center gap-2">
+                                  <div className="text-xs text-muted-foreground">
+                                    {isExpanded ? "Hide stock" : "Show stock"}
+                                  </div>
+                                  <ChevronRight
+                                    className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                      isExpanded ? "rotate-90" : ""
+                                    }`}
+                                  />
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Expanded stock information (Option 2: Expandable View) */}
+                            {viewMode === "expandable" && isExpanded && (
+                              <div className="border-t border-border bg-muted/30">
+                                <div className="max-h-[400px] overflow-y-auto p-4">
+                                {isLoadingStock ? (
+                                  <div className="text-center py-4 text-sm text-muted-foreground">
+                                    Loading stock information...
+                                  </div>
+                                ) : stockData.length === 0 ? (
+                                  <div className="text-center py-4 text-sm text-muted-foreground">
+                                    No stock information available
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-medium text-muted-foreground mb-2">
+                                      Stock Availability Across Stores:
+                                    </div>
+                                    {stockData.map((item) => (
+                                      <div
+                                        key={item.store_id}
+                                        className={`rounded-lg border p-3 ${
+                                          item.store_id === lockedStoreId
+                                            ? "border-primary bg-primary/5"
+                                            : "border-border bg-background"
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <div className="font-medium text-sm text-foreground">
+                                              {item.store_name} ({item.store_code})
+                                              {item.store_id === lockedStoreId && (
+                                                <span className="ml-2 text-xs text-primary">(Current Store)</span>
+                                              )}
+                                            </div>
+                                            <div className="text-xs mt-1">
+                                              <span className="text-muted-foreground">Stock: </span>
+                                              <span className={`font-semibold ${
+                                                item.on_hand <= 0
+                                                  ? "text-badge-error-text"
+                                                  : item.low_stock
+                                                  ? "text-badge-warning-text"
+                                                  : "text-badge-success-text"
+                                              }`}>
+                                                {item.on_hand}
+                                              </span>
+                                              <span className="text-muted-foreground"> units</span>
+                                              {item.low_stock_threshold !== null && (
+                                                <span className="text-muted-foreground"> • Reorder Point: <span className="font-medium">{item.low_stock_threshold}</span></span>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            {item.on_hand <= 0 ? (
+                                              <span className="inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text">
+                                                Out of Stock
+                                              </span>
+                                            ) : item.low_stock ? (
+                                              <span className="inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text">
+                                                Low Stock
+                                              </span>
+                                            ) : (
+                                              <span className="inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text">
+                                                In Stock
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cross-Store Stock Lookup Modal */}
+      {showStockLookup && stockLookupVariant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-border bg-card p-6 shadow-2xl max-h-[80vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setShowStockLookup(false);
+                setStockLookupVariant(null);
+                setStockLookupData([]);
+              }}
+              className="absolute right-4 top-4 rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h2 className="text-2xl font-semibold mb-2">Stock Availability</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              {stockLookupVariant.name} ({stockLookupVariant.sku || "N/A"})
+            </p>
+
+            {stockLookupLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : stockLookupData.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No stock information available</div>
+            ) : (
+              <div className="space-y-2">
+                {stockLookupData.map((item) => (
+                  <div
+                    key={item.store_id}
+                    className={`rounded-lg border p-3 ${
+                      item.store_id === lockedStoreId
+                        ? "border-primary bg-primary/5"
+                        : "border-border bg-muted/50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {item.store_name} ({item.store_code})
+                          {item.store_id === lockedStoreId && (
+                            <span className="ml-2 text-xs text-primary">(Current Store)</span>
+                          )}
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Stock: </span>
+                          <span className={`font-semibold ${
+                            item.on_hand <= 0
+                              ? "text-badge-error-text"
+                              : item.low_stock
+                              ? "text-badge-warning-text"
+                              : "text-badge-success-text"
+                          }`}>
+                            {item.on_hand}
+                          </span>
+                          <span className="text-muted-foreground"> units</span>
+                          {item.low_stock_threshold !== null && (
+                            <span className="text-muted-foreground"> • Reorder Point: <span className="font-medium">{item.low_stock_threshold}</span></span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        {item.on_hand <= 0 ? (
+                          <span className="inline-flex items-center rounded-md bg-badge-error-bg px-2 py-0.5 text-xs font-medium text-badge-error-text">
+                            Out of Stock
+                          </span>
+                        ) : item.low_stock ? (
+                          <span className="inline-flex items-center rounded-md bg-badge-warning-bg px-2 py-0.5 text-xs font-medium text-badge-warning-text">
+                            Low Stock
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-badge-success-bg px-2 py-0.5 text-xs font-medium text-badge-success-text">
+                            In Stock
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {stores.length === 0 && (
         <div className="flex min-h-[calc(100vh-3rem)] items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg w-full rounded-2xl border border-border bg-card p-6 text-center shadow">
@@ -770,38 +1815,74 @@ img{display:block;margin:8px auto}
         </div>
       )}
 
-      {stores.length > 0 && (
+      {stores.length > 0 && lockedStoreId && registerSession && (
         <div className="flex min-h-[calc(100vh-3rem)] bg-background text-foreground">
           {/* Left: Catalog */}
           <div className="flex-1 flex flex-col min-h-0 border-r border-border p-4">
-            {/* Store selector + Search */}
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
-                <Store className="h-4 w-4 text-muted-foreground" />
-                <select
-                  value={storeId ?? ""}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    setStoreId(v);
-                    const selected = stores.find(s => s.id === v);
-                    if (selected) {
-                      setCurrency({
-                        code: selected.currency_code || "USD",
-                        symbol: selected.currency_symbol || undefined,
-                        precision: selected.currency_precision ?? 2,
-                      });
-                    }
-                    localStorage.setItem(STORE_KEY, String(v));
-                  }}
-                  className="bg-transparent outline-none"
-                >
-                  {stores.map(s => (
-                    <option key={s.id} value={s.id}>{s.code} — {s.name}</option>
-                  ))}
-                </select>
+            {/* Store info + Toolbar + Search */}
+            <div className="mb-3 space-y-2">
+              {/* Store info and session status */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                  <div className="text-sm font-medium text-foreground">
+                    {stores.find(s => s.id === lockedStoreId)?.name || "No store"}
+                  </div>
+                  {registerSession && (
+                    <>
+                      <span className="text-muted-foreground">•</span>
+                      <div className="text-xs text-muted-foreground">
+                        Register #{registerSession.registerId}
+                      </div>
+                      {registerSession.expiresAt && (
+                        <>
+                          <span className="text-muted-foreground">•</span>
+                          <div className="text-xs text-muted-foreground">
+                            {(() => {
+                              try {
+                                const expiry = new Date(registerSession.expiresAt);
+                                const now = new Date();
+                                const hours = Math.floor((expiry.getTime() - now.getTime()) / (1000 * 60 * 60));
+                                const minutes = Math.floor(((expiry.getTime() - now.getTime()) % (1000 * 60 * 60)) / (1000 * 60));
+                                return `${hours}h ${minutes}m`;
+                              } catch {
+                                return "";
+                              }
+                            })()}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+                
+                {/* Toolbar buttons */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShowProductSearch(true);
+                      setSearchQuery("");
+                      setSearchResults([]);
+                    }}
+                    className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                    title="Search products and check stock across stores"
+                  >
+                    Check Other Stores
+                  </button>
+                  {registerSession && (
+                    <button
+                      onClick={handleEndSessionClick}
+                      className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                      title="End register session"
+                    >
+                      End Session
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex flex-1 items-center gap-2 rounded-lg bg-muted px-3 py-2">
+              {/* Search bar */}
+              <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2">
                 <Search className="h-5 w-5 text-muted-foreground" />
                 <input
                   value={query}
@@ -950,10 +2031,12 @@ img{display:block;margin:8px auto}
                   return (
                     <button
                       key={p.id}
-                      onClick={() => addToCart(p)}
-                      disabled={disabled}
+                      onClick={() => {
+                        if (disabled) return; // Prevent adding to cart when out of stock
+                        addToCart(p);
+                      }}
                       className={`relative rounded-xl p-3 text-left transition-colors ${disabled
-                        ? "bg-muted/60 cursor-not-allowed opacity-60"
+                        ? "bg-muted/60 cursor-not-allowed"
                         : "bg-muted hover:bg-muted"
                         }`}
                       title={disabled ? "Out of stock" : "Add to cart"}
@@ -1005,8 +2088,9 @@ img{display:block;margin:8px auto}
                         );
                       })()}
 
-
-                      <div className="relative h-24 md:h-28 flex items-center justify-center bg-muted/40 rounded-lg mb-2 overflow-hidden">
+                      {/* Product content wrapper - applies opacity when disabled */}
+                      <div className={disabled ? "opacity-60" : ""}>
+                        <div className="relative h-24 md:h-28 flex items-center justify-center bg-muted/40 rounded-lg mb-2 overflow-hidden">
                         {imgFor(p) ? (
                           <img
                             src={imgFor(p)}
@@ -1024,41 +2108,62 @@ img{display:block;margin:8px auto}
 
 
 
-                      <div className="font-medium truncate">{p.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {(p as any).variant_name || p.sku || ""}
-                      </div>
+                  <div className="font-medium truncate">{p.name}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {(p as any).variant_name || p.sku || ""}
+                  </div>
                       {/* <div className="text-sm text-muted-foreground">${toMoney(p.price)}</div> */}
                       {(() => {
-                        const pv = pricePreviewForVariant(p, autoDiscRules, couponDiscRules);
-                        if (!pv) {
-                          return <div className="text-sm text-muted-foreground">{money(p.price)}</div>;
-                        }
-                        const orig = toMoney(pv.orig);
-                        const fin = toMoney(pv.final);
-                        return (
-                          <div className="text-sm">
-                            {pv.final < pv.orig ? (
-                              <>
-                                <span className="text-muted-foreground line-through mr-2">{money(orig)}</span>
-                                <span className="text-success font-semibold">{money(fin)}</span>
-                                {pv.hasReceipt && (
-                                  <span className="ml-2 text-xs text-muted-foreground">(more at checkout)</span>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-muted-foreground">{money(orig)}</span>
-                                {pv.hasReceipt && (
-                                  <span className="ml-2 text-xs text-muted-foreground">(savings at checkout)</span>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        );
-                      })()}
+                          const pv = pricePreviewForVariant(p, autoDiscRules, couponDiscRules);
+                          if (!pv) {
+                            return <div className="text-sm text-muted-foreground">{money(p.price)}</div>;
+                          }
+                          const orig = toMoney(pv.orig);
+                          const fin = toMoney(pv.final);
+                          return (
+                            <div className="text-sm">
+                              {pv.final < pv.orig ? (
+                                <>
+                                  <span className="text-muted-foreground line-through mr-2">{money(orig)}</span>
+                                  <span className="text-success font-semibold">{money(fin)}</span>
+                                  {pv.hasReceipt && (
+                                    <span className="ml-2 text-xs text-muted-foreground">(more at checkout)</span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-muted-foreground">{money(orig)}</span>
+                                  {pv.hasReceipt && (
+                                    <span className="ml-2 text-xs text-muted-foreground">(savings at checkout)</span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
 
-                      <StockBadge remaining={remaining} />
+                        <StockBadge
+                          remaining={remaining}
+                          threshold={toInt((p as any).low_stock_threshold ?? (p as any).reorder_point ?? 0, 0)}
+                          presetLow={
+                            typeof (p as any).low_stock === "boolean"
+                              ? Boolean((p as any).low_stock)
+                              : undefined
+                          }
+                        />
+                      </div>
+                      
+                      {/* Check Availability button - always fully opaque */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCheckStock(p);
+                        }}
+                        className="mt-2 w-full rounded-lg border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                        title="Check stock in other stores"
+                      >
+                        Check Availability
+                      </button>
                     </button>
                   );
                 })}

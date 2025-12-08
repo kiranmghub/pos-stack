@@ -1,0 +1,19 @@
+Increment 5 – Configurable Low-Stock Thresholds
+
+Backend
+- Added inventory.utils.tenant_default_reorder_point and switched InventoryOverviewView, StockByStoreListView, and LowStockView to compute low-stock counts using variant.reorder_point or tenant.default_reorder_point, returning low_stock_threshold metadata in every response.
+- POS product search and barcode lookup now annotate each variant with low_stock_threshold/low_stock/reorder_point so the checkout UI no longer guesses or hard-codes thresholds.
+- Low-stock feeds keep the legacy min_stock key but now also emit low_stock_threshold and low_stock flags for downstream dashboards.
+
+Frontend
+- POS screen StockBadge now reads per-variant thresholds from the API and displays Low/Stock/Out states accordingly; the hard-coded constant was removed.
+- Inventory overview/stock tabs show the tenant default threshold hint, render badges with threshold numbers, and the client types include the new low_stock_threshold fields.
+- Owner dashboard’s low-stock widget consumes the backend-provided low_stock_threshold values, and the mock data reflects the new structure.
+
+Tests
+- Added inventory/tests.py::LowStockThresholdTests covering StockByStoreListView, InventoryOverviewView, and LowStockView so both variant-level overrides and tenant defaults are exercised.
+- Not run: python manage.py test currently fails earlier while migrating subscriptions_plan.trial_days (pre-existing DB issue), so the new tests still need to be executed once that migration conflict is resolved.
+
+Next steps
+1. Clear the duplicate subscriptions_plan.trial_days column so the test runner can migrate, then run python manage.py test inventory.tests.
+2. Smoke-test POS product grid, inventory stock tables, and owner dashboard to confirm low-stock badges and thresholds look correct in the UI.

@@ -70,6 +70,7 @@ export type CreateVariantDto = {
   margin_percentage?: number | null;
   on_hand?: number;
   active?: boolean;
+  reorder_point?: number | null;
   image_file?: File | null;
 };
 

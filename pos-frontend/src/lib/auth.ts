@@ -1,7 +1,7 @@
 // pos-frontend/src/lib/auth.ts
 // Auth helpers: token storage, auto-refresh, and a single apiFetch wrapper.
 
-const API_BASE = import.meta.env.VITE_API_BASE || ""; // use Vite proxy if ""
+export const API_BASE = import.meta.env.VITE_API_BASE || ""; // use Vite proxy if ""
 
 /* ---------------- storage ---------------- */
 
@@ -273,7 +273,9 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
     }
   }
 
-  if (res.status === 401 || res.status === 403) {
+  // Only logout on 401 (Unauthorized) - token is invalid/expired
+  // 403 (Forbidden) means user is authenticated but lacks permission - this is valid for role-based access
+  if (res.status === 401) {
     // token truly bad → logout
     logout();
   }

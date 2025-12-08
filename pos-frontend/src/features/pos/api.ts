@@ -2,6 +2,61 @@
 import { authHeaders, refreshAccessIfNeeded, logout } from "@/lib/auth";
 import { apiFetchJSON } from "@/lib/auth";
 
+// Register session storage keys
+const REGISTER_TOKEN_KEY = "register_session_token";
+const REGISTER_ID_KEY = "register_session_register_id";
+const REGISTER_STORE_ID_KEY = "register_session_store_id";
+const REGISTER_EXPIRES_AT_KEY = "register_session_expires_at";
+
+export function getRegisterSessionToken(): string | null {
+  return localStorage.getItem(REGISTER_TOKEN_KEY);
+}
+
+export function setRegisterSession(token: string, registerId: number, storeId: number, expiresAt: string) {
+  localStorage.setItem(REGISTER_TOKEN_KEY, token);
+  localStorage.setItem(REGISTER_ID_KEY, String(registerId));
+  localStorage.setItem(REGISTER_STORE_ID_KEY, String(storeId));
+  localStorage.setItem(REGISTER_EXPIRES_AT_KEY, expiresAt);
+}
+
+export function clearRegisterSession() {
+  localStorage.removeItem(REGISTER_TOKEN_KEY);
+  localStorage.removeItem(REGISTER_ID_KEY);
+  localStorage.removeItem(REGISTER_STORE_ID_KEY);
+  localStorage.removeItem(REGISTER_EXPIRES_AT_KEY);
+}
+
+export function getRegisterSessionInfo(): {
+  token: string | null;
+  registerId: number | null;
+  storeId: number | null;
+  expiresAt: string | null;
+} {
+  const token = localStorage.getItem(REGISTER_TOKEN_KEY);
+  const registerId = localStorage.getItem(REGISTER_ID_KEY);
+  const storeId = localStorage.getItem(REGISTER_STORE_ID_KEY);
+  const expiresAt = localStorage.getItem(REGISTER_EXPIRES_AT_KEY);
+  
+  return {
+    token,
+    registerId: registerId ? Number(registerId) : null,
+    storeId: storeId ? Number(storeId) : null,
+    expiresAt,
+  };
+}
+
+export function isRegisterSessionExpired(): boolean {
+  const expiresAt = localStorage.getItem(REGISTER_EXPIRES_AT_KEY);
+  if (!expiresAt) return true;
+  
+  try {
+    const expiry = new Date(expiresAt);
+    return expiry <= new Date();
+  } catch {
+    return true;
+  }
+}
+
 
 
 export type TaxBasis = "PCT" | "FLAT";
@@ -156,15 +211,32 @@ async function readJson(res: Response) {
 /**
  * Central fetch that:
  *  - sends auth + tenant headers
+ *  - includes register session token if available (for POS endpoints)
  *  - if it gets a 400 "Invalid token" or 401, tries a refresh and retries once
  */
-async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit, alreadyRetried = false): Promise<Response> {
+async function fetchWithAuth(
+  input: RequestInfo | URL, 
+  init?: RequestInit, 
+  alreadyRetried = false,
+  includeRegisterToken = false
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    ...(init?.headers || {}),
+    ...authHeaders(typeof init?.headers === "object" ? (init!.headers as Record<string, string>) : {}),
+  };
+
+  // Add register session token if requested and available
+  // Send as custom header X-Register-Token (backend middleware checks both Authorization and X-Register-Token)
+  if (includeRegisterToken) {
+    const registerToken = getRegisterSessionToken();
+    if (registerToken) {
+      headers["X-Register-Token"] = registerToken;
+    }
+  }
+
   const res = await fetch(input, {
     ...init,
-    headers: {
-      ...(init?.headers || {}),
-      ...authHeaders(typeof init?.headers === "object" ? (init!.headers as Record<string, string>) : {}),
-    },
+    headers,
   });
 
   if (res.ok) return res;
@@ -184,7 +256,7 @@ async function fetchWithAuth(input: RequestInfo | URL, init?: RequestInit, alrea
       logout();
       throw new Error("Your session expired. Please log in again.");
     }
-    return fetchWithAuth(input, init, true);
+    return fetchWithAuth(input, init, true, includeRegisterToken);
   }
 
   // propagate error
@@ -229,6 +301,9 @@ export type VariantLite = {
   on_hand?: number | string | null; // accept number or string
   image_url?: string;
   representative_image_url?: string;
+  low_stock_threshold?: number | null;
+  low_stock?: boolean;
+  reorder_point?: number | null;
 };
 
 export type ProductsResponse = {
@@ -238,6 +313,60 @@ export type ProductsResponse = {
 
 /** === Calls used by the POS screen === */
 
+// === Register Session API ===
+export type RegisterInfo = {
+  id: number;
+  code: string;
+  name: string;
+  store_id: number;
+};
+
+export type RegisterSessionStartResponse = {
+  token: string;
+  register: RegisterInfo;
+  expires_at: string;
+};
+
+export async function startRegisterSession(code: string, pin: string): Promise<RegisterSessionStartResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/register-session/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, pin }),
+  });
+  return jsonOrThrow<RegisterSessionStartResponse>(res);
+}
+
+export async function endRegisterSession(): Promise<{ ok: boolean }> {
+  const registerToken = getRegisterSessionToken();
+  if (!registerToken) {
+    return { ok: true }; // Already ended
+  }
+
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/register-session/end`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Register ${registerToken}`,
+    },
+  }, false, false); // Don't include register token in the auth helper for this call
+  return jsonOrThrow<{ ok: boolean }>(res);
+}
+
+export async function getRegistersForStore(storeId: number): Promise<RegisterInfo[]> {
+  // Use POS API to get registers for a store (accessible to cashiers)
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/registers?store=${storeId}`, {
+    method: "GET",
+  });
+  const data = await jsonOrThrow<RegisterInfo[]>(res);
+  const registers = Array.isArray(data) ? data : [];
+  return registers.map((r: any) => ({
+    id: r.id,
+    code: r.code,
+    name: r.name || r.code,
+    store_id: r.store_id || storeId,
+  }));
+}
+
 export async function getMyStores(): Promise<StoreLite[]> {
   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/stores`);
   return jsonOrThrow<StoreLite[]>(res);
@@ -246,7 +375,7 @@ export async function getMyStores(): Promise<StoreLite[]> {
 export async function searchProducts(params: { store_id: number; query?: string }): Promise<ProductsResponse> {
   const q = new URLSearchParams({ store_id: String(params.store_id) });
   if (params.query) q.set("query", params.query); // note: backend expects "query"
-  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/products?${q.toString()}`);
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/products?${q.toString()}`, undefined, false, true);
   const data = await jsonOrThrow<{ currency?: CurrencyInfo; products: VariantLite[] }>(res);
   return {
     currency: data?.currency,
@@ -256,7 +385,7 @@ export async function searchProducts(params: { store_id: number; query?: string 
 
 export async function lookupBarcode(store_id: number, barcode: string): Promise<VariantLite | null> {
   const url = `${API_BASE}/api/v1/pos/lookup_barcode?store_id=${store_id}&barcode=${encodeURIComponent(barcode)}`;
-  const res = await fetchWithAuth(url);
+  const res = await fetchWithAuth(url, undefined, false, true);
   if (res.status === 404) return null;
   return jsonOrThrow<VariantLite>(res);
 }
@@ -281,9 +410,9 @@ export async function checkout(payload: {
 }> {
   const res = await fetchWithAuth(`${API_BASE}/api/v1/pos/checkout`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" }, // auth headers will be merged by fetchWithAuth
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
-  });
+  }, false, true); // Include register token
   return jsonOrThrow(res);
 }
 
@@ -324,7 +453,31 @@ export async function quoteTotals(payload: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }, false, true); // Include register token
   const data = await jsonOrThrow<{ ok: boolean; quote: QuoteOut; currency?: CurrencyInfo }>(res);
   return { quote: data.quote, currency: data.currency };
+}
+
+// === Cross-Store Stock Lookup (Read-Only) ===
+export type StockAvailability = {
+  store_id: number;
+  store_name: string;
+  store_code: string;
+  on_hand: number;
+  low_stock: boolean;
+  low_stock_threshold: number | null;
+};
+
+export async function getVariantStockAcrossStores(variantId: number): Promise<StockAvailability[]> {
+  // Call the new cross-store stock endpoint
+  const res = await fetchWithAuth(`${API_BASE}/api/v1/inventory/stock-across-stores?variant_id=${variantId}`);
+  const data = await jsonOrThrow<{
+    variant_id: number;
+    variant_name: string;
+    variant_sku: string | null;
+    stores: StockAvailability[];
+  }>(res);
+  
+  // Return the stores array directly (already in the correct format)
+  return data.stores || [];
 }

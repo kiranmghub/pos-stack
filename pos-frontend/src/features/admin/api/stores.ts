@@ -8,13 +8,27 @@ const BASE = "/api/v1/tenant-admin";
 export type StoreCreatePayload = {
   code: string;
   name: string;
-  is_active?: boolean;
   timezone: string;
+  region?: string;
   street: string;
   city: string;
   state: string;
   postal_code: string;
   country: string;
+  is_active?: boolean;
+  is_primary?: boolean;
+  phone_number?: string;
+  mobile_number?: string;
+  fax_number?: string;
+  email?: string;
+  contact_person?: string;
+  landmark?: string;
+  description?: string;
+  geo_lat?: number | string;
+  geo_lng?: number | string;
+  opening_time?: string;
+  closing_time?: string;
+  tax_id?: string;
 };
 
 export type StoreUpdatePayload = Partial<StoreCreatePayload>;

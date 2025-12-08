@@ -7,11 +7,13 @@ import { DataTable } from "../components/DataTable";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import { Checkbox } from "@/ui/checkbox";
 import { useNotify } from "@/lib/notify";
-import StoreModal from "./StoreModal";
-import { Warning } from "postcss";
 
+type Props = {
+  onOpenStoreModal?: (editing?: Store | null, forceWizard?: boolean) => void;
+  refreshKey?: number; // Key to trigger refresh when changed
+};
 
-export default function StoresTab() {
+export default function StoresTab({ onOpenStoreModal, refreshKey }: Props) {
   const { success, error, info, warn } = useNotify();
   const [query, setQuery] = React.useState<Query>({ search: "", ordering: "" });
   const [loading, setLoading] = React.useState(false);
@@ -20,8 +22,6 @@ export default function StoresTab() {
 
   const [selectedIds, setSelectedIds] = React.useState<number[]>([]);
   const [bulkLoading, setBulkLoading] = React.useState(false);
-  const [editing, setEditing] = React.useState<Store | null>(null);
-  const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState<Store | null>(null);
   // expanded rows + lazy registers cache
   const [expandedIds, setExpandedIds] = React.useState<number[]>([]);
@@ -48,7 +48,7 @@ export default function StoresTab() {
       }
     })();
     return () => { mounted = false; };
-  }, [query]);
+  }, [query, refreshKey]); // Add refreshKey as dependency
 
   const allChecked = data.length > 0 && selectedIds.length === data.length;
   const partiallyChecked = selectedIds.length > 0 && !allChecked;
@@ -175,12 +175,12 @@ export default function StoresTab() {
       header: "",
       render: (r: Store) => (
         <div className="flex items-center gap-2 justify-end">
-          <button className="text-xs text-info hover:underline" onClick={() => { setEditing(r); setCreating(false); }}>Edit</button>
+          <button className="text-xs text-info hover:underline" onClick={() => onOpenStoreModal?.(r, false)}>Edit</button>
           <button className="text-xs text-error hover:text-error/80" onClick={() => setDeleting(r)}>Delete</button>
         </div>
       ),
     },
-  ]), [allChecked, partiallyChecked, selectedIds, expandedIds]);
+  ]), [allChecked, partiallyChecked, selectedIds, expandedIds, onOpenStoreModal]);
   // expanded panel renderer (full address + registers)
   const renderRowAfter = React.useCallback((r: Store) => {
     if (!expandedIds.includes(r.id)) return null;
@@ -194,7 +194,7 @@ export default function StoresTab() {
             <div className="text-xs text-muted-foreground">Address</div>
             <button
               className="text-xs text-info hover:underline"
-              onClick={() => { setEditing(r); /* setCreating(false) not required here */ }}
+              onClick={() => onOpenStoreModal?.(r, false)}
             >
               Edit
             </button>
@@ -233,7 +233,7 @@ export default function StoresTab() {
         </div>
       </div>
     );
-  }, [expandedIds, regCache, regLoading]);
+  }, [expandedIds, regCache, regLoading, onOpenStoreModal]);
 
   return (
     <div className="space-y-4">
@@ -273,7 +273,7 @@ export default function StoresTab() {
                 className="px-2 py-1 rounded-md bg-muted hover:bg-muted text-foreground">Clear</button>
             </>
           ) : (
-            <button onClick={() => { setEditing(null); setCreating(true); }}
+            <button onClick={() => onOpenStoreModal?.(null, false)}
               className="px-3 py-1.5 rounded-md bg-success hover:bg-success/90 text-success-foreground text-sm">+ New Store</button>
           )}
         </div>
@@ -293,15 +293,6 @@ export default function StoresTab() {
       />
 
       {/* Modals */}
-      {creating || editing ? (
-        <StoreModal
-          open={creating || !!editing}
-          editing={editing}
-          onClose={() => { setCreating(false); setEditing(null); }}
-          onSaved={() => setQuery({ ...query })}
-        />
-      ) : null}
-
       <DeleteConfirmModal
         open={!!deleting}
         subject={deleting?.code}

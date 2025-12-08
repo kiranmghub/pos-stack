@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from .permissions import RegisterSessionRequired
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from tenants.models import Tenant
@@ -15,7 +16,8 @@ from tenants.models import TenantUser
 
 from stores.models import Store, Register
 from catalog.models import Variant
-from inventory.models import InventoryItem
+from inventory.models import InventoryItem, StockLedger
+from inventory.utils import tenant_default_reorder_point
 from orders.models import Sale, SaleLine, SalePayment, AuditLog
 from customers.models import Customer
 from customers.services import update_customer_after_sale
@@ -185,6 +187,56 @@ class POSStoresView(ListAPIView):
         return Response(rows, status=200)
 
 
+class POSRegistersView(ListAPIView):
+    """GET /api/v1/pos/registers?store=<store_id>  -> registers for a store (accessible to cashiers)"""
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        tenant = _resolve_tenant(request)
+        if tenant is None:
+            return Response([], status=200)
+
+        # Get store_id from query params
+        store_id = request.query_params.get("store")
+        if not store_id:
+            return Response({"detail": "store parameter is required"}, status=400)
+
+        try:
+            store_id = int(store_id)
+        except (ValueError, TypeError):
+            return Response({"detail": "Invalid store parameter"}, status=400)
+
+        # Resolve membership for this tenant+user
+        tu = (TenantUser.objects
+            .select_related("tenant", "user")
+            .filter(tenant=tenant, user=request.user, is_active=True)
+            .first())
+
+        if tu is None:
+            # No membership at all → no access
+            return Response([], status=200)
+
+        # Check if user has access to this store
+        # If user has no store assignments, they have access to all stores
+        # If user has store assignments, they must include this store
+        assigned_stores = tu.stores.all()
+        if assigned_stores.exists():
+            if not assigned_stores.filter(id=store_id).exists():
+                # User is restricted to specific stores and this isn't one of them
+                return Response([], status=200)
+
+        # Get the store to verify it belongs to the tenant
+        try:
+            store = Store.objects.get(id=store_id, tenant=tenant)
+        except Store.DoesNotExist:
+            return Response([], status=200)
+
+        # Return active registers for this store
+        qs = Register.objects.filter(store=store, is_active=True)
+        rows = list(qs.order_by("code").values("id", "code", "name", "store_id"))
+        return Response(rows, status=200)
+
+
 
 class ProductsForPOSView(APIView):
     permission_classes = [IsAuthenticated]
@@ -197,6 +249,8 @@ class ProductsForPOSView(APIView):
             return Response({"detail": "store_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         query = (request.GET.get("query") or "").strip()
+        default_threshold = tenant_default_reorder_point(tenant)
+        default_threshold_value = Value(default_threshold, output_field=IntegerField())
 
         # subquery: sum on_hand for this store & tenant per variant
         inv_sub = (
@@ -208,7 +262,7 @@ class ProductsForPOSView(APIView):
         )
 
         qs = (
-            Variant.objects.select_related("product", "tax_category")
+            Variant.objects.select_related("product", "tax_category", "product__tax_category")
             .filter(
                 product__tenant=tenant,
                 product__is_active=True,        # <-- FIX: use double underscore
@@ -216,6 +270,11 @@ class ProductsForPOSView(APIView):
             .annotate(
                 on_hand=Coalesce(Subquery(inv_sub[:1]), Value(0), output_field=IntegerField()),
                 tax_rate=F("tax_category__rate"),
+                low_stock_threshold=Coalesce(
+                    F("reorder_point"),
+                    default_threshold_value,
+                    output_field=IntegerField(),
+                ),
             )
         )
 
@@ -248,24 +307,29 @@ class ProductsForPOSView(APIView):
             # 3) Product URL (last resort)
             return _abs(request, getattr(v.product, "image_url", "") or "")
 
-        data = [
-            {
+        data = []
+        for v in qs.order_by("product__name")[:120]:
+            on_hand = int(v.on_hand or 0)
+            threshold = int(getattr(v, "low_stock_threshold", None) or 0)
+            img_url = variant_image_url(v)
+            data.append({
                 "id": v.id,
                 "name": v.product.name,
                 "variant_name": v.name,
                 "price": str(v.price),
                 "sku": v.sku,
                 "barcode": v.barcode,
-                "on_hand": int(v.on_hand or 0),
+                "on_hand": on_hand,
                 "tax_rate": str(v.tax_rate or 0),
                 "product_id": v.product_id,  # needed for product-level discount rules
                 "tax_category_code": getattr(v.tax_category, "code", None),  # variant tax category
                 "product_tax_category_code": getattr(getattr(v.product, "tax_category", None), "code", None),  # product fallback
-                "image_url": variant_image_url(v),  # ← NEW
-                "representative_image_url": variant_image_url(v),
-            }
-            for v in qs.order_by("product__name")[:120]
-        ]
+                "image_url": img_url,
+                "representative_image_url": img_url,
+                "low_stock_threshold": threshold,
+                "low_stock": on_hand <= threshold,
+                "reorder_point": v.reorder_point,
+            })
         return Response({
             "currency": {
                 "code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
@@ -304,6 +368,8 @@ class POSLookupBarcodeView(APIView):
             inv = InventoryItem.objects.filter(variant=v, store_id=store_id).values("on_hand").first()
             if inv:
                 on_hand = inv["on_hand"]
+        default_threshold = tenant_default_reorder_point(tenant)
+        threshold = v.reorder_point if v.reorder_point is not None else default_threshold
 
         data = {
             "id": v.id,
@@ -314,6 +380,8 @@ class POSLookupBarcodeView(APIView):
             "tax_rate": str(getattr(v.tax_category, "rate", Decimal("0.00"))),
             "category": getattr(v.product, "category", "") or "",
             "on_hand": on_hand,
+            "low_stock_threshold": threshold,
+            "low_stock": int(on_hand or 0) <= int(threshold or 0),
             "currency_code": getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
             "currency_symbol": getattr(tenant, "currency_symbol", None),
             "currency_precision": getattr(tenant, "currency_precision", 2),
@@ -321,8 +389,14 @@ class POSLookupBarcodeView(APIView):
         return Response(data, status=200)
 
 
+class InsufficientInventoryError(Exception):
+    def __init__(self, payload):
+        self.payload = payload
+        super().__init__("Insufficient inventory")
+
+
 class POSCheckoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, RegisterSessionRequired]
 
     def post(self, request):
         tenant = _resolve_request_tenant(request)
@@ -335,7 +409,8 @@ class POSCheckoutView(APIView):
         data = request.data or {}
         store_id = data.get("store_id")
         register_id = data.get("register_id")
-        lines = data.get("lines") or []
+        lines = list(data.get("lines") or [])
+        req_lines = lines  # keep original count for audit logging
         payment = data.get("payment") or {}
 
         # NEW: optional customer_id
@@ -350,23 +425,53 @@ class POSCheckoutView(APIView):
         if not store_id or not lines:
             return Response({"detail": "store_id and lines are required"}, status=400)
 
+        # Increment 6: Validate register session
+        register_session_id = getattr(request, "register_session_id", None)
+        if not register_session_id:
+            return Response({"detail": "Register session required"}, status=401)
+
+        # Import here to avoid circular imports
+        from stores.models import RegisterSession
+        try:
+            register_session = RegisterSession.objects.select_related("register", "register__store").get(
+                id=register_session_id, tenant=tenant
+            )
+            if not register_session.is_active:
+                return Response({"detail": "Register session expired or revoked"}, status=401)
+        except RegisterSession.DoesNotExist:
+            return Response({"detail": "Invalid register session"}, status=401)
+
         # store + register
         try:
             store = Store.objects.get(id=store_id, tenant=tenant)
         except Store.DoesNotExist:
             return Response({"detail": "Invalid store"}, status=400)
 
+        # Increment 6: Validate register session belongs to requested store
+        if register_session.register.store_id != store_id:
+            return Response({"detail": "Register session does not belong to requested store"}, status=403)
+
         register = None
         if register_id:
             register = Register.objects.filter(id=register_id, store=store).first()
         if not register:
-            register = Register.objects.filter(store=store).first()
-        if not register:
+            # Use register from session if not specified
+            register = register_session.register
+        if not register or register.store_id != store_id:
             return Response({"detail": "No register configured for this store"}, status=400)
 
         # cashier must belong to tenant
-        if not TenantUser.objects.filter(user=user, tenant=tenant).exists():
+        try:
+            tenant_user = TenantUser.objects.select_related().prefetch_related("stores").get(user=user, tenant=tenant)
+        except TenantUser.DoesNotExist:
             return Response({"detail": "User not in tenant"}, status=403)
+
+        # Increment 6: Enforce store assignments
+        # If TenantUser.stores is empty, user has access to all stores
+        # Otherwise, user must have the target store in their stores
+        user_stores = tenant_user.stores.all()
+        if user_stores.exists() and store not in user_stores:
+            return Response({"detail": "User does not have access to this store"}, status=403)
 
         # Build sale lines and compute totals
         try:
@@ -380,11 +485,14 @@ class POSCheckoutView(APIView):
                     currency_code=getattr(tenant, "resolved_currency", None) or getattr(tenant, "currency_code", "USD"),
                     customer=customer,
                 )
+                sale._skip_inventory_signal = True  # handled manually in POS checkout
 
                 subtotal = Decimal("0.00")
                 total_tax = Decimal("0.00")
                 total_fee = Decimal("0.00")
                 total_discount = Decimal("0.00")
+                lines_in = []
+                created_sale_lines = []
 
                 # Optional coupon from payload
                 # coupon_code = (data.get("coupon_code") or "").strip() or None
@@ -537,7 +645,7 @@ class POSCheckoutView(APIView):
                     line_total = round2(net + line_tax + fee)
 
                     # Create the sale line (discount is the authoritative per-line discount)
-                    SaleLine.objects.create(
+                    sale_line = SaleLine.objects.create(
                         sale=sale,
                         variant=variant,
                         qty=qty,
@@ -547,15 +655,38 @@ class POSCheckoutView(APIView):
                         fee=fee,
                         line_total=line_total,
                     )
+                    created_sale_lines.append(sale_line)
 
                     # Deduct inventory at this store
                     inv, _ = InventoryItem.objects.select_for_update().get_or_create(
                         tenant=tenant, store=store, variant=variant, defaults={"on_hand": 0, "reserved": 0}
                     )
-                    inv.on_hand = (Decimal(inv.on_hand) - Decimal(qty))
-                    if inv.on_hand < 0:
-                        inv.on_hand = 0
-                    inv.save()
+                    current_on_hand = Decimal(inv.on_hand or 0)
+                    qty_decimal = Decimal(qty)
+                    if current_on_hand < qty_decimal:
+                        raise InsufficientInventoryError(
+                            {
+                                "variant_id": variant.id,
+                                "variant_name": variant.product.name if variant.product_id else variant.name,
+                                "available_qty": float(current_on_hand),
+                                "requested_qty": qty,
+                            }
+                        )
+                    inv.on_hand = current_on_hand - qty_decimal
+                    inv.save(update_fields=["on_hand"])
+                    inv.refresh_from_db(fields=["on_hand"])
+
+                    StockLedger.objects.create(
+                        tenant=tenant,
+                        store=store,
+                        variant=variant,
+                        qty_delta=-qty,
+                        balance_after=inv.on_hand,
+                        ref_type="SALE",
+                        ref_id=sale.id,
+                        note=f"POS sale #{sale.id}",
+                        created_by=user,
+                    )
 
                     # Totals
                     subtotal += net
@@ -564,7 +695,19 @@ class POSCheckoutView(APIView):
                     total_discount += line_discount
 
                     lines_payload.append({"net": net, "qty": qty, "category_id": category_id})
-
+                    lines_in.append(
+                        LineIn(
+                            variant_id=variant.id,
+                            product_id=variant.product_id,
+                            qty=qty,
+                            unit_price=unit_price,
+                            tax_category_code=getattr(variant.tax_category, "code", None),
+                            var_tax_rate=getattr(variant.tax_category, "rate", None),
+                            prod_tax_rate=getattr(
+                                getattr(variant.product, "tax_category", None), "rate", None
+                            ),
+                        )
+                    )
                 
                 # ---- RECEIPT-LEVEL DISCOUNTS ----
                 receipt_discount = Decimal("0.00")
@@ -616,48 +759,10 @@ class POSCheckoutView(APIView):
 
                 # === BEGIN: canonical totals via compute_receipt (parity with quote) ===
 
-                # Build variant map with tax codes + rates (like POSQuoteView)
-                req_lines = data.get("lines") or []
-                ids = [int(l.get("variant_id")) for l in req_lines]
-                variants = (
-                    Variant.objects
-                    .select_related("tax_category", "product__tax_category")
-                    .filter(id__in=ids)
-                )
-                vmap = {}
-                for v in variants:
-                    tc = getattr(v, "tax_category", None)
-                    ptc = getattr(getattr(v, "product", None), "tax_category", None)
-                    vmap[v.id] = {
-                        "product_id": v.product_id, 
-                        "code": getattr(tc, "code", None),
-                        "var_rate": getattr(tc, "rate", None),
-                        "prod_rate": getattr(ptc, "rate", None),
-                    }
-
-                # Build LineIn[]
-                lines_in = []
-                for l in req_lines:
-                    vid = int(l["variant_id"])
-                    qty = int(l["qty"])
-                    up  = Decimal(str(l.get("unit_price")))
-                    info = vmap.get(vid, {})
-                    lines_in.append(LineIn(
-                        variant_id=vid,
-                        product_id=info.get("product_id"), 
-                        qty=qty,
-                        unit_price=up,
-                        tax_category_code=info.get("code"),
-                        var_tax_rate=Decimal(str(info.get("var_rate") or "0")),
-                        prod_tax_rate=Decimal(str(info.get("prod_rate") or "0")),
-                    ))
-
-                # Compute authoritative receipt
                 ro = compute_receipt(
                     tenant=tenant,
                     store_id=store.id if store else None,
                     lines_in=lines_in,
-                    # coupon_code=data.get("coupon_code") or None,
                     coupon_code=cc_list, # accept list of codes
                 )
 
@@ -667,6 +772,20 @@ class POSCheckoutView(APIView):
                 total_tax       = Decimal(str(ro.tax_total))
                 total_fee       = Decimal("0.00")  # keep if you calculate fees separately
                 grand_total     = Decimal(str(ro.grand_total))
+
+                canonical_lines = ro.lines or []
+                for sl, ro_line in zip(created_sale_lines, canonical_lines):
+                    tax_total = sum(
+                        Decimal(str(t.get("amount") or "0"))
+                        for t in ro_line.get("taxes") or []
+                    )
+                    sl.unit_price = Decimal(str(ro_line.get("unit_price", sl.unit_price)))
+                    sl.discount = Decimal(str(ro_line.get("line_discount", sl.discount)))
+                    line_net = Decimal(str(ro_line.get("line_net", sl.line_total or "0")))
+                    fee_amount = Decimal(sl.fee or 0)
+                    sl.tax = tax_total
+                    sl.line_total = round2(line_net + tax_total + fee_amount)
+                    sl.save(update_fields=["unit_price", "discount", "tax", "line_total"])
 
                 # === END: canonical totals via compute_receipt ===
 
@@ -916,6 +1035,16 @@ class POSCheckoutView(APIView):
                 )
 
 
+        except InsufficientInventoryError as exc:
+            payload = exc.payload if isinstance(exc.payload, dict) else {}
+            return Response(
+                {
+                    "detail": "Insufficient stock for one or more items.",
+                    "code": "inventory_insufficient",
+                    "meta": payload,
+                },
+                status=409,
+            )
         except Variant.DoesNotExist:
             return Response({"detail": "Variant not found"}, status=400)
 
@@ -951,13 +1080,50 @@ class POSQuoteView(APIView):
     Response:
     {"ok": true, "quote": { subtotal, discount_total, tax_total, grand_total, tax_by_rule: [...], lines: [...] }}
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RegisterSessionRequired]
 
     def post(self, request):
         tenant = _resolve_tenant(request)
         store_id = _resolve_store_id(request)
         body = request.data or {}
         lines = body.get("lines") or []
+
+        # Increment 6: Validate register session
+        register_session_id = getattr(request, "register_session_id", None)
+        if not register_session_id:
+            return Response({"ok": False, "detail": "Register session required"}, status=401)
+
+        # Import here to avoid circular imports
+        from stores.models import RegisterSession
+        try:
+            register_session = RegisterSession.objects.select_related("register", "register__store").get(
+                id=register_session_id, tenant=tenant
+            )
+            if not register_session.is_active:
+                return Response({"ok": False, "detail": "Register session expired or revoked"}, status=401)
+        except RegisterSession.DoesNotExist:
+            return Response({"ok": False, "detail": "Invalid register session"}, status=401)
+
+        # Increment 6: Validate register session belongs to requested store
+        if store_id and register_session.register.store_id != store_id:
+            return Response({"ok": False, "detail": "Register session does not belong to requested store"}, status=403)
+
+        # Increment 6: Enforce store assignments
+        user = request.user
+        try:
+            tenant_user = TenantUser.objects.select_related().prefetch_related("stores").get(user=user, tenant=tenant)
+        except TenantUser.DoesNotExist:
+            return Response({"ok": False, "detail": "User not in tenant"}, status=403)
+
+        if store_id:
+            try:
+                store = Store.objects.get(id=store_id, tenant=tenant)
+            except Store.DoesNotExist:
+                return Response({"ok": False, "detail": "Invalid store"}, status=400)
+
+            user_stores = tenant_user.stores.all()
+            if user_stores.exists() and store not in user_stores:
+                return Response({"ok": False, "detail": "User does not have access to this store"}, status=403)
         # coupon_code = body.get("coupon_code") or None
         # accept either single 'coupon_code' or list 'coupon_codes'
         cc_single = body.get("coupon_code")

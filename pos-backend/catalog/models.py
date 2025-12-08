@@ -167,6 +167,8 @@ class Variant(TimeStampedModel):
     tax_category = models.ForeignKey(TaxCategory, null=True, blank=True, on_delete=models.SET_NULL)
     uom = models.CharField(max_length=32, default="each")
     is_active = models.BooleanField(default=True, db_index=True)
+    reorder_point = models.PositiveIntegerField(null=True, blank=True)
+    reorder_qty = models.PositiveIntegerField(null=True, blank=True, help_text="Suggested reorder quantity (defaults to threshold - on_hand if not set)")
 
     # EXISTING url field (if you already added it; otherwise keep it optional)
     image_url = models.URLField(blank=True, default="")

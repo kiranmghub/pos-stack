@@ -1,587 +1,300 @@
 // pos-frontend/src/features/inventory/InventoryRoute.tsx
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppShell, { PageHeading } from "@/components/AppShell";
+import { Package } from "lucide-react";
+import { OverviewDashboard } from "./dashboard";
+import { StockListPage } from "./stock";
+import { LedgerPage } from "./audit";
+import { TransfersPage } from "./operations/transfers";
+import { CountsPage } from "./operations/counts";
+import { PurchaseOrdersPage } from "./operations/purchase-orders";
+import { AdjustmentsPage } from "./operations/adjustments";
+import { ReorderSuggestionsPage } from "./planning/reorder";
+import { ForecastingDashboard } from "./planning/forecasting";
+import { AtRiskItemsPage } from "./planning/at-risk";
+import { InventoryHealthPage } from "./planning/health";
+import { VendorsPage } from "./vendors";
+import { ReservationsPage, BackordersPage, AvailabilityView } from "./multi-channel";
+import { WebhooksPage, ExportSettings } from "./settings";
+import { ReturnsInspectionPage } from "./operations/returns";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
-import {
-  listReasons,
-  listStock,
-  getOverview,
-  createAdjustment,
-  listLedger,
-  type InvReason,
-  type InvStockRow,
-} from "./api";
-import {
-  Package,
-  SlidersHorizontal,
-  ListChecks,
-  Activity,
-  Plus,
-  Minus,
-  Search,
-  CheckCircle2,
-  X,
-} from "lucide-react";
-import { SimpleTabs } from "@/components/ui/tabs";
-
-// NEW: Transfers page import
-import TransfersPage from "@/features/inventory/TransfersPage";
-import CountsPage from "@/features/inventory/CountsPage";
-
-type CurrencyInfo = { code?: string; symbol?: string | null; precision?: number | null };
-function formatCurrency(n: string | number, currency: CurrencyInfo) {
-  const num = typeof n === "string" ? parseFloat(n) : n;
-  const precision = Number.isFinite(currency?.precision as number) ? Number(currency.precision) : 2;
-  const safe = Number.isFinite(num) ? num : 0;
-  const code = currency?.code || "USD";
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: code,
-      minimumFractionDigits: precision,
-      maximumFractionDigits: precision,
-    }).format(safe);
-  } catch {
-    const sym = currency?.symbol || code;
-    return `${sym}${safe.toFixed(precision)}`;
-  }
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function InventoryRoute() {
   const [stores, setStores] = useState<StoreLite[]>([]);
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [currency, setCurrency] = useState<CurrencyInfo>({ code: "USD", symbol: "$", precision: 2 });
-  // NEW: include "transfers" in the union
-  const [active, setActive] = useState<"overview" | "stock" | "ledger" | "transfers" | "counts">("stock");
+  const [activeTab, setActiveTab] = useState<"overview" | "stock" | "ledger" | "transfers" | "counts" | "purchase-orders" | "adjustments" | "reorder-suggestions" | "forecasting" | "at-risk" | "health" | "vendors" | "reservations" | "backorders" | "availability" | "webhooks" | "exports" | "returns-inspection">("overview");
+  
+  // Per-tab store state
+  const [overviewStoreId, setOverviewStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [stockStoreId, setStockStoreId] = useState<number | undefined>(undefined); // required
+  const [ledgerStoreId, setLedgerStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [transfersStoreId, setTransfersStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [countsStoreId, setCountsStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [purchaseOrdersStoreId, setPurchaseOrdersStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [adjustmentsStoreId, setAdjustmentsStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [reorderSuggestionsStoreId, setReorderSuggestionsStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [forecastingStoreId, setForecastingStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [atRiskStoreId, setAtRiskStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [healthStoreId, setHealthStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [reservationsStoreId, setReservationsStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [backordersStoreId, setBackordersStoreId] = useState<number | null>(null); // null = "All Stores"
+  const [availabilityStoreId, setAvailabilityStoreId] = useState<number | undefined>(undefined); // required
+  const [returnsInspectionStoreId, setReturnsInspectionStoreId] = useState<number | null>(null); // null = "All Stores"
 
+  const handleKpiClick = (kpi: string) => {
+    // Navigate to relevant page based on KPI clicked
+    console.log("KPI clicked:", kpi);
+    // TODO: Implement navigation
+  };
+
+  const handleCreateTransfer = () => {
+    // TODO: Open create transfer modal
+    console.log("Create transfer");
+  };
+
+  const handleStartCount = () => {
+    // TODO: Open start count modal
+    console.log("Start count");
+  };
+
+  const handleCreatePO = () => {
+    // TODO: Open create PO modal
+    console.log("Create PO");
+  };
+
+  const handleBulkAdjust = () => {
+    // TODO: Open bulk adjust modal
+    console.log("Bulk adjust");
+  };
+
+  const handleViewLowStock = () => {
+    // TODO: Navigate to stock page with low stock filter
+    console.log("View low stock");
+  };
+
+  const handleViewAtRisk = () => {
+    setActiveTab("at-risk");
+  };
+
+  const handleItemClick = (item: any) => {
+    // TODO: Navigate to item detail
+    console.log("Item clicked:", item);
+  };
+
+  const handleMovementClick = (movement: any) => {
+    // TODO: Navigate to ledger or movement detail
+    console.log("Movement clicked:", movement);
+  };
+
+  // Load stores on mount
   useEffect(() => {
+    let alive = true;
     (async () => {
-      const s = await getMyStores();
-      const arr = Array.isArray(s) ? s : (s as any).results || [];
-      setStores(arr);
-      if (!storeId && arr.length) setStoreId(arr[0].id);
-      const current = arr.find((x) => x.id === storeId) || arr[0];
-      if (current) {
-        setCurrency({
-          code: (current as any).currency_code || "USD",
-          symbol: (current as any).currency_symbol || undefined,
-          precision: (current as any).currency_precision ?? 2,
-        });
+      try {
+        const storeList = await getMyStores();
+        if (!alive) return;
+        setStores(storeList);
+        // Auto-select first store for Stock tab if available
+        if (storeList.length > 0 && !stockStoreId) {
+          setStockStoreId(storeList[0].id);
+        }
+        // Auto-select first store for Availability tab if available
+        if (storeList.length > 0 && !availabilityStoreId) {
+          setAvailabilityStoreId(storeList[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load stores:", err);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  const selectedStockStore = stores.find((s) => s.id === stockStoreId);
 
   return (
     <AppShell>
       <div className="min-h-[calc(100vh-3rem)] bg-background">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-background">
-        <PageHeading
-//           icon={<Package className="h-5 w-5" />}
-          title="Inventory"
-          subtitle="Manage stock levels, adjustments, transfers, and ledger"
-        />
-        <div className="flex items-center gap-2">
-          <select
-            value={storeId ?? ""}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setStoreId(v);
-              const s = stores.find((x) => x.id === v);
-              if (s) {
-                setCurrency({
-                  code: (s as any).currency_code || "USD",
-                  symbol: (s as any).currency_symbol || undefined,
-                  precision: (s as any).currency_precision ?? 2,
-                });
-              }
-            }}
-            className="rounded-lg bg-muted px-3 py-2 outline-none"
-          >
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} — {s.name}
-              </option>
-            ))}
-          </select>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-background">
+          <PageHeading
+            title="Inventory"
+            subtitle="Overview and stock management"
+          />
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="px-4 pt-3">
-        <SimpleTabs
-          variant="default"
-          value={active}
-          onValueChange={(value) => setActive(value as typeof active)}
-          tabs={[
-            { value: "overview", label: "Overview", icon: <Activity className="h-4 w-4" /> },
-            { value: "stock", label: "Stock by Store", icon: <SlidersHorizontal className="h-4 w-4" /> },
-            { value: "ledger", label: "Ledger", icon: <ListChecks className="h-4 w-4" /> },
-            { value: "transfers", label: "Transfers", icon: <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
-            { value: "counts", label: "Counts", icon: <ListChecks className="h-4 w-4" /> },
-          ]}
-        />
-      </div>
-
-      {storeId ? (
-        <>
-          {active === "overview" && <OverviewTab storeId={storeId} />}
-          {active === "stock" && <StockTab storeId={storeId} currency={currency} setCurrency={setCurrency} />}
-          {active === "ledger" && <LedgerTab storeId={storeId} />}
-          {/* NEW: render Transfers page (self-contained) */}
-          {active === "transfers" && <TransfersPage />}
-{/*           {active === "counts" && <CountsPage storeId={storeId} />} */}
-          {active === "counts" && <CountsPage />}
-        </>
-      ) : (
-        <div className="p-6 text-muted-foreground">No stores found.</div>
-      )}
+        <div className="p-6">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <div className="mb-6 overflow-x-auto -mx-6 px-6">
+              <TabsList className="inline-flex w-max">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="stock">Stock Management</TabsTrigger>
+              <TabsTrigger value="transfers">Transfers</TabsTrigger>
+              <TabsTrigger value="counts">Counts</TabsTrigger>
+              <TabsTrigger value="purchase-orders">Purchase Orders</TabsTrigger>
+              <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
+              <TabsTrigger value="reorder-suggestions">Reorder Suggestions</TabsTrigger>
+              <TabsTrigger value="forecasting">Forecasting</TabsTrigger>
+              <TabsTrigger value="at-risk">At-Risk Items</TabsTrigger>
+              <TabsTrigger value="health">Health Reports</TabsTrigger>
+              <TabsTrigger value="vendors">Vendors</TabsTrigger>
+              <TabsTrigger value="reservations">Reservations</TabsTrigger>
+              <TabsTrigger value="backorders">Backorders</TabsTrigger>
+              <TabsTrigger value="availability">Availability</TabsTrigger>
+              <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
+              <TabsTrigger value="exports">Exports</TabsTrigger>
+              <TabsTrigger value="returns-inspection">Returns Inspection</TabsTrigger>
+              <TabsTrigger value="ledger">Ledger</TabsTrigger>
+              </TabsList>
+            </div>
+            <TabsContent value="overview">
+              <OverviewDashboard
+                stores={stores}
+                storeId={overviewStoreId}
+                onStoreChange={setOverviewStoreId}
+                onKpiClick={handleKpiClick}
+                onCreateTransfer={handleCreateTransfer}
+                onStartCount={handleStartCount}
+                onCreatePO={handleCreatePO}
+                onBulkAdjust={handleBulkAdjust}
+                onViewLowStock={() => {
+                  // If viewing all stores, select first store for stock tab
+                  if (overviewStoreId === null && stores.length > 0) {
+                    setStockStoreId(stores[0].id);
+                  } else if (overviewStoreId !== null) {
+                    setStockStoreId(overviewStoreId);
+                  }
+                  setActiveTab("stock");
+                  // TODO: Apply low stock filter
+                }}
+                onViewAtRisk={handleViewAtRisk}
+                onItemClick={handleItemClick}
+                onMovementClick={handleMovementClick}
+              />
+            </TabsContent>
+            <TabsContent value="stock">
+              <StockListPage
+                stores={stores}
+                storeId={stockStoreId}
+                onStoreChange={setStockStoreId}
+                onCreateTransfer={handleCreateTransfer}
+              />
+            </TabsContent>
+            <TabsContent value="transfers">
+              <TransfersPage
+                stores={stores}
+                storeId={transfersStoreId}
+                onStoreChange={setTransfersStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="counts">
+              <CountsPage
+                stores={stores}
+                storeId={countsStoreId}
+                onStoreChange={setCountsStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="purchase-orders">
+              <PurchaseOrdersPage
+                stores={stores}
+                storeId={purchaseOrdersStoreId}
+                onStoreChange={setPurchaseOrdersStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="adjustments">
+              <AdjustmentsPage
+                stores={stores}
+                storeId={adjustmentsStoreId}
+                onStoreChange={setAdjustmentsStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="reorder-suggestions">
+              <ReorderSuggestionsPage
+                stores={stores}
+                storeId={reorderSuggestionsStoreId}
+                onStoreChange={setReorderSuggestionsStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="forecasting">
+              <ForecastingDashboard
+                stores={stores}
+                storeId={forecastingStoreId}
+                onStoreChange={setForecastingStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="at-risk">
+              <AtRiskItemsPage
+                stores={stores}
+                storeId={atRiskStoreId}
+                onStoreChange={setAtRiskStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="health">
+              <InventoryHealthPage
+                stores={stores}
+                storeId={healthStoreId}
+                onStoreChange={setHealthStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="vendors">
+              <VendorsPage
+                stores={stores}
+                storeId={null}
+                onStoreChange={() => {}}
+              />
+            </TabsContent>
+            <TabsContent value="reservations">
+              <ReservationsPage
+                stores={stores}
+                storeId={reservationsStoreId}
+                onStoreChange={setReservationsStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="backorders">
+              <BackordersPage
+                stores={stores}
+                storeId={backordersStoreId}
+                onStoreChange={setBackordersStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="availability">
+              <AvailabilityView
+                stores={stores}
+                storeId={availabilityStoreId || undefined}
+                onStoreChange={(id) => setAvailabilityStoreId(id || undefined)}
+              />
+            </TabsContent>
+            <TabsContent value="webhooks">
+              <WebhooksPage
+                stores={stores}
+                storeId={null}
+                onStoreChange={() => {}}
+              />
+            </TabsContent>
+            <TabsContent value="exports">
+              <ExportSettings
+                stores={stores}
+                storeId={null}
+                onStoreChange={() => {}}
+              />
+            </TabsContent>
+            <TabsContent value="returns-inspection">
+              <ReturnsInspectionPage
+                stores={stores}
+                storeId={returnsInspectionStoreId}
+                onStoreChange={setReturnsInspectionStoreId}
+              />
+            </TabsContent>
+            <TabsContent value="ledger">
+              <LedgerPage
+                stores={stores}
+                storeId={ledgerStoreId}
+                onStoreChange={setLedgerStoreId}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </AppShell>
   );
 }
 
-
-/* -------------------- Overview -------------------- */
-function OverviewTab({ storeId }: { storeId: number }) {
-  const [data, setData] = useState<{ on_hand_value?: string; low_stock_count?: number; recent?: any[]; currency?: CurrencyInfo } | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await getOverview({ store_id: storeId });
-        setData(res || {});
-      } catch (e: any) {
-        setMsg(e.message || "Failed to load overview");
-      }
-    })();
-  }, [storeId]);
-
-  const { on_hand_value, low_stock_count, recent, currency: cur } = data || {};
-
-  return (
-    <div className="p-4 space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="On-hand value" value={formatCurrency(on_hand_value || "0", cur || {})} />
-        <KpiCard label="Low-stock items" value={String(low_stock_count ?? 0)} />
-      </div>
-
-      <div className="rounded-xl border border-border overflow-hidden">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/70 text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left">When</th>
-              <th className="px-3 py-2 text-left">Item</th>
-              <th className="px-3 py-2">Δ</th>
-              <th className="px-3 py-2">Balance</th>
-              <th className="px-3 py-2 text-left">Ref</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {(recent || []).map((r) => (
-              <tr key={r.id}>
-                <td className="px-3 py-2">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="px-3 py-2">
-                  {r.product_name} ({r.sku || "—"})
-                </td>
-                <td className="px-3 py-2 text-center">{r.qty_delta > 0 ? `+${r.qty_delta}` : r.qty_delta}</td>
-                <td className="px-3 py-2 text-center">{r.balance_after ?? "—"}</td>
-                <td className="px-3 py-2">
-                  {r.ref_type}
-                  {r.ref_id ? ` #${r.ref_id}` : ""}
-                </td>
-              </tr>
-            ))}
-            {(!data?.recent || data.recent.length === 0) && (
-              <tr>
-                <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
-                  No recent movements
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
-    </div>
-  );
-}
-
-function KpiCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-card/50 p-4">
-      <div className="text-muted-foreground text-sm">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </div>
-  );
-}
-
-/* -------------------- Stock by Store -------------------- */
-function StockTab({ storeId, currency, setCurrency }: { storeId: number; currency: CurrencyInfo; setCurrency: (c: CurrencyInfo) => void }) {
-  const [q, setQ] = useState("");
-  const [rows, setRows] = useState<InvStockRow[]>([]);
-  const [count, setCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(24);
-  const [reasons, setReasons] = useState<InvReason[]>([]);
-  const [adjustFor, setAdjustFor] = useState<InvStockRow | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const totalPages = Math.max(1, Math.ceil(count / pageSize));
-
-  async function load() {
-    try {
-      const [rs, st] = await Promise.all([
-        listReasons(),
-        listStock({ store_id: storeId, q, page, page_size: pageSize }),
-      ]);
-      setReasons(rs);
-      setRows(st.results);
-      setCount(st.count);
-      if ((st as any).currency) {
-        const cur = (st as any).currency as CurrencyInfo;
-        setCurrency({
-          code: cur.code || "USD",
-          symbol: cur.symbol || undefined,
-          precision: cur.precision ?? currency.precision ?? 2,
-        });
-      }
-    } catch (e: any) {
-      setMsg(e.message || "Failed to load stock");
-      setRows([]);
-      setCount(0);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line
-  }, [storeId, q, page, pageSize]);
-
-  return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 min-w-[260px] flex-1">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search product / SKU / barcode…"
-            className="bg-transparent outline-none flex-1"
-          />
-        </div>
-        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2">
-          <span className="text-muted-foreground text-sm">Page size</span>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
-            className="bg-transparent outline-none"
-          >
-            {[12, 24, 48, 96].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-border">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/70 text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left">Item</th>
-              <th className="px-3 py-2">On hand</th>
-              <th className="px-3 py-2">Price</th>
-              <th className="px-3 py-2 w-28"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-muted/40">
-                <td className="px-3 py-2">
-                  <div className="font-medium">{r.product_name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {r.sku || "—"} {r.barcode ? `• ${r.barcode}` : ""}
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs ring-1 ring-inset ${
-                      (r.low_stock || 0)
-                        ? "bg-badge-warning-bg text-badge-warning-text ring-warning/30"
-                        : r.on_hand <= 0
-                        ? "bg-badge-error-bg text-badge-error-text ring-error/30"
-                        : "bg-badge-success-bg text-badge-success-text ring-success/30"
-                    }`}
-                  >
-                    {r.on_hand}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-center">{formatCurrency(r.price || "0.00", currency)}</td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => setAdjustFor(r)}
-                      className="rounded bg-muted px-2 py-1 hover:bg-muted"
-                      title="Adjust"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
-                  No items
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 border-t border-border text-sm">
-            <div className="text-muted-foreground">Page {page} of {totalPages}</div>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
-              >
-                Prev
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
-
-      {/* Adjust modal */}
-      {adjustFor && (
-        <AdjustModal
-          row={adjustFor}
-          reasons={reasons}
-          onClose={() => setAdjustFor(null)}
-          onSave={async (delta, reason_code) => {
-            try {
-              await createAdjustment({
-                store_id: storeId,
-                reason_code,
-                lines: [{ variant_id: adjustFor.id, delta }],
-              });
-              setMsg("Adjustment saved");
-              setAdjustFor(null);
-              load();
-            } catch (e: any) {
-              setMsg(e.message || "Failed to save adjustment");
-            }
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function AdjustModal({
-  row,
-  reasons,
-  onClose,
-  onSave,
-}: {
-  row: InvStockRow;
-  reasons: InvReason[];
-  onClose: () => void;
-  onSave: (delta: number, reason_code: string) => Promise<void>;
-}) {
-  const [qty, setQty] = useState<string>("");
-  const [reason, setReason] = useState<string>(reasons[0]?.code || "");
-  const [saving, setSaving] = useState(false);
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <div className="font-semibold">Adjust: {row.product_name}</div>
-          <button onClick={onClose} className="rounded bg-muted px-2 py-1 hover:bg-muted">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-3">
-          <label className="text-sm">
-            Quantity change (use negative to reduce)
-            <input
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
-              placeholder="+5 or -2"
-            />
-          </label>
-
-          <label className="text-sm">
-            Reason
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-muted px-3 py-2 outline-none"
-            >
-              {reasons.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-border p-4">
-          <button onClick={onClose} className="rounded-lg px-3 py-2 bg-muted hover:bg-muted">
-            Cancel
-          </button>
-          <button
-            disabled={saving || !qty.trim() || isNaN(Number(qty))}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                await onSave(Number(qty), reason);
-              } finally {
-                setSaving(false);
-              }
-            }}
-            className="rounded-lg px-3 py-2 bg-success hover:bg-success/90 disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -------------------- Ledger -------------------- */
-function LedgerTab({ storeId }: { storeId: number }) {
-  const [q, setQ] = useState("");
-  const [rows, setRows] = useState<any[]>([]);
-  const [count, setCount] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  async function load() {
-    try {
-      const res = await listLedger({ store_id: storeId, q, page, page_size: pageSize });
-      setRows(res.results || []);
-      setCount(res.count || 0);
-    } catch (e: any) {
-      setMsg(e.message || "Failed to load ledger");
-      setRows([]);
-      setCount(0);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line
-  }, [storeId, q, page, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(count / pageSize));
-
-  return (
-    <div className="p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 rounded-lg bg-card px-3 py-2 min-w-[260px] flex-1">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search item / note / ref…"
-            className="bg-transparent outline-none flex-1"
-          />
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-xl border border-border">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-muted/70 text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 text-left">When</th>
-              <th className="px-3 py-2 text-left">Item</th>
-              <th className="px-3 py-2">Δ</th>
-              <th className="px-3 py-2">Balance</th>
-              <th className="px-3 py-2 text-left">Ref</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="px-3 py-2">{new Date(r.created_at).toLocaleString()}</td>
-                <td className="px-3 py-2">
-                  {r.product_name} ({r.sku || "—"})
-                </td>
-                <td className="px-3 py-2 text-center">{r.qty_delta > 0 ? `+${r.qty_delta}` : r.qty_delta}</td>
-                <td className="px-3 py-2 text-center">{r.balance_after ?? "—"}</td>
-                <td className="px-3 py-2">
-                  {r.ref_type}
-                  {r.ref_id ? ` #${r.ref_id}` : ""}
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-3 py-4 text-center text-muted-foreground">
-                  No entries
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-2 border-t border-border text-sm">
-            <div className="text-muted-foreground">Page {page} of {totalPages}</div>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
-              >
-                Prev
-              </button>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded bg-muted px-2 py-1 disabled:opacity-50 hover:bg-muted"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {msg && <div className="rounded bg-card border border-border px-3 py-2 text-sm">{msg}</div>}
-    </div>
-  );
-}

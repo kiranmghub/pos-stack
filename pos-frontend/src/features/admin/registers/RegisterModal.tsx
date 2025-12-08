@@ -1,9 +1,12 @@
 // src/features/admin/registers/RegisterModal.tsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import type { Store } from "../adminApi";
 import { RegistersAPI, type Register, type RegisterCreatePayload } from "../api/registers";
 import { useNotify } from "@/lib/notify";
 import { AdminAPI } from "../adminApi";
+import { getTenantCode } from "@/lib/auth";
+import { generateCode } from "@/features/onboarding/api";
+import { slugifyLocal, stripTenantPrefix, CODE_PREFIXES } from "../utils/codeGeneration";
 
 type Props = {
   open: boolean;
@@ -30,6 +33,9 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
     JSON.stringify(form.hardware_profile || {}, null, 2)
   );
   const [pin, setPin] = React.useState(""); // for set/reset pin on edit
+  const [codeManuallyEdited, setCodeManuallyEdited] = React.useState(false);
+  const [tenantCode, setTenantCode] = React.useState<string>("");
+  const codeGenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -40,12 +46,51 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
         const list = Array.isArray(page) ? page : (page.results ?? []);
         if (mounted) setStores(list);
       } catch (e: any) {
-        // push({ kind: "error", msg: e?.message || "Failed to load stores" });
         error(e?.message || "Failed to load stores");
       }
     })();
     return () => { mounted = false; };
   }, [open]);
+
+  // Fetch tenant code on mount
+  useEffect(() => {
+    if (!open) return;
+    const code = getTenantCode();
+    if (code) setTenantCode(code);
+  }, [open]);
+
+  // Auto-generate code when name changes (only for new registers)
+  useEffect(() => {
+    if (!open || isEdit || codeManuallyEdited || !form.name.trim() || !tenantCode) return;
+
+    // Clear existing timeout
+    if (codeGenTimeoutRef.current) {
+      clearTimeout(codeGenTimeoutRef.current);
+    }
+
+    // Debounce code generation
+    codeGenTimeoutRef.current = setTimeout(async () => {
+      try {
+        const tenantSlugClean = slugifyLocal(stripTenantPrefix(tenantCode));
+        const nameSlug = slugifyLocal(form.name);
+        const prefix = CODE_PREFIXES.register;
+        const parts = [prefix, tenantSlugClean, nameSlug || "register"].filter(Boolean);
+        const combined = parts.join("-").replace(/--+/g, "-");
+
+        const res = await generateCode("register", combined);
+        setForm((f) => ({ ...f, code: res.code }));
+      } catch (e: any) {
+        console.error("Failed to generate code:", e);
+        // Don't show error to user, just log it
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (codeGenTimeoutRef.current) {
+        clearTimeout(codeGenTimeoutRef.current);
+      }
+    };
+  }, [form.name, tenantCode, open, isEdit, codeManuallyEdited]);
 
   React.useEffect(() => {
     if (editing) {
@@ -57,17 +102,25 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
         is_active: editing.is_active,
       });
       setHpText(JSON.stringify(editing.hardware_profile || {}, null, 2));
+      setCodeManuallyEdited(false);
     } else {
       setForm((f) => ({ ...f, is_active: true }));
       setHpText(JSON.stringify({}, null, 2));
       setPin("");
+      setCodeManuallyEdited(false);
     }
   }, [editing]);
 
   if (!open) return null;
 
-  const onChange = (k: keyof RegisterCreatePayload, v: any) =>
+  const onChange = (k: keyof RegisterCreatePayload, v: any) => {
     setForm((f) => ({ ...f, [k]: v }));
+    
+    // Track if user manually edits the code field
+    if (k === "code" && !isEdit) {
+      setCodeManuallyEdited(true);
+    }
+  };
 
   const parseHardwareProfile = (): boolean => {
     try {
@@ -75,7 +128,6 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
       setForm((f) => ({ ...f, hardware_profile: obj }));
       return true;
     } catch {
-      // push({ kind: "error", msg: "Hardware Profile must be valid JSON." });
       error("Hardware Profile must be valid JSON.");
       return false;
     }
@@ -84,10 +136,8 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
   const handleSave = async () => {
     if (!parseHardwareProfile()) return;
     if (!form.store) { 
-      // push({ kind: "error", msg: "Store is required." }); return; }
       error("Store is required."); return; }
     if (!form.code.trim()) { 
-      // push({ kind: "error", msg: "Code is required." }); return; }
       error("Code is required."); return; }
 
     setSaving(true);
@@ -99,18 +149,15 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
         if (pin !== "") {
           await RegistersAPI.setPin(editing.id, pin); // empty string clears
         }
-        // push({ kind: "success", msg: "Register updated" });
         success("Register updated");
       } else {
         await RegistersAPI.create(form);
-        // push({ kind: "success", msg: "Register created" });
         success("Register created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
       const msg = e?.message || "Failed to save register";
-      // push({ kind: "error", msg });
       error(msg);
     } finally {
       setSaving(false);
@@ -139,16 +186,7 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
                 ))}
               </select>
             </div>
-            <div>
-              <label className="text-sm">Code *</label>
-              <input
-                value={form.code}
-                onChange={(e) => onChange("code", e.target.value)}
-                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
-                placeholder="Unique code per store"
-              />
-            </div>
-
+            {/* Swapped: Name before Code */}
             <div>
               <label className="text-sm">Name</label>
               <input
@@ -156,6 +194,15 @@ export default function RegisterModal({ open, onClose, onSaved, editing }: Props
                 onChange={(e) => onChange("name", e.target.value)}
                 className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
                 placeholder="Give a name to your register"
+              />
+            </div>
+            <div>
+              <label className="text-sm">Code *</label>
+              <input
+                value={form.code}
+                onChange={(e) => onChange("code", e.target.value)}
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
+                placeholder="Auto-generated from name"
               />
             </div>
 

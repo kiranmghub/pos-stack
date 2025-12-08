@@ -355,7 +355,7 @@ export function PageHeading({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="px-4 py-4 flex items-center justify-between">
+    <div className="w-full px-4 py-4 flex items-center justify-between">
       <div>
         <h1 className="text-lg font-semibold">{title}</h1>
         {subtitle ? <div className="text-sm text-muted-foreground">{subtitle}</div> : null}

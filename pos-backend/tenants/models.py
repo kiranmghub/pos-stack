@@ -51,6 +51,8 @@ class Tenant(TimeStampedModel):
     description = models.TextField(blank=True, null=True)
     additional_details = models.JSONField(default=dict, blank=True)
     signup_completed_at = models.DateTimeField(blank=True, null=True)
+    default_reorder_point = models.PositiveIntegerField(null=True, blank=True)
+    allow_backorders = models.BooleanField(default=False, help_text="Allow reservations to exceed on_hand quantity")
     onboarding_status = models.CharField(
         max_length=32,
         default="not_started",

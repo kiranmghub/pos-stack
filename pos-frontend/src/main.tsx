@@ -21,6 +21,7 @@ import MetricsPage from "@/features/analytics/MetricsPage";
 import "@/index.css";
 import { getRole } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import InventoryRoute from "@/features/inventory/InventoryRoute";
 import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
@@ -28,6 +29,17 @@ import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
 
 // ⬇️ NEW: HomePage import
 import HomePage from "@/features/home/HomePage";
+
+// React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30000, // 30 seconds
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 /** LandingRouter sends users to the right home based on role
  *  (kept for reference; no longer used as "/" now shows HomePage) */
@@ -187,8 +199,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );

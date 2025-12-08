@@ -1,7 +1,10 @@
 // pos-frontend/src/features/admin/taxcats/TaxCategoryModal.tsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useNotify } from "@/lib/notify";
 import { TaxCatsAPI, type TaxCategory, type TaxCategoryCreatePayload } from "../api/taxcats";
+import { getTenantCode } from "@/lib/auth";
+import { generateCode } from "@/features/onboarding/api";
+import { slugifyLocal, stripTenantPrefix, CODE_PREFIXES } from "../utils/codeGeneration";
 
 type Props = {
   open: boolean;
@@ -25,6 +28,50 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
   const [rateText, setRateText] = React.useState<string>(String(initialRate));
   const [rateErr, setRateErr] = React.useState<string>("");
 
+  const [codeManuallyEdited, setCodeManuallyEdited] = React.useState(false);
+  const [tenantCode, setTenantCode] = React.useState<string>("");
+  const codeGenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch tenant code on mount
+  useEffect(() => {
+    if (!open) return;
+    const code = getTenantCode();
+    if (code) setTenantCode(code);
+  }, [open]);
+
+  // Auto-generate code when name changes (only for new categories)
+  useEffect(() => {
+    if (!open || isEdit || codeManuallyEdited || !name.trim() || !tenantCode) return;
+
+    // Clear existing timeout
+    if (codeGenTimeoutRef.current) {
+      clearTimeout(codeGenTimeoutRef.current);
+    }
+
+    // Debounce code generation
+    codeGenTimeoutRef.current = setTimeout(async () => {
+      try {
+        const tenantSlugClean = slugifyLocal(stripTenantPrefix(tenantCode));
+        const nameSlug = slugifyLocal(name);
+        const prefix = CODE_PREFIXES.taxcategory;
+        const parts = [prefix, tenantSlugClean, nameSlug || "taxcategory"].filter(Boolean);
+        const combined = parts.join("-").replace(/--+/g, "-");
+
+        const res = await generateCode("taxcategory", combined);
+        setCode(res.code);
+      } catch (e: any) {
+        console.error("Failed to generate code:", e);
+        // Don't show error to user, just log it
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (codeGenTimeoutRef.current) {
+        clearTimeout(codeGenTimeoutRef.current);
+      }
+    };
+  }, [name, tenantCode, open, isEdit, codeManuallyEdited]);
+
   React.useEffect(() => {
     if (editing) {
       setCode(editing.code);
@@ -32,16 +79,24 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
       setDescription(editing.description ?? "");
       setRateText(String(editing.rate ?? "0.0000"));
       setRateErr("");
+      setCodeManuallyEdited(false);
     } else if (open) {
       setCode("");
       setName("");
       setDescription("");
       setRateText("0.0000");
       setRateErr("");
+      setCodeManuallyEdited(false);
     }
   }, [editing, open]);
 
   if (!open) return null;
+
+  // Track manual code edits
+  const handleCodeChange = (value: string) => {
+    setCode(value);
+    if (!isEdit) setCodeManuallyEdited(true);
+  };
 
   // Allow only digits + one dot; keep the raw string while typing
   const handleRateChange = (v: string) => {
@@ -95,7 +150,6 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
   const save = async () => {
     const err = validate();
     if (err) { 
-      // push({ kind: "error", msg: err });
       error(err);
       return; 
     }
@@ -111,17 +165,14 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
     try {
       if (isEdit && editing) {
         await TaxCatsAPI.update(editing.id, payload);
-        // push({ kind: "success", msg: "Tax category updated" });
         success("Tax category updated");
       } else {
         await TaxCatsAPI.create(payload);
-        // push({ kind: "success", msg: "Tax category created" });
         success("Tax category created");
       }
       onSaved();
       onClose();
     } catch (e: any) {
-      // push({ kind: "error", msg: e?.message || "Failed to save tax category" });
       error(e?.message || "Failed to save tax category");
     } finally {
       setSaving(false);
@@ -137,21 +188,23 @@ export default function TaxCategoryModal({ open, onClose, onSaved, editing }: Pr
 
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm">Code *</label>
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
-                placeholder="Unique code per tenant"
-              />
-            </div>
+            {/* Swapped: Name before Code */}
             <div>
               <label className="text-sm">Name *</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
+                placeholder="Tax category name"
+              />
+            </div>
+            <div>
+              <label className="text-sm">Code *</label>
+              <input
+                value={code}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
+                placeholder="Auto-generated from name"
               />
             </div>
 

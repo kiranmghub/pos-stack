@@ -4,7 +4,38 @@ import { ensureAuthedFetch } from "@/components/AppShell";
 export async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = "";
-    try { const j = await res.json(); detail = (j as any)?.detail || JSON.stringify(j); } catch {}
+    try { 
+      const j = await res.json();
+      // Handle DRF ValidationError responses with field-specific errors
+      if (j && typeof j === "object") {
+        // Check for detail first (general error)
+        if (j.detail) {
+          detail = Array.isArray(j.detail) ? j.detail[0] : j.detail;
+        } 
+        // Check for field-specific errors (e.g., {"username": ["error message"]})
+        else if (typeof j === "object" && !Array.isArray(j)) {
+          const fieldErrors: string[] = [];
+          for (const [key, value] of Object.entries(j)) {
+            if (Array.isArray(value) && value.length > 0) {
+              fieldErrors.push(value[0] as string);
+            } else if (typeof value === "string") {
+              fieldErrors.push(value);
+            }
+          }
+          if (fieldErrors.length > 0) {
+            detail = fieldErrors[0]; // Use first error message
+          } else {
+            detail = JSON.stringify(j);
+          }
+        } else {
+          detail = JSON.stringify(j);
+        }
+      } else {
+        detail = String(j);
+      }
+    } catch {
+      detail = `${res.status} ${res.statusText}`;
+    }
     throw new Error(detail || `${res.status} ${res.statusText}`);
   }
   return res.json();

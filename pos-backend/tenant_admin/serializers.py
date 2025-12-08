@@ -92,18 +92,54 @@ class TenantUserSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated):
         tenant = self.context["request"].tenant
+        if not tenant:
+            raise serializers.ValidationError("Tenant not found")
+        
+        tenant_name = getattr(tenant, "name", None) or getattr(tenant, "code", None) or "this tenant"
+        
         # If user supplied, just bind membership
         user = validated.pop("user", None)
         username = validated.pop("username", None)
         email = validated.pop("email", "")
         password = validated.pop("password", None)
         stores = validated.pop("stores", [])
+        
         if user is None:
-            # create a new auth user
-            user = User.objects.create(username=username, email=email)
+            # Check if user already exists globally
+            existing_user = User.objects.filter(username=username).first()
+            
+            # If user exists, check if they're already linked to this tenant
+            if existing_user:
+                existing_tu = TenantUser.objects.filter(tenant=tenant, user=existing_user).first()
+                if existing_tu:
+                    raise serializers.ValidationError(
+                        {"username": [f"The user '{username}' already exists for {tenant_name}. Please choose a different username."]}
+                    )
+                # User exists but not linked to this tenant - we can link them
+                user = existing_user
+            else:
+                # Create a new auth user
+                try:
+                    user = User.objects.create(username=username, email=email)
+                except IntegrityError as e:
+                    error_msg = str(e).lower()
+                    if "username" in error_msg or "auth_user_username_key" in error_msg:
+                        raise serializers.ValidationError(
+                            {"username": [f"The user '{username}' already exists for {tenant_name}. Please choose a different username."]}
+                        )
+                    elif "email" in error_msg:
+                        raise serializers.ValidationError(
+                            {"email": [f"Email '{email}' is already in use. Please use a different email."]}
+                        )
+                    else:
+                        raise serializers.ValidationError(
+                            {"username": [f"A user with this information already exists for {tenant_name}. Please check username and email."]}
+                        )
+            
             if password:
                 user.set_password(password)
                 user.save(update_fields=["password"])
+        
         tu = TenantUser.objects.create(tenant=tenant, user=user, **validated)
         if stores:
             tu.stores.set(stores)
@@ -175,9 +211,15 @@ class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = (
-            "id", "tenant", "code", "name", "timezone",
+            "id", "tenant", "code", "name", "timezone", "region",
             "street", "city", "state", "postal_code", "country",
-            "is_active", "address_meta", "created_at", "updated_at"
+            "is_active", "is_primary", "address_meta",
+            "phone_number", "mobile_number", "fax_number", "email", "contact_person",
+            "landmark", "description", "metadata",
+            "geo_lat", "geo_lng",
+            "opening_time", "closing_time",
+            "tax_id",
+            "created_at", "updated_at"
         )
         read_only_fields = ("tenant", "created_at", "updated_at")
 

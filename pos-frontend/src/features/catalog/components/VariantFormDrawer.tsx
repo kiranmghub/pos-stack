@@ -35,6 +35,7 @@ function emptyVariantForm(productId?: string | number) {
     margin_percentage: null as number | null,
     on_hand: 0,
     active: true,
+    reorder_point: null as number | null,
     image_file: null as File | null,
     image_url: "",
     tax_category: "" as string | "" | any,
@@ -85,6 +86,7 @@ const [form, setForm] = React.useState<CreateVariantDto & {
         margin_percentage: (variant as any)?.margin_percentage != null ? Number((variant as any)?.margin_percentage) : null,
         on_hand: (variant as any)?.on_hand || 0,
         active: variant?.active ?? true,
+        reorder_point: (variant as any)?.reorder_point != null ? Number((variant as any)?.reorder_point) : null,
         image_file: null,
         image_url: (variant as any)?.image_url || "",
         tax_category: (variant as any)?.tax_category ?? "",
@@ -200,6 +202,7 @@ React.useEffect(() => {
       margin_percentage: (variant as any)?.margin_percentage != null ? Number((variant as any)?.margin_percentage) : null,
       on_hand: (variant as any)?.on_hand || 0,
       active: variant?.active ?? true,
+      reorder_point: (variant as any)?.reorder_point != null ? Number((variant as any)?.reorder_point) : null,
       image_file: null,
       image_url: (variant as any)?.image_url || "",
       tax_category: (variant as any)?.tax_category ?? "",
@@ -839,6 +842,26 @@ React.useEffect(() => {
                 placeholder="each, case, lb, etc."
                 disabled={isView}
               />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium">Reorder Point (optional)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/40"
+                value={form.reorder_point ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : parseInt(e.target.value || "0", 10);
+                  setForm((s) => ({ ...s, reorder_point: val }));
+                }}
+                placeholder="Leave empty to use tenant default"
+                disabled={isView}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Low stock threshold. If empty, uses tenant default. Variant is considered low stock when on_hand ≤ this value.
+              </p>
             </div>
 
             <div>

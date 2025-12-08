@@ -93,9 +93,17 @@ class StockLedger(models.Model):
         ("ADJUSTMENT", "Adjustment"),
         ("SALE", "POS Sale"),
         ("RETURN", "Return"),
-        ("TRANSFER", "Transfer"),
+        ("TRANSFER", "Transfer"),  # Legacy - use TRANSFER_OUT/TRANSFER_IN for new entries
+        ("TRANSFER_OUT", "Transfer Out"),
+        ("TRANSFER_IN", "Transfer In"),
         ("RECEIPT", "Receipt"),
-        ("COUNT", "Count"),
+        ("COUNT", "Count"),  # Legacy - use COUNT_RECONCILE for new entries
+        ("COUNT_RECONCILE", "Count Reconcile"),
+        ("PURCHASE_ORDER_RECEIPT", "Purchase Order Receipt"),
+        ("WASTE", "Waste"),
+        ("RESERVATION", "Reservation"),
+        ("RESERVATION_COMMIT", "Reservation Commit"),
+        ("RESERVATION_RELEASE", "Reservation Release"),
     ]
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
     store = models.ForeignKey("stores.Store", on_delete=models.PROTECT, db_index=True)
@@ -104,7 +112,7 @@ class StockLedger(models.Model):
     qty_delta = models.IntegerField()  # signed
     balance_after = models.IntegerField(null=True, blank=True)
 
-    ref_type = models.CharField(max_length=20, choices=REF_TYPES)
+    ref_type = models.CharField(max_length=30, choices=REF_TYPES)
     ref_id = models.IntegerField(null=True, blank=True)
     note = models.TextField(blank=True)
 
@@ -125,7 +133,9 @@ class StockLedger(models.Model):
 class InventoryTransfer(models.Model):
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
-        ("SENT", "Sent"),
+        ("SENT", "Sent"),  # Legacy - use IN_TRANSIT for new entries
+        ("IN_TRANSIT", "In Transit"),
+        ("PARTIAL_RECEIVED", "Partial Received"),
         ("RECEIVED", "Received"),
         ("CANCELLED", "Cancelled"),
     ]
@@ -145,8 +155,17 @@ class InventoryTransferLine(models.Model):
     transfer = models.ForeignKey(InventoryTransfer, on_delete=models.CASCADE, related_name="lines")
     variant = models.ForeignKey("catalog.Variant", on_delete=models.PROTECT)
     qty = models.IntegerField()
+    qty_sent = models.IntegerField(null=True, blank=True, help_text="Quantity actually sent (defaults to qty if not set)")
+    qty_received = models.IntegerField(null=True, blank=True, default=0, help_text="Quantity received so far")
 
     class Meta:
         constraints = [
             models.CheckConstraint(check=~Q(qty=0), name="transfer_line_qty_nonzero"),
         ]
+    
+    @property
+    def qty_remaining(self):
+        """Calculate remaining quantity to receive"""
+        sent = self.qty_sent if self.qty_sent is not None else self.qty
+        received = self.qty_received or 0
+        return max(0, sent - received)

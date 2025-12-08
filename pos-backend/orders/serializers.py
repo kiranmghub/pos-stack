@@ -318,6 +318,7 @@ class ReturnItemSerializer(serializers.ModelSerializer):
         model = ReturnItem
         fields = [
             "id", "sale_line", "qty_returned", "restock", "condition",
+            "disposition", "inspected_by", "inspected_at",  # Inspection fields
             "refund_subtotal", "refund_tax", "refund_total", "created_at",
             "reason_code", "notes",   # NEW (writeable in draft; read-only in finalized)
             "product_name", "variant_name", "sku",
@@ -330,7 +331,7 @@ class ReturnItemSerializer(serializers.ModelSerializer):
             "original_fee",
             "original_total",
         ]
-        read_only_fields = ("refund_subtotal", "refund_tax", "refund_total", "created_at")
+        read_only_fields = ("refund_subtotal", "refund_tax", "refund_total", "created_at", "inspected_by", "inspected_at")
 
     def get_original_subtotal(self, obj):
         sl = obj.sale_line

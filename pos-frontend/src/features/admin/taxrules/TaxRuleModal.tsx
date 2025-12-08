@@ -1,9 +1,12 @@
 // pos-frontend/src/features/admin/taxrules/TaxRuleModal.tsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useNotify } from "@/lib/notify";
 import { TaxRulesAPI, type TaxRule } from "../api/taxrules";
 import { AdminAPI, type Store } from "../adminApi";
 import { TaxCatsAPI, type TaxCategory as TaxCat } from "../api/taxcats";
+import { getTenantCode } from "@/lib/auth";
+import { generateCode } from "@/features/onboarding/api";
+import { slugifyLocal, stripTenantPrefix, CODE_PREFIXES } from "../utils/codeGeneration";
 
 type Props = {
   open: boolean;
@@ -70,6 +73,10 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
   const [amountErr, setAmountErr] = React.useState("");
   const [topErr, setTopErr] = React.useState("");
 
+  const [codeManuallyEdited, setCodeManuallyEdited] = React.useState(false);
+  const [tenantCode, setTenantCode] = React.useState<string>("");
+  const codeGenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   React.useEffect(() => {
     if (!open) return;
     let mounted = true;
@@ -81,12 +88,51 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
         const cl = Array.isArray(cp) ? cp : cp.results ?? [];
         if (mounted) { setStores(sl); setCats(cl); }
       } catch (e: any) {
-        // push({ kind: "error", msg: e?.message || "Failed to load stores/categories" });
         error(e?.message || "Failed to load stores/categories");
       }
     })();
     return () => { mounted = false; };
   }, [open]);
+
+  // Fetch tenant code on mount
+  useEffect(() => {
+    if (!open) return;
+    const code = getTenantCode();
+    if (code) setTenantCode(code);
+  }, [open]);
+
+  // Auto-generate code when name changes (only for new rules)
+  useEffect(() => {
+    if (!open || isEdit || codeManuallyEdited || !name.trim() || !tenantCode) return;
+
+    // Clear existing timeout
+    if (codeGenTimeoutRef.current) {
+      clearTimeout(codeGenTimeoutRef.current);
+    }
+
+    // Debounce code generation
+    codeGenTimeoutRef.current = setTimeout(async () => {
+      try {
+        const tenantSlugClean = slugifyLocal(stripTenantPrefix(tenantCode));
+        const nameSlug = slugifyLocal(name);
+        const prefix = CODE_PREFIXES.taxrule;
+        const parts = [prefix, tenantSlugClean, nameSlug || "taxrule"].filter(Boolean);
+        const combined = parts.join("-").replace(/--+/g, "-");
+
+        const res = await generateCode("taxrule", combined);
+        setCode(res.code);
+      } catch (e: any) {
+        console.error("Failed to generate code:", e);
+        // Don't show error to user, just log it
+      }
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (codeGenTimeoutRef.current) {
+        clearTimeout(codeGenTimeoutRef.current);
+      }
+    };
+  }, [name, tenantCode, open, isEdit, codeManuallyEdited]);
 
   React.useEffect(() => {
     if (open && !editing) {
@@ -104,6 +150,9 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
       setDescription(editing?.description ?? "");
       setAllCats(!(editing?.categories && editing.categories.length));
       setCategoryIds(editing?.categories ? editing.categories.map((c: any) => c.id) : []);
+      setCodeManuallyEdited(false);
+    } else if (open && !editing) {
+      setCodeManuallyEdited(false);
     }
   }, [editing, open]);
 
@@ -333,15 +382,21 @@ export default function TaxRuleModal({ open, onClose, onSaved, editing }: Props)
             <div className="grid grid-cols-2 gap-4">
               {/* Identity */}
               <div className="space-y-3">
-                <div>
-                  <label className="text-sm">Code *</label>
-                  <input value={code} onChange={(e) => setCode(e.target.value)}
-                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none" />
-                </div>
+                {/* Swapped: Name before Code */}
                 <div>
                   <label className="text-sm">Name *</label>
                   <input value={name} onChange={(e) => setName(e.target.value)}
-                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none" />
+                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none" 
+                         placeholder="Tax rule name" />
+                </div>
+                <div>
+                  <label className="text-sm">Code *</label>
+                  <input value={code} onChange={(e) => {
+                    setCode(e.target.value);
+                    if (!isEdit) setCodeManuallyEdited(true);
+                  }}
+                         className="w-full mt-1 rounded-md bg-muted px-3 py-2 text-sm outline-none"
+                         placeholder="Auto-generated from name" />
                 </div>
                 <label className="inline-flex items-center gap-2">
                   <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />

@@ -87,6 +87,8 @@ urlpatterns = [
     # Inventory
     # path("api/v1/inventory/adjust", AdjustStockView.as_view()),
     path("api/v1/inventory/", include("inventory.urls", namespace="inventory")),
+    path("api/v1/purchasing/", include("purchasing.urls", namespace="purchasing")),
+    path("api/v1/webhooks/", include("webhooks.urls", namespace="webhooks")),
     # Variants
     path("api/v1/catalog/variants", VariantSearchView.as_view(), name="variant-search"),
     path("api/v1/catalog/products/<int:pk>/image", ProductImageUploadView.as_view()),

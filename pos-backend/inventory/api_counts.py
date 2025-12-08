@@ -120,6 +120,8 @@ class CountSessionListCreateView(APIView):
             "id": s.id,
             "code": s.code or "",
             "status": s.status,
+            "scope": s.scope,
+            "zone_name": s.zone_name or "",
             "note": s.note or "",
             "store": {"id": s.store_id, "code": s.store.code, "name": s.store.name},
             "created_at": s.created_at,
@@ -139,8 +141,33 @@ class CountSessionListCreateView(APIView):
         store = get_object_or_404(Store, id=store_id, tenant=tenant)
         code = (request.data.get("code") or "").strip()
         note = request.data.get("note") or ""
+        scope = (request.data.get("scope") or "FULL_STORE").strip().upper()
+        zone_name = (request.data.get("zone_name") or "").strip()
+        
+        # Validate scope
+        if scope not in ("FULL_STORE", "ZONE"):
+            return Response({"error": "scope must be FULL_STORE or ZONE"}, status=400)
+        
+        # Zone scope requires zone_name
+        if scope == "ZONE" and not zone_name:
+            return Response({"error": "zone_name required when scope is ZONE"}, status=400)
+        
+        # Validate only one active FULL_STORE session per store
+        if scope == "FULL_STORE":
+            active_full_store = CountSession.objects.filter(
+                tenant=tenant,
+                store=store,
+                scope="FULL_STORE",
+                status__in=("DRAFT", "IN_PROGRESS")
+            ).exclude(id=None)  # Exclude self if updating
+            if active_full_store.exists():
+                existing = active_full_store.first()
+                return Response({
+                    "error": f"An active full-store count session already exists (ID: {existing.id}, Status: {existing.status})"
+                }, status=400)
+        
         s = CountSession.objects.create(
-            tenant=tenant, store=store, code=code, note=note, created_by=request.user
+            tenant=tenant, store=store, code=code, note=note, scope=scope, zone_name=zone_name, created_by=request.user
         )
         if not s.code:
             s.code = f"COUNT-{s.id:05d}"
@@ -172,6 +199,8 @@ class CountSessionDetailView(APIView):
             "id": s.id,
             "code": s.code or "",
             "status": s.status,
+            "scope": s.scope,
+            "zone_name": s.zone_name or "",
             "note": s.note or "",
             "store": {"id": s.store_id, "code": s.store.code, "name": s.store.name},
             "created_at": s.created_at,
@@ -332,17 +361,80 @@ class CountFinalizeView(APIView):
                     item.on_hand = (item.on_hand or 0) + delta
                     item.save(update_fields=["on_hand"])
                     item.refresh_from_db(fields=["on_hand"])
-                    # ledger
+                    # ledger - use COUNT_RECONCILE ref_type (Phase 2, Increment 1)
                     StockLedger.objects.create(
                         tenant=tenant, store=s.store, variant=v,
-                        qty_delta=delta, balance_after=item.on_hand,
-                        ref_type="ADJUSTMENT", ref_id=adj.id, note=f"Cycle count #{s.id}",
+                        qty_delta=delta, balance_after=int(float(item.on_hand)),
+                        ref_type="COUNT_RECONCILE", ref_id=s.id, note=f"Cycle count #{s.id}",
                         created_by=request.user,
                     )
                 summary["created"] = 1
 
             s.status = "FINALIZED"
             s.finalized_at = timezone.now()
+            # Store previous status for webhook signal
+            s._previous_status = "IN_PROGRESS"  # Default if not set
             s.save(update_fields=["status", "finalized_at"])
 
         return Response({"ok": True, "summary": summary}, status=200)
+
+
+class CountVarianceView(APIView):
+    """
+    GET /api/v1/inventory/counts/<id>/variance
+    Returns variance preview (expected vs counted) before finalization.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        tenant = _resolve_request_tenant(request)
+        if not tenant:
+            return Response({"error": "No tenant"}, status=400)
+        s = get_object_or_404(CountSession, id=pk, tenant=tenant)
+        
+        lines = (
+            CountLine.objects.filter(session=s)
+            .select_related("variant__product")
+            .order_by("variant__product__name", "variant__sku")
+        )
+        
+        variance_data = []
+        total_expected = 0
+        total_counted = 0
+        total_variance = 0
+        
+        for ln in lines:
+            expected = ln.expected_qty or 0
+            counted = ln.counted_qty or 0
+            variance = counted - expected
+            
+            total_expected += expected
+            total_counted += counted
+            total_variance += variance
+            
+            variance_data.append({
+                "variant_id": ln.variant_id,
+                "sku": ln.variant.sku,
+                "product_name": ln.variant.product.name,
+                "expected_qty": expected,
+                "counted_qty": counted,
+                "variance": variance,
+                "location": ln.location or "",
+            })
+        
+        return Response({
+            "session_id": s.id,
+            "session_code": s.code or "",
+            "status": s.status,
+            "scope": s.scope,
+            "zone_name": s.zone_name or "",
+            "store": {"id": s.store_id, "code": s.store.code, "name": s.store.name},
+            "lines": variance_data,
+            "summary": {
+                "total_lines": len(variance_data),
+                "lines_with_variance": len([l for l in variance_data if l["variance"] != 0]),
+                "total_expected": total_expected,
+                "total_counted": total_counted,
+                "total_variance": total_variance,
+            }
+        }, status=200)

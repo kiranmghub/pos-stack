@@ -61,6 +61,8 @@ INSTALLED_APPS = [
     "signup",
     "subscriptions",
     "onboarding",
+    "purchasing",
+    "webhooks",
 ]
 
 # -----------------------------------------------------------------------------

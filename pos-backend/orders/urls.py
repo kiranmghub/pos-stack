@@ -1,5 +1,12 @@
 # pos-backend/orders/urls.py
 from django.urls import path
+from .views_returns_inspection import (
+    ReturnSubmitForInspectionView,
+    ReturnInspectionView,
+    ReturnAcceptView,
+    ReturnRejectView,
+    ReturnInspectionQueueView,
+)
 from .views import (
     RecentSalesView, SalesListView, SaleDetailView, SaleReturnsListCreate, ReturnAddItemsView, ReturnFinalizeView, ReturnDetailView,
     ReturnItemDeleteView, ReturnVoidView, ReturnListView, PaymentListView, RefundListView, PaymentSummaryView, PaymentExportView,
@@ -32,5 +39,11 @@ urlpatterns = [
     path("returns/<int:pk>", ReturnDetailView.as_view(), name="return-detail"),
     path("return-items/<int:pk>", ReturnItemDeleteView.as_view(), name="return-item-delete"),
     path("returns/<int:pk>/void", ReturnVoidView.as_view(), name="return-void"),
+    # Advanced Returns & Inspection Workflow
+    path("returns/<int:pk>/submit_for_inspection", ReturnSubmitForInspectionView.as_view(), name="return-submit-inspection"),
+    path("returns/<int:pk>/inspect", ReturnInspectionView.as_view(), name="return-inspect"),
+    path("returns/<int:pk>/accept", ReturnAcceptView.as_view(), name="return-accept"),
+    path("returns/<int:pk>/reject", ReturnRejectView.as_view(), name="return-reject"),
+    path("returns/inspection_queue", ReturnInspectionQueueView.as_view(), name="return-inspection-queue"),
 
 ]

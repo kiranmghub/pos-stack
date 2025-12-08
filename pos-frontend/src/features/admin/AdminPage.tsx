@@ -58,9 +58,11 @@
 
 // pos-frontend/src/features/admin/AdminPage.tsx
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent, Settings } from "lucide-react";
+import { Users, Store as StoreIcon, Settings2, Percent, BadgePercent, TicketPercent, Settings, Sparkles } from "lucide-react";
 import { SimpleTabs } from "@/components/ui/tabs";
 import { PageHeading } from "@/components/AppShell";
+import type { Store } from "./adminApi";
+import StoreModal from "./stores/StoreModal";
 
 type TabKey =
   | "users"
@@ -115,6 +117,12 @@ function readInitialTab(): TabKey {
 export default function AdminPage() {
   const [active, setActive] = useState<TabKey>(readInitialTab);
 
+  // StoreModal state management (centralized for toolbar access)
+  const [storeModalOpen, setStoreModalOpen] = useState(false);
+  const [storeModalEditing, setStoreModalEditing] = useState<Store | null>(null);
+  const [forceSetupWizard, setForceSetupWizard] = useState(false);
+  const [storesRefreshKey, setStoresRefreshKey] = useState(0);
+
   // persist to URL + localStorage when active changes
   useEffect(() => {
     // localStorage
@@ -126,12 +134,41 @@ export default function AdminPage() {
     window.history.replaceState({}, "", url.toString());
   }, [active]);
 
+  // Handler to open store modal (used by toolbar and StoresTab)
+  const handleOpenStoreModal = (editing?: Store | null, forceWizard = false) => {
+    setStoreModalEditing(editing || null);
+    setForceSetupWizard(forceWizard);
+    setStoreModalOpen(true);
+  };
+
+  // Handler to close store modal
+  const handleCloseStoreModal = () => {
+    setStoreModalOpen(false);
+    setStoreModalEditing(null);
+    setForceSetupWizard(false);
+  };
+
+  // Handler when store is saved (refresh stores list)
+  const handleStoreSaved = () => {
+    setStoresRefreshKey((prev) => prev + 1);
+  };
+
   return (
     <div className="min-h-[calc(100vh-3rem)] bg-background">
-      <div className="px-4 py-3 flex items-center justify-between bg-background">
+      <div className="bg-background">
         <PageHeading
           title="Tenant Administration"
           subtitle="Manage users, stores, registers, tax rules, and discounts"
+          actions={
+            <button
+              onClick={() => handleOpenStoreModal(null, true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors"
+              title="Guided Setup: Create store with guided setup wizard"
+            >
+              <Sparkles className="h-4 w-4" />
+              Guided Setup
+            </button>
+          }
         />
       </div>
 
@@ -160,7 +197,7 @@ export default function AdminPage() {
           }
         >
           {active === "users" && <UsersTab />}
-          {active === "stores" && <StoresTab />}
+          {active === "stores" && <StoresTab onOpenStoreModal={handleOpenStoreModal} refreshKey={storesRefreshKey} />}
           {active === "registers" && <RegistersTab />}
           {active === "taxcats" && <TaxCategoriesTab />}
           {active === "taxrules" && <TaxRulesTab />}
@@ -169,6 +206,15 @@ export default function AdminPage() {
           {active === "settings" && <SettingsTab />}
         </Suspense>
       </div>
+
+      {/* StoreModal (centralized at AdminPage level) */}
+      <StoreModal
+        open={storeModalOpen}
+        editing={storeModalEditing}
+        forceSetupWizard={forceSetupWizard}
+        onClose={handleCloseStoreModal}
+        onSaved={handleStoreSaved}
+      />
     </div>
   );
 }

@@ -107,6 +107,9 @@ class SaleReceipt(models.Model):
 class Return(models.Model):
     STATUS_CHOICES = [
         ("draft", "Draft"),
+        ("awaiting_inspection", "Awaiting Inspection"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
         ("finalized", "Finalized"),
         ("void", "Void"),
     ]
@@ -115,7 +118,7 @@ class Return(models.Model):
     store = models.ForeignKey(Store, on_delete=models.PROTECT, related_name="returns")
     sale = models.ForeignKey("orders.Sale", on_delete=models.PROTECT, related_name="returns")
     processed_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="processed_returns")
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="draft")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft", db_index=True)
 
     return_no = models.CharField(max_length=32, blank=True, null=True, db_index=True)
     reason_code = models.CharField(max_length=32, blank=True, null=True)
@@ -144,12 +147,34 @@ class ReturnItem(models.Model):
         ("DAMAGED", "Damaged"),
         ("OPEN_BOX", "Open box"),
     ]
+    
+    DISPOSITION_CHOICES = [
+        ("PENDING", "Pending Inspection"),
+        ("RESTOCK", "Restock"),
+        ("WASTE", "Waste"),
+    ]
 
     return_ref = models.ForeignKey(Return, on_delete=models.CASCADE, related_name="items")
     sale_line = models.ForeignKey(SaleLine, on_delete=models.PROTECT, related_name="return_items")
     qty_returned = models.PositiveIntegerField()
-    restock = models.BooleanField(default=True)
+    restock = models.BooleanField(default=True)  # Legacy field - use disposition for new workflow
     condition = models.CharField(max_length=16, choices=CONDITION_CHOICES, default="RESALEABLE")
+    disposition = models.CharField(
+        max_length=16,
+        choices=DISPOSITION_CHOICES,
+        default="PENDING",
+        db_index=True,
+        help_text="Disposition after inspection: RESTOCK or WASTE"
+    )
+    inspected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inspected_return_items",
+        help_text="User who performed the inspection"
+    )
+    inspected_at = models.DateTimeField(null=True, blank=True, help_text="When the inspection was completed")
 
     refund_subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     refund_tax = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -157,6 +182,11 @@ class ReturnItem(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     reason_code = models.CharField(max_length=64, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["return_ref", "disposition"]),
+        ]
 
     def __str__(self):
         return f"ReturnItem sale_line={self.sale_line_id} x{self.qty_returned}"

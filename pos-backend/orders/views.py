@@ -1023,21 +1023,64 @@ class ReturnFinalizeView(generics.CreateAPIView):
             if round(total_methods, 2) != round(ret.refund_total, 2):
                 return Response({"detail": "Refund breakdown must equal refund_total"}, status=400)
 
-            # inventory restock ledger
-            from inventory.models import InventoryItem, StockLedgerEntry
+            # inventory restock/waste ledger
+            from inventory.models import InventoryItem, StockLedger
             for ri in ret.items.select_related("sale_line__variant"):
-                if not ri.restock:
+                # Determine disposition: use new disposition field if set, otherwise fallback to restock boolean
+                disposition = getattr(ri, "disposition", None)
+                if disposition == "PENDING":
+                    # Skip items that haven't been inspected
                     continue
+                
+                # Determine if restock or waste
+                is_restock = False
+                if disposition:
+                    is_restock = (disposition == "RESTOCK")
+                else:
+                    # Legacy: use restock boolean
+                    is_restock = ri.restock
+                
                 ii, _ = InventoryItem.objects.get_or_create(
                     tenant=ret.tenant, store=ret.store, variant=ri.sale_line.variant,
                     defaults={"on_hand": 0, "reserved": 0}
                 )
-                ii.on_hand = ii.on_hand + ri.qty_returned
-                ii.save(update_fields=["on_hand"])
-                StockLedgerEntry.objects.create(
-                    store=ret.store, variant=ri.sale_line.variant, delta=ri.qty_returned,
-                    reason="return", ref_type="return", ref_id=str(ret.id)
-                )
+                ii = InventoryItem.objects.select_for_update().get(id=ii.id)
+                
+                if is_restock:
+                    # Restock path: increment inventory
+                    ii.on_hand = (ii.on_hand or 0) + ri.qty_returned
+                    ii.save(update_fields=["on_hand"])
+                    StockLedger.objects.create(
+                        tenant=ret.tenant,
+                        store=ret.store,
+                        variant=ri.sale_line.variant,
+                        qty_delta=ri.qty_returned,
+                        balance_after=ii.on_hand,
+                        ref_type="RETURN",
+                        ref_id=ret.id,
+                        note=f"Return #{ret.id} - Restocked",
+                        created_by=request.user if request.user.is_authenticated else None,
+                    )
+                else:
+                    # Waste path: decrement inventory (if it exists) and log as waste
+                    current_on_hand = (ii.on_hand or 0)
+                    if current_on_hand >= ri.qty_returned:
+                        ii.on_hand = current_on_hand - ri.qty_returned
+                    else:
+                        # If we don't have enough on hand, set to 0 (shouldn't happen but be defensive)
+                        ii.on_hand = 0
+                    ii.save(update_fields=["on_hand"])
+                    StockLedger.objects.create(
+                        tenant=ret.tenant,
+                        store=ret.store,
+                        variant=ri.sale_line.variant,
+                        qty_delta=-ri.qty_returned,
+                        balance_after=ii.on_hand,
+                        ref_type="WASTE",
+                        ref_id=ret.id,
+                        note=f"Return #{ret.id} - Wasted (condition: {ri.condition})",
+                        created_by=request.user if request.user.is_authenticated else None,
+                    )
             # mark finalized and assign code if needed
             if not ret.return_no:
                 ret.assign_return_no()
