@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/ui/dialog";
 import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
 
 type Props = {
   open: boolean;
@@ -43,7 +42,11 @@ export default function DeleteConfirmModal({
           </DialogDescription>
         </DialogHeader>
 
-        {subject ? <Input value={subject} readOnly className="mt-3" /> : null}
+        {subject && (
+          <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border/50">
+            <p className="text-sm font-medium text-foreground">{subject}</p>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>

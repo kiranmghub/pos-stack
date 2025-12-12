@@ -8,7 +8,7 @@ from catalog.models import Product, Variant
 from decimal import Decimal
 from rest_framework import serializers
 
-from tenants.models import TenantUser
+from tenants.models import TenantUser, TenantDoc
 from django.contrib.auth import get_user_model
 from stores.models import Store, Register
 from catalog.models import TaxCategory
@@ -505,3 +505,193 @@ class CouponSerializer(serializers.ModelSerializer):
     def get_remaining_uses(self, obj):
         if obj.max_uses is None: return None
         return max(0, int(obj.max_uses) - int(obj.used_count or 0))
+
+
+# ---------- DOCUMENTS ----------
+from tenants.models import TenantDoc
+from purchasing.models import PurchaseOrder
+
+class TenantDocSerializer(serializers.ModelSerializer):
+    """
+    Serializer for TenantDoc model with computed fields for file URLs and related Purchase Orders.
+    """
+    uploaded_by = UserLiteSerializer(read_only=True)
+    subject_user = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
+    file_size = serializers.SerializerMethodField()
+    file_type = serializers.SerializerMethodField()
+    related_pos = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TenantDoc
+        fields = (
+            "id",
+            "label",
+            "doc_type",
+            "description",
+            "file_url",
+            "file_name",
+            "file_size",
+            "file_type",
+            "uploaded_by",
+            "subject_user",
+            "metadata",
+            "related_pos",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
+    
+    def get_subject_user(self, obj):
+        """Return subject user info if available."""
+        if obj.subject_user:
+            return {
+                "id": obj.subject_user.id,
+                "username": obj.subject_user.user.username if obj.subject_user.user else None,
+            }
+        return None
+    
+    def get_file_url(self, obj):
+        """
+        Return proxied download URL (not direct file URL).
+        Frontend should use this URL to download files through authenticated endpoint.
+        """
+        request = self.context.get("request")
+        if not request or not obj.id:
+            return None
+        # Return proxied download endpoint URL (with trailing slash)
+        return request.build_absolute_uri(f"/api/v1/tenant_admin/documents/{obj.id}/file/")
+    
+    def get_file_name(self, obj):
+        """Extract filename from file path."""
+        if not obj.file or not obj.file.name:
+            return None
+        # Extract just the filename from the path
+        return obj.file.name.split("/")[-1]
+    
+    def get_file_size(self, obj):
+        """Get file size in bytes."""
+        try:
+            if obj.file and hasattr(obj.file, "size"):
+                return obj.file.size
+        except (OSError, ValueError):
+            pass
+        return None
+    
+    def get_file_type(self, obj):
+        """Get file MIME type or infer from extension."""
+        try:
+            if obj.file and hasattr(obj.file, "content_type") and obj.file.content_type:
+                return obj.file.content_type
+            # Fallback: infer from extension
+            if obj.file and obj.file.name:
+                ext = obj.file.name.split(".")[-1].lower()
+                mime_map = {
+                    "pdf": "application/pdf",
+                    "jpg": "image/jpeg",
+                    "jpeg": "image/jpeg",
+                    "png": "image/png",
+                    "gif": "image/gif",
+                }
+                return mime_map.get(ext, "application/octet-stream")
+        except (OSError, ValueError, AttributeError):
+            pass
+        return None
+    
+    def get_related_pos(self, obj):
+        """
+        Get related Purchase Orders via direct FK relationship (primary) 
+        and metadata lookup (fallback for legacy data).
+        Returns array of related PO objects.
+        """
+        related_pos = []
+        tenant = obj.tenant
+        
+        # Strategy 1: Direct FK relationship (most reliable)
+        # PurchaseOrder.invoice_document FK points to TenantDoc
+        for po in obj.purchase_orders.all().only("id", "po_number", "status"):
+            related_pos.append({
+                "id": po.id,
+                "po_number": po.po_number or f"PO-{po.id}",
+                "status": po.status,
+                "link_type": "direct",  # Linked via invoice_document FK
+            })
+        
+        # Strategy 2: Metadata lookup (fallback for legacy documents without FK)
+        if not related_pos:
+            metadata = obj.metadata or {}
+            vendor_invoice_number = metadata.get("vendor_invoice_number", "").strip()
+            
+            if vendor_invoice_number:
+                try:
+                    pos = PurchaseOrder.objects.filter(
+                        tenant=tenant,
+                        vendor_invoice_number=vendor_invoice_number
+                    ).only("id", "po_number", "status")
+                    
+                    for po in pos:
+                        related_pos.append({
+                            "id": po.id,
+                            "po_number": po.po_number or f"PO-{po.id}",
+                            "status": po.status,
+                            "link_type": "metadata",  # Found via metadata lookup
+                        })
+                except Exception:
+                    # Silently fail on lookup errors
+                    pass
+        
+        return related_pos if related_pos else None
+
+
+class TenantDocUploadSerializer(serializers.Serializer):
+    """Serializer for document upload (multipart/form-data)."""
+    label = serializers.CharField(max_length=160, required=True)
+    doc_type = serializers.CharField(max_length=80, required=False, allow_blank=True)
+    description = serializers.CharField(required=False, allow_blank=True)
+    metadata = serializers.JSONField(required=False, default=dict)
+    file = serializers.FileField(required=True)
+    
+    def validate_file(self, value):
+        """Validate file size and type."""
+        # Size validation (10MB max)
+        MAX_SIZE = 10 * 1024 * 1024  # 10MB
+        if value.size > MAX_SIZE:
+            raise serializers.ValidationError(
+                f"File size exceeds maximum of {MAX_SIZE / (1024*1024):.0f}MB"
+            )
+        
+        # MIME type validation
+        ALLOWED_MIME_TYPES = [
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "image/tiff",
+            "image/bmp",
+        ]
+        
+        # Check content type
+        content_type = value.content_type or ""
+        file_extension = (value.name or "").split(".")[-1].lower()
+        
+        # Extension whitelist
+        ALLOWED_EXTENSIONS = ["pdf", "jpg", "jpeg", "png", "gif", "webp", "tiff", "tif", "bmp"]
+        
+        is_valid = False
+        if content_type in ALLOWED_MIME_TYPES:
+            is_valid = True
+        elif file_extension in ALLOWED_EXTENSIONS:
+            is_valid = True
+        
+        if not is_valid:
+            raise serializers.ValidationError(
+                "Invalid file type. Allowed: PDF, JPEG, PNG, GIF, WebP, TIFF, BMP"
+            )
+        
+        return value

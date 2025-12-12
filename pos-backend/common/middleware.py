@@ -26,7 +26,19 @@ class TenantContextMiddleware:
     def __call__(self, request):
         # Allow CORS preflight and whitelisted paths
         if request.method == "OPTIONS":
-            return self.get_response(request)
+            # Create a proper OPTIONS response with CORS headers
+            from django.http import HttpResponse
+            response = HttpResponse()
+            origin = request.headers.get("Origin")
+            if origin:
+                response["Access-Control-Allow-Origin"] = origin
+                response["Access-Control-Allow-Credentials"] = "true"
+            else:
+                response["Access-Control-Allow-Origin"] = "*"
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Tenant-Id, X-Tenant-Code"
+            response["Access-Control-Max-Age"] = "86400"
+            return response
         if request.path.startswith(AUTH_WHITELIST):
             request.tenant = None
             return self.get_response(request)
@@ -41,10 +53,22 @@ class TenantContextMiddleware:
             auth = JWTAuthentication()
             auth_result = auth.authenticate(request)
             if not auth_result:
-                return JsonResponse({"detail": "Authentication required"}, status=401)
+                response = JsonResponse({"detail": "Authentication required"}, status=401)
+                # Add CORS headers to error responses
+                origin = request.headers.get("Origin")
+                if origin:
+                    response["Access-Control-Allow-Origin"] = origin
+                    response["Access-Control-Allow-Credentials"] = "true"
+                return response
             user, token = auth_result
         except Exception:
-            return JsonResponse({"detail": "Invalid token"}, status=401)
+            response = JsonResponse({"detail": "Invalid token"}, status=401)
+            # Add CORS headers to error responses
+            origin = request.headers.get("Origin")
+            if origin:
+                response["Access-Control-Allow-Origin"] = origin
+                response["Access-Control-Allow-Credentials"] = "true"
+            return response
 
         # Resolve tenant: prefer JWT claims, then allow header fallback
         tenant_id = token.payload.get("tenant_id") or request.headers.get("X-Tenant-Id")
@@ -60,17 +84,38 @@ class TenantContextMiddleware:
             tenant = Tenant.objects.filter(code=str(tenant_code), is_active=True).first()
 
         if not tenant:
-            return JsonResponse({"detail": "Invalid tenant"}, status=403)
+            response = JsonResponse({"detail": "Invalid tenant"}, status=403)
+            # Add CORS headers to error responses
+            origin = request.headers.get("Origin")
+            if origin:
+                response["Access-Control-Allow-Origin"] = origin
+                response["Access-Control-Allow-Credentials"] = "true"
+            return response
 
         # Ensure the user belongs to the tenant (unless superuser)
         is_member = user.is_superuser or TenantUser.objects.filter(
             user=user, tenant=tenant, is_active=True
         ).exists()
         if not is_member:
-            return JsonResponse({"detail": "User not a member of tenant"}, status=403)
+            response = JsonResponse({"detail": "User not a member of tenant"}, status=403)
+            # Add CORS headers to error responses
+            origin = request.headers.get("Origin")
+            if origin:
+                response["Access-Control-Allow-Origin"] = origin
+                response["Access-Control-Allow-Credentials"] = "true"
+            return response
 
         # Attach to request for downstream views
         request.user = user
         request.tenant = tenant
 
-        return self.get_response(request)
+        response = self.get_response(request)
+        
+        # Add CORS headers to all responses (for cross-origin requests)
+        origin = request.headers.get("Origin")
+        if origin:
+            response["Access-Control-Allow-Origin"] = origin
+            response["Access-Control-Allow-Credentials"] = "true"
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+        
+        return response

@@ -10,11 +10,13 @@ import {
   receivePurchaseOrder,
   getVendorsList,
   createVendor,
+  receiveExternalPO,
   type PurchaseOrderListParams,
   type CreatePOPayload,
   type UpdatePOPayload,
   type ReceivePOPayload,
   type CreateVendorPayload,
+  type ExternalPOReceivePayload,
 } from "../api/purchaseOrders";
 
 /**
@@ -149,6 +151,24 @@ export function useCreateVendor() {
     mutationFn: (payload: CreateVendorPayload) => createVendor(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory", "vendors"] });
+    },
+  });
+}
+
+/**
+ * React Query mutation for receiving external purchase orders
+ * Security: Tenant-scoped via API, validates inputs, updates inventory, creates ledger entries
+ */
+export function useReceiveExternalPO() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: ExternalPOReceivePayload) => receiveExternalPO(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory", "purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", "overview"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", "stock"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory", "ledger"] });
     },
   });
 }

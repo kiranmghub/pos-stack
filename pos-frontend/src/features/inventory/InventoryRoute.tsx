@@ -21,8 +21,30 @@ import { getMyStores, type StoreLite } from "@/features/pos/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function InventoryRoute() {
+  // Read initial tab and PO ID from URL params for deep linking
+  type TabValue = "overview" | "stock" | "ledger" | "transfers" | "counts" | "purchase-orders" | "adjustments" | "reorder-suggestions" | "forecasting" | "at-risk" | "health" | "vendors" | "reservations" | "backorders" | "availability" | "webhooks" | "exports" | "returns-inspection";
+  
+  const readInitialState = (): { initialTab: TabValue; initialPOId: number | null } => {
+    const url = new URL(window.location.href);
+    const tabParam = url.searchParams.get("tab");
+    const poIdParam = url.searchParams.get("poId");
+    
+    // Validate tab
+    const validTabs: TabValue[] = ["overview", "stock", "ledger", "transfers", "counts", "purchase-orders", "adjustments", "reorder-suggestions", "forecasting", "at-risk", "health", "vendors", "reservations", "backorders", "availability", "webhooks", "exports", "returns-inspection"];
+    const initialTab: TabValue = validTabs.includes(tabParam as TabValue) ? (tabParam as TabValue) : "overview";
+    
+    // Parse PO ID if present
+    const initialPOId = poIdParam ? parseInt(poIdParam, 10) : null;
+    
+    return { initialTab, initialPOId };
+  };
+  
+  const { initialTab, initialPOId } = readInitialState();
   const [stores, setStores] = useState<StoreLite[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "stock" | "ledger" | "transfers" | "counts" | "purchase-orders" | "adjustments" | "reorder-suggestions" | "forecasting" | "at-risk" | "health" | "vendors" | "reservations" | "backorders" | "availability" | "webhooks" | "exports" | "returns-inspection">("overview");
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+  
+  // State to pass PO ID to PurchaseOrdersPage
+  const [initialSelectedPOId, setInitialSelectedPOId] = useState<number | null>(initialPOId);
   
   // Per-tab store state
   const [overviewStoreId, setOverviewStoreId] = useState<number | null>(null); // null = "All Stores"
@@ -198,6 +220,16 @@ export default function InventoryRoute() {
                 stores={stores}
                 storeId={purchaseOrdersStoreId}
                 onStoreChange={setPurchaseOrdersStoreId}
+                initialSelectedPOId={initialSelectedPOId}
+                onPOSelected={() => {
+                  // Clear initial PO ID after it's been used
+                  setInitialSelectedPOId(null);
+                  // Clean up URL params
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("poId");
+                  url.searchParams.delete("tab");
+                  window.history.replaceState({}, "", url.toString());
+                }}
               />
             </TabsContent>
             <TabsContent value="adjustments">

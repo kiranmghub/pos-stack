@@ -17,6 +17,8 @@ export interface VariantOption {
   sku: string;
   product_name: string;
   name?: string;
+  on_hand?: number;
+  reorder_point?: number | null;
 }
 
 export interface CreatePOModalProps {
@@ -82,14 +84,29 @@ export function CreatePOModal({
         const params = new URLSearchParams();
         params.append("q", searchQuery.trim());
         params.append("limit", "20");
+        // Include store_id if available to get store-specific stock
+        if (storeId) {
+          params.append("store_id", storeId.toString());
+        }
         const data = await apiFetchJSON(`/api/v1/catalog/variants?${params.toString()}`) as any;
-        const results = Array.isArray(data) ? data : data.results || [];
-        setSearchResults(results.map((v: any) => ({
-          id: v.id,
-          sku: v.sku || "",
-          product_name: v.product_name || v.name || "",
-          name: v.name,
-        })));
+        // Handle both array and paginated response formats
+        const results = Array.isArray(data) ? data : (data.results || data.items || []);
+        setSearchResults(results.map((v: any) => {
+          // Safely extract fields with proper type checking
+          const onHand = v.on_hand;
+          const reorderPoint = v.reorder_point;
+          
+          return {
+            id: v.id,
+            sku: v.sku || "",
+            product_name: v.product_name || v.name || "",
+            name: v.name,
+            on_hand: typeof onHand === "number" ? onHand : (typeof onHand === "string" ? parseInt(onHand, 10) : undefined),
+            reorder_point: reorderPoint !== undefined && reorderPoint !== null 
+              ? (typeof reorderPoint === "number" ? reorderPoint : parseInt(String(reorderPoint), 10))
+              : undefined,
+          };
+        }));
       } catch (err) {
         console.error("Failed to search variants:", err);
         setSearchResults([]);
@@ -99,7 +116,7 @@ export function CreatePOModal({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, step]);
+  }, [searchQuery, step, storeId]);
 
   const handleAddLine = () => {
     if (!selectedVariantId || !qtyInput || !costInput) return;
@@ -344,23 +361,68 @@ export function CreatePOModal({
                   <div className="p-4 text-center text-sm text-muted-foreground">Searching...</div>
                 ) : searchResults.length > 0 ? (
                   <div className="divide-y divide-border">
-                    {searchResults.map((variant) => (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => setSelectedVariantId(variant.id)}
-                        disabled={createPOMutation.isPending}
-                        className={cn(
-                          "w-full px-3 py-2 text-left hover:bg-accent transition-colors",
-                          selectedVariantId === variant.id && "bg-accent/50"
-                        )}
-                      >
-                        <div className="text-sm font-medium text-foreground">
-                          {variant.product_name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">SKU: {variant.sku}</div>
-                      </button>
-                    ))}
+                    {searchResults.map((variant) => {
+                      // Determine stock status
+                      const hasStockData = variant.on_hand !== undefined && 
+                                         variant.reorder_point !== undefined && 
+                                         variant.reorder_point !== null;
+                      const isLowStock = hasStockData && variant.on_hand < variant.reorder_point;
+                      const isGoodStock = hasStockData && variant.on_hand >= variant.reorder_point;
+                      
+                      return (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setSelectedVariantId(variant.id)}
+                          disabled={createPOMutation.isPending}
+                          className={cn(
+                            "w-full px-3 py-2 text-left hover:bg-accent transition-colors relative border-l-4",
+                            selectedVariantId === variant.id && "bg-accent/50",
+                            isLowStock && "bg-destructive/5",
+                            isGoodStock && "bg-success/5"
+                          )}
+                          style={
+                            isLowStock 
+                              ? { borderLeftColor: "hsl(var(--destructive))" }
+                              : isGoodStock
+                              ? { borderLeftColor: "hsl(var(--success))" }
+                              : { borderLeftColor: "transparent" }
+                          }
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-foreground truncate">
+                                {variant.product_name}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">SKU: {variant.sku}</div>
+                            </div>
+                            <div className="flex-shrink-0 text-right text-xs space-y-0.5">
+                              {variant.on_hand !== undefined ? (
+                                <div className={cn(
+                                  "font-medium",
+                                  isLowStock && "text-destructive",
+                                  isGoodStock && "text-success",
+                                  !isLowStock && !isGoodStock && "text-muted-foreground"
+                                )}>
+                                  Stock: {variant.on_hand}
+                                </div>
+                              ) : (
+                                <div className="text-muted-foreground text-xs">Stock: N/A</div>
+                              )}
+                              {variant.reorder_point !== undefined && variant.reorder_point !== null ? (
+                                <div className="text-muted-foreground">
+                                  Threshold: {variant.reorder_point}
+                                </div>
+                              ) : variant.on_hand !== undefined && (
+                                <div className="text-muted-foreground text-xs opacity-50">
+                                  No threshold
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="p-4 text-center text-sm text-muted-foreground">

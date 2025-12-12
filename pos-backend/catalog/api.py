@@ -462,20 +462,33 @@ class VariantMiniSerializer(serializers.ModelSerializer):
 
 class VariantPublicSerializer(serializers.ModelSerializer):
     active = serializers.BooleanField(source="is_active", read_only=True)
+    product_name = serializers.SerializerMethodField()
     on_hand = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Variant
-        fields = ("id", "name", "sku", "barcode", "price", "cost", "margin_percentage", "on_hand", "active", "reorder_point", "image_url", "product", "created_at", "updated_at")
+        fields = ("id", "name", "sku", "barcode", "price", "cost", "margin_percentage", "on_hand", "active", "reorder_point", "product_name", "image_url", "product", "created_at", "updated_at")
+
+    def get_product_name(self, obj):
+        """Get product name from related product"""
+        if obj.product:
+            return obj.product.name
+        return None
 
     def get_on_hand(self, obj):
         # Sum inventory from InventoryItem via reverse accessor used elsewhere (inventoryitem)
         from inventory.models import InventoryItem  # local import to avoid cycles
-        tenant = getattr(self.context.get("request"), "tenant", None) or self.context.get("tenant")
+        ctx = self.context or {}
+        tenant = getattr(ctx.get("request"), "tenant", None) or ctx.get("tenant")
+        store_id = ctx.get("store_id")
+        
         qs = InventoryItem.objects.filter(variant=obj)
         if tenant:
             qs = qs.filter(tenant=tenant)
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        
         # Make sure Sum(...) and the fallback Value(...) share the same DecimalField output,
         # and also set Coalesce(..., output_field=DecimalField) to avoid mixed-type errors.
         total = qs.aggregate(
@@ -1104,7 +1117,8 @@ class VariantViewSet(
     search_fields = ["name", "sku", "barcode"]
 
     def get_queryset(self):
-        qs = Variant.objects.select_related("product")
+        # Ensure product relation is loaded to avoid N+1 queries
+        qs = Variant.objects.select_related("product", "product__tenant")
         product_id = self.request.query_params.get("product")
         if product_id:
             qs = qs.filter(product_id=product_id)
@@ -1124,6 +1138,16 @@ class VariantViewSet(
         tenant = _resolve_request_tenant(self.request)
         if tenant:
             ctx["tenant"] = tenant
+        
+        # Extract store_id from query params if provided
+        store_id = self.request.query_params.get("store_id")
+        if store_id:
+            try:
+                ctx["store_id"] = int(store_id)
+            except (ValueError, TypeError):
+                # Invalid store_id, silently ignore (don't filter by store)
+                pass
+        
         return ctx
 
     @transaction.atomic

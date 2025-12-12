@@ -15,3 +15,31 @@ class IsTenantAdmin(BasePermission):
             if str(getattr(m, "role", "")).lower() in ("owner", "admin", "manager"):
                 return True
         return False
+
+
+class IsOwnerOrAdmin(BasePermission):
+    """
+    Allow only Owners and Admins to access resources (stricter than IsTenantAdmin).
+    Used for sensitive resources like documents that should not be accessible to Managers.
+    """
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        
+        tenant = getattr(request, "tenant", None)
+        if not tenant:
+            return False
+        
+        membership = request.user.tenant_memberships.filter(
+            tenant=tenant,
+            is_active=True
+        ).first()
+        
+        if not membership:
+            return False
+        
+        # Only OWNER and ADMIN roles allowed (not MANAGER, CASHIER, etc.)
+        role_upper = str(membership.role).upper()
+        return role_upper in ("OWNER", "ADMIN")

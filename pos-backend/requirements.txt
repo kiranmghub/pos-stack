@@ -12,3 +12,6 @@ psycopg2-binary==2.9.9   # if Postgres
 python-dotenv==1.0.1
 requests==2.32.5
 urllib3<2.0  # Pin to v1.x for LibreSSL compatibility on macOS
+Pillow>=10.0.0  # Image processing for document uploads
+reportlab>=4.0.0  # PDF generation for image-to-PDF conversion
+openpyxl>=3.1.0  # Excel export for reports

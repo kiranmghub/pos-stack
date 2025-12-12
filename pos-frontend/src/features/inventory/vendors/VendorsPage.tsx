@@ -8,12 +8,13 @@ import { VendorDetail } from "./VendorDetail";
 import { VendorModal } from "./VendorModal";
 import {
   useVendorsList,
+  useDeleteVendor,
 } from "../hooks/useVendors";
 import { Vendor } from "../api/vendors";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useNotify } from "@/lib/notify";
 import { LoadingSkeleton, EmptyState } from "../components";
-// Note: AlertDialog component not available, using Dialog instead
+import DeleteConfirmModal from "@/features/admin/components/DeleteConfirmModal";
 
 export interface VendorsPageProps {
   /** Available stores (not used for vendors, but kept for consistency) */
@@ -32,6 +33,7 @@ export function VendorsPage({}: VendorsPageProps) {
   const notify = useNotify();
   const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [vendorToDelete, setVendorToDelete] = useState<Vendor | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,14 +51,15 @@ export function VendorsPage({}: VendorsPageProps) {
     page_size: pageSize,
   });
 
+  // Delete vendor mutation
+  const deleteVendorMutation = useDeleteVendor();
+
   // Get selected vendor from list (no detail endpoint available)
   const selectedVendor = useMemo(() => {
     if (!selectedVendorId || !vendorsData?.results) return null;
     return vendorsData.results.find((v) => v.id === selectedVendorId) || null;
   }, [selectedVendorId, vendorsData]);
 
-  // TODO: Enable when backend delete endpoint is available
-  // const deleteVendorMutation = useDeleteVendor();
 
   const filteredVendors = useMemo(() => {
     if (!vendorsData?.results) return [];
@@ -72,23 +75,44 @@ export function VendorsPage({}: VendorsPageProps) {
     setShowCreateModal(false);
   };
 
+  const handleEditSuccess = () => {
+    refetchVendors();
+    setEditingVendor(null);
+    // Refresh selected vendor if it was the one being edited
+    if (selectedVendorId && editingVendor?.id === selectedVendorId) {
+      // The list will be refetched, so selectedVendor will update automatically
+    }
+  };
+
   const handleEdit = () => {
     if (selectedVendor) {
-      // TODO: Implement edit when backend endpoint is available
-      notify.info("Edit vendor feature coming soon");
+      setEditingVendor(selectedVendor);
     }
   };
 
   const handleDeleteClick = () => {
     if (selectedVendor) {
-      // TODO: Implement delete when backend endpoint is available
-      notify.info("Delete vendor feature coming soon");
+      setVendorToDelete(selectedVendor);
+      setShowDeleteConfirm(true);
     }
   };
 
   const handleDeleteConfirm = async () => {
-    // TODO: Implement when backend endpoint is available
-    notify.info("Delete vendor feature coming soon");
+    if (!vendorToDelete) return;
+
+    try {
+      await deleteVendorMutation.mutateAsync(vendorToDelete.id);
+      setShowDeleteConfirm(false);
+      setVendorToDelete(null);
+      // Clear selection if deleted vendor was selected
+      if (selectedVendorId === vendorToDelete.id) {
+        setSelectedVendorId(null);
+      }
+      refetchVendors();
+    } catch (error: any) {
+      // Error is handled by mutation
+      // Keep modal open on error so user can try again or cancel
+    }
   };
 
   const activeFiltersCount = searchQuery ? 1 : 0;
@@ -179,41 +203,34 @@ export function VendorsPage({}: VendorsPageProps) {
         </div>
       </div>
 
-      {/* Create/Edit Vendor Modal */}
+      {/* Create Vendor Modal */}
       <VendorModal
         open={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        vendor={selectedVendor || null}
+        vendor={null}
         onSuccess={handleCreateSuccess}
       />
 
+      {/* Edit Vendor Modal */}
+      <VendorModal
+        open={!!editingVendor}
+        onClose={() => setEditingVendor(null)}
+        vendor={editingVendor}
+        onSuccess={handleEditSuccess}
+      />
+
       {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg border border-border bg-card p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-foreground mb-2">Delete Vendor</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Are you sure you want to delete "{vendorToDelete?.name}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={false}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                disabled={false}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        open={showDeleteConfirm}
+        title="Delete Vendor"
+        message="Are you sure you want to delete this vendor? This action cannot be undone. If this vendor is linked to any purchase orders, you will need to remove those links first or deactivate the vendor instead."
+        subject={vendorToDelete ? `${vendorToDelete.name}${vendorToDelete.code ? ` (${vendorToDelete.code})` : ""}` : undefined}
+        onConfirm={handleDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setVendorToDelete(null);
+        }}
+      />
     </div>
   );
 }

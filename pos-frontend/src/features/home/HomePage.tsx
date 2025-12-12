@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Flag,
   Clock,
+  FileText,
+  BarChart3,
 } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -93,6 +95,8 @@ export default function HomePage() {
   const canSeeTenantAdmin = role === "owner"; // only owners see this
   const canSeeSales = role === "owner" || role === "manager";
   const canSeeAnalytics = role === "owner";
+  const canSeeDocuments = role === "owner" || role === "admin";
+  const canSeeReports = role === "owner" || role === "admin";
 
   const [onboardingStatus, setOnboardingStatus] = useState<string | null>(null);
   useEffect(() => {
@@ -260,7 +264,25 @@ export default function HomePage() {
             />
           )}
 
+        {canSeeDocuments && (
+            <Card
+              to="/documents"
+              title="Documents"
+              desc="Manage tenant documents, invoices, receipts, and file attachments."
+              icon={<FileText className="h-6 w-6" />}
+              accent="from-blue-500 to-indigo-500"
+            />
+          )}
 
+        {canSeeReports && (
+            <Card
+              to="/reports"
+              title="Reports"
+              desc="Comprehensive business analytics and insights for sales, products, finances, customers, and more."
+              icon={<BarChart3 className="h-6 w-6" />}
+              accent="from-purple-500 to-pink-500"
+            />
+          )}
 
         </div>
 

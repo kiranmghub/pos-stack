@@ -5,7 +5,7 @@ import { VendorScorecard } from "./VendorScorecard";
 import { useVendorScorecard } from "../hooks/useVendors";
 import { Button } from "@/components/ui/button";
 import { LoadingSkeleton } from "../components";
-import { Building2, Mail, Phone, MapPin, FileText, Calendar } from "lucide-react";
+import { Building2, Mail, Phone, MapPin, FileText, Calendar, Clock, Package } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface VendorDetailProps {
@@ -133,6 +133,35 @@ export function VendorDetail({
               </div>
             </div>
           )}
+          {vendor.lead_time_days !== null && vendor.lead_time_days !== undefined && (
+            <div className="flex items-start gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground">Lead Time</div>
+                <div className="text-sm font-medium text-foreground">{vendor.lead_time_days} days</div>
+              </div>
+            </div>
+          )}
+          {vendor.safety_stock_days !== null && vendor.safety_stock_days !== undefined && (
+            <div className="flex items-start gap-2">
+              <Package className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-xs text-muted-foreground">Safety Stock</div>
+                <div className="text-sm font-medium text-foreground">{vendor.safety_stock_days} days</div>
+              </div>
+            </div>
+          )}
+          <div className="flex items-start gap-2 md:col-span-2">
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${vendor.is_active ? "bg-green-500" : "bg-gray-400"}`} />
+              <div>
+                <div className="text-xs text-muted-foreground">Status</div>
+                <div className="text-sm font-medium text-foreground">
+                  {vendor.is_active ? "Active" : "Inactive"}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

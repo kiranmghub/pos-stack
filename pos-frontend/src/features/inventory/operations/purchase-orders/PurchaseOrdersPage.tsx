@@ -1,5 +1,5 @@
 // pos-frontend/src/features/inventory/operations/purchase-orders/PurchaseOrdersPage.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { PageHeading } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "../../components/FilterBar";
@@ -8,6 +8,7 @@ import { POList } from "./POList";
 import { PODetail } from "./PODetail";
 import { CreatePOModal } from "./CreatePOModal";
 import { ReceivePOModal } from "./ReceivePOModal";
+import { ReceiveExternalPOModal } from "./ReceiveExternalPOModal";
 import {
   usePurchaseOrdersList,
   usePurchaseOrderDetail,
@@ -15,7 +16,7 @@ import {
   useDeletePurchaseOrder,
 } from "../../hooks/usePurchaseOrders";
 import { PurchaseOrder } from "../../api/purchaseOrders";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useNotify } from "@/lib/notify";
 import { DataTablePagination } from "../../components/DataTable";
 
@@ -26,6 +27,10 @@ export interface PurchaseOrdersPageProps {
   storeId: number | null;
   /** On store change handler */
   onStoreChange: (storeId: number | null) => void;
+  /** Initial PO ID to select (for deep linking) */
+  initialSelectedPOId?: number | null;
+  /** Callback when PO is selected (for cleanup) */
+  onPOSelected?: () => void;
 }
 
 /**
@@ -36,11 +41,26 @@ export function PurchaseOrdersPage({
   stores,
   storeId,
   onStoreChange,
+  initialSelectedPOId = null,
+  onPOSelected,
 }: PurchaseOrdersPageProps) {
   const notify = useNotify();
-  const [selectedPOId, setSelectedPOId] = useState<number | null>(null);
+  const [selectedPOId, setSelectedPOId] = useState<number | null>(initialSelectedPOId);
+  
+  // Handle initial PO selection from URL params
+  React.useEffect(() => {
+    if (initialSelectedPOId && initialSelectedPOId !== selectedPOId) {
+      setSelectedPOId(initialSelectedPOId);
+      if (onPOSelected) {
+        // Call after a small delay to ensure state is set
+        setTimeout(() => onPOSelected(), 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSelectedPOId]); // Only run when initialSelectedPOId changes
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [showExternalReceiveModal, setShowExternalReceiveModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [vendorFilter, setVendorFilter] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -142,10 +162,16 @@ export function PurchaseOrdersPage({
         title="Purchase Orders"
         subtitle="Manage purchase orders and receiving"
         actions={
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create PO
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowExternalReceiveModal(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Receive External PO
+            </Button>
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create PO
+            </Button>
+          </div>
         }
       />
 
@@ -253,6 +279,15 @@ export function PurchaseOrdersPage({
         onClose={() => setShowReceiveModal(false)}
         po={poDetail || null}
         onSuccess={handleReceiveSuccess}
+      />
+
+      {/* External Receive Modal */}
+      <ReceiveExternalPOModal
+        open={showExternalReceiveModal}
+        onClose={() => setShowExternalReceiveModal(false)}
+        onSuccess={handleCreateSuccess}
+        stores={stores}
+        defaultStoreId={storeId}
       />
     </div>
   );

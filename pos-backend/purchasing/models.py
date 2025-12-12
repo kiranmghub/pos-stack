@@ -53,11 +53,64 @@ class PurchaseOrder(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     submitted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text="When the PO was submitted to the vendor")
     received_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text="When the PO was fully or partially received")
+    
+    # External PO tracking fields
+    is_external = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True if PO was created outside the system (external receipt)"
+    )
+    external_po_number = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="External PO number from vendor/tenant system"
+    )
+    vendor_invoice_number = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Vendor's invoice number (unique per tenant when provided)"
+    )
+    vendor_invoice_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date on vendor invoice"
+    )
+    IMPORT_SOURCE_CHOICES = [
+        ("CSV", "CSV Upload"),
+        ("PDF", "PDF Upload"),
+        ("IMAGE", "Image Upload"),
+        ("MANUAL", "Manual Entry"),
+    ]
+    import_source = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=IMPORT_SOURCE_CHOICES,
+        help_text="How this external PO was created"
+    )
+    invoice_document = models.ForeignKey(
+        "tenants.TenantDoc",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="purchase_orders",
+        help_text="Link to uploaded invoice document"
+    )
 
     class Meta:
         indexes = [
             models.Index(fields=["tenant", "store", "status"]),
             models.Index(fields=["tenant", "status", "created_at"]),
+            models.Index(fields=["tenant", "is_external"]),
+            models.Index(fields=["tenant", "vendor_invoice_number"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "vendor_invoice_number"],
+                condition=Q(vendor_invoice_number__gt=""),
+                name="unique_vendor_invoice_per_tenant"
+            )
         ]
 
     def __str__(self):

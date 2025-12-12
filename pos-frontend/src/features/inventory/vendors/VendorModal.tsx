@@ -48,6 +48,9 @@ export function VendorModal({
     phone: "",
     address: "",
     notes: "",
+    lead_time_days: null,
+    safety_stock_days: null,
+    is_active: true,
   });
 
   // Reset form when modal opens/closes or vendor changes
@@ -62,6 +65,9 @@ export function VendorModal({
           phone: vendor.phone || "",
           address: vendor.address || "",
           notes: vendor.notes || "",
+          lead_time_days: vendor.lead_time_days ?? null,
+          safety_stock_days: vendor.safety_stock_days ?? null,
+          is_active: vendor.is_active ?? true,
         });
       } else {
         setFormData({
@@ -72,6 +78,9 @@ export function VendorModal({
           phone: "",
           address: "",
           notes: "",
+          lead_time_days: null,
+          safety_stock_days: null,
+          is_active: true,
         });
       }
     }
@@ -214,6 +223,72 @@ export function VendorModal({
               placeholder="Additional notes"
             />
           </div>
+
+          {/* Lead Time Days */}
+          <div className="space-y-2">
+            <Label htmlFor="lead_time_days">Lead Time (days)</Label>
+            <Input
+              id="lead_time_days"
+              type="number"
+              min="0"
+              value={formData.lead_time_days ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({
+                  ...formData,
+                  lead_time_days: value === "" ? null : parseInt(value, 10) || null,
+                });
+              }}
+              disabled={isLoading}
+              placeholder="Average lead time in days"
+            />
+            <p className="text-xs text-muted-foreground">
+              Average number of days for orders from this vendor to arrive
+            </p>
+          </div>
+
+          {/* Safety Stock Days */}
+          <div className="space-y-2">
+            <Label htmlFor="safety_stock_days">Safety Stock (days)</Label>
+            <Input
+              id="safety_stock_days"
+              type="number"
+              min="0"
+              value={formData.safety_stock_days ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({
+                  ...formData,
+                  safety_stock_days: value === "" ? null : parseInt(value, 10) || null,
+                });
+              }}
+              disabled={isLoading}
+              placeholder="Safety stock buffer in days"
+            />
+            <p className="text-xs text-muted-foreground">
+              Safety stock buffer in days for reorder calculations
+            </p>
+          </div>
+
+          {/* Is Active (only show in edit mode) */}
+          {vendor && (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={formData.is_active ?? true}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                disabled={isLoading}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary"
+              />
+              <Label htmlFor="is_active" className="text-sm font-normal">
+                Active vendor
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Inactive vendors are hidden from lists but can still be linked to existing purchase orders
+              </p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

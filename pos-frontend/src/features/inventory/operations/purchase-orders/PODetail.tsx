@@ -4,7 +4,7 @@ import { PurchaseOrder } from "../../api/purchaseOrders";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Package, Building2, Store, Send, CheckCircle, XCircle } from "lucide-react";
+import { Package, Building2, Store, Send, CheckCircle, XCircle, FileText, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface PODetailProps {
@@ -143,6 +143,38 @@ export function PODetail({
           <p className="text-sm text-muted-foreground mt-2">{po.notes}</p>
         )}
 
+        {/* External PO Information */}
+        {po.is_external && (
+          <div className="mt-3 pt-3 border-t border-border space-y-2">
+            {po.external_po_number && (
+              <div className="text-xs">
+                <span className="text-muted-foreground">External PO:</span>{" "}
+                <span className="font-medium">{po.external_po_number}</span>
+              </div>
+            )}
+            {po.vendor_invoice_number && (
+              <div className="text-xs">
+                <span className="text-muted-foreground">Vendor Invoice #:</span>{" "}
+                <span className="font-medium">{po.vendor_invoice_number}</span>
+              </div>
+            )}
+            {po.vendor_invoice_date && (
+              <div className="text-xs">
+                <span className="text-muted-foreground">Invoice Date:</span>{" "}
+                <span className="font-medium">
+                  {format(new Date(po.vendor_invoice_date + "T00:00:00"), "MMM d, yyyy")}
+                </span>
+              </div>
+            )}
+            {po.import_source && (
+              <div className="text-xs">
+                <span className="text-muted-foreground">Import Source:</span>{" "}
+                <span className="font-medium">{po.import_source}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
           <span>Created: {format(new Date(po.created_at), "MMM d, yyyy h:mm a")}</span>
           {po.created_by && <span>By: {po.created_by}</span>}
@@ -183,6 +215,34 @@ export function PODetail({
           </div>
         )}
       </div>
+
+      {/* Invoice Document */}
+      {po.invoice_document_url && (
+        <div className="border-b border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <div className="text-sm font-medium">Invoice Document</div>
+                <div className="text-xs text-muted-foreground">
+                  {po.vendor_invoice_number || "External PO Invoice"}
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(po.invoice_document_url!, "_blank")}
+              asChild
+            >
+              <a href={po.invoice_document_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Document
+              </a>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Line Items */}
       <div className="flex-1 overflow-y-auto p-4">

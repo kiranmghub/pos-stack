@@ -1,15 +1,42 @@
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 from common.models import TimeStampedModel          # if you have it; else use models.Model
 from common.roles import TenantRole
 
 
 def tenant_doc_upload_path(instance, filename):
-    # tenants/<TENANT_CODE>/docs/<id>.<ext>
+    """
+    Generate upload path for tenant documents.
+    Preserves original filename while organizing by tenant and ID.
+    
+    Format: tenants/<TENANT_CODE>/docs/<id>_<sanitized_original_name>.<ext>
+    Falls back to tenants/<TENANT_CODE>/docs/<id>.<ext> if no valid filename provided.
+    """
+    import re
+    from os.path import splitext
+    
+    # Extract extension
     ext = (filename.rsplit(".", 1)[-1] or "dat").lower()
+    
+    # Get tenant code
     tenant_code = getattr(getattr(instance, "tenant", None), "code", "T")
-    return f"tenants/{tenant_code}/docs/{instance.id}.{ext}"
+    
+    # Get instance ID (may be None on first save, but will be set on file assignment)
+    doc_id = getattr(instance, "id", None)
+    
+    # Sanitize original filename (remove extension, sanitize, limit length)
+    original_name = splitext(filename)[0] if filename and "." in filename else filename or "document"
+    # Sanitize: remove/replace unsafe characters
+    safe_name = re.sub(r"[^A-Za-z0-9_-]+", "_", original_name)[:100]  # Limit to 100 chars
+    
+    if doc_id:
+        # If we have an ID, use: tenants/<code>/docs/<id>_<safe_name>.<ext>
+        return f"tenants/{tenant_code}/docs/{doc_id}_{safe_name}.{ext}"
+    else:
+        # Fallback (shouldn't happen with two-step save, but handle gracefully)
+        return f"tenants/{tenant_code}/docs/temp_{safe_name}.{ext}"
 
 
 def tenant_logo_upload_path(instance, filename):
@@ -123,9 +150,24 @@ class Tenant(TimeStampedModel):
         return (self.default_currency or self.currency_code or "USD").upper()
 
 
+class TenantDocManager(models.Manager):
+    """Custom manager to exclude soft-deleted documents by default."""
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+    
+    def all_with_deleted(self):
+        """Return all documents including deleted ones."""
+        return super().get_queryset()
+    
+    def deleted_only(self):
+        """Return only deleted documents."""
+        return super().get_queryset().filter(deleted_at__isnull=False)
+
+
 class TenantDoc(TimeStampedModel):
     """
     File attachments for a tenant (business documents, licenses, IDs, etc.).
+    Supports soft delete via deleted_at field.
     """
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, related_name="documents")
     subject_user = models.ForeignKey(
@@ -144,6 +186,19 @@ class TenantDoc(TimeStampedModel):
     file = models.FileField(upload_to=tenant_doc_upload_path)
     description = models.TextField(blank=True, default="")
     metadata = models.JSONField(default=dict, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True, help_text="Soft delete timestamp")
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deleted_tenant_docs",
+        help_text="User who deleted this document"
+    )
+
+    # Use custom manager to filter deleted records
+    objects = TenantDocManager()
+    all_objects = models.Manager()  # Access to all records including deleted
 
     class Meta:
         ordering = ["-created_at", "label"]
@@ -151,12 +206,29 @@ class TenantDoc(TimeStampedModel):
             models.Index(fields=["tenant", "doc_type"]),
             models.Index(fields=["tenant", "label"]),
             models.Index(fields=["tenant", "subject_user"]),
+            models.Index(fields=["tenant", "deleted_at"]),  # For filtering deleted records
         ]
         verbose_name = "Tenant document"
         verbose_name_plural = "Tenant documents"
 
     def __str__(self):
         return f"{self.label} ({self.tenant.code})"
+    
+    def soft_delete(self, user=None):
+        """Soft delete this document."""
+        self.deleted_at = timezone.now()
+        if user:
+            self.deleted_by = user
+        self.save(update_fields=["deleted_at", "deleted_by"])
+    
+    @property
+    def is_deleted(self):
+        """Check if document is soft-deleted."""
+        return self.deleted_at is not None
+    
+    def is_linked_to_pos(self):
+        """Check if this document is linked to any purchase orders."""
+        return self.purchase_orders.exists()
 
 
 class TenantUser(models.Model):

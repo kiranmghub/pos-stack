@@ -10,6 +10,11 @@ export interface Vendor {
   phone: string;
   address: string;
   notes: string;
+  lead_time_days: number | null;
+  safety_stock_days: number | null;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface VendorListResponse {
@@ -31,6 +36,9 @@ export interface CreateVendorPayload {
   phone?: string;
   address?: string;
   notes?: string;
+  lead_time_days?: number | null;
+  safety_stock_days?: number | null;
+  is_active?: boolean;
 }
 
 export interface OnTimePerformance {
@@ -107,17 +115,10 @@ export async function getVendorsList(params?: VendorListParams): Promise<VendorL
 
 /**
  * Fetch vendor detail
- * Note: Backend doesn't have a detail endpoint, so we'll use the list endpoint
  * Security: Tenant-scoped via API
  */
 export async function getVendorDetail(id: number): Promise<Vendor> {
-  // Since there's no detail endpoint, we'll fetch from list and filter
-  const response = await getVendorsList({ page: 1, page_size: 1000 });
-  const vendor = response.results.find((v) => v.id === id);
-  if (!vendor) {
-    throw new Error("Vendor not found");
-  }
-  return vendor;
+  return apiFetchJSON(`/api/v1/purchasing/vendors/${id}`);
 }
 
 /**
@@ -136,22 +137,27 @@ export async function createVendor(payload: CreateVendorPayload): Promise<Vendor
 
 /**
  * Update vendor
- * Note: Backend doesn't have an update endpoint yet
  * Security: Tenant-scoped via API
  */
 export async function updateVendor(id: number, payload: Partial<CreateVendorPayload>): Promise<Vendor> {
-  // TODO: Implement when backend endpoint is available
-  throw new Error("Update vendor endpoint not yet implemented in backend");
+  return apiFetchJSON(`/api/v1/purchasing/vendors/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 }
 
 /**
  * Delete vendor
- * Note: Backend doesn't have a delete endpoint yet
  * Security: Tenant-scoped via API
  */
 export async function deleteVendor(id: number): Promise<void> {
-  // TODO: Implement when backend endpoint is available
-  throw new Error("Delete vendor endpoint not yet implemented in backend");
+  // apiFetchJSON will throw on error, so we just need to call it
+  await apiFetchJSON(`/api/v1/purchasing/vendors/${id}`, {
+    method: "DELETE",
+  });
 }
 
 /**

@@ -25,6 +25,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import InventoryRoute from "@/features/inventory/InventoryRoute";
 import OnboardingRoute from "@/features/onboarding/OnboardingRoute";
+import DocumentsRoute from "@/features/documents/DocumentsRoute";
+import ReportsRoute from "@/features/reports/ReportsRoute";
 
 
 // ⬇️ NEW: HomePage import
@@ -190,8 +192,29 @@ const router = createBrowserRouter([
     ),
   },
 
+  // Documents Management
+  {
+    path: "/documents",
+    element: (
+      <ProtectedRoute>
+        <OwnerOrAdmin>
+          <DocumentsRoute />
+        </OwnerOrAdmin>
+      </ProtectedRoute>
+    ),
+  },
 
-
+  // Reports
+  {
+    path: "/reports",
+    element: (
+      <ProtectedRoute>
+        <OwnerOrAdmin>
+          <ReportsRoute />
+        </OwnerOrAdmin>
+      </ProtectedRoute>
+    ),
+  },
 
   // Catch-all → send unknown routes to Home
   { path: "*", element: <Navigate to="/" replace /> },
