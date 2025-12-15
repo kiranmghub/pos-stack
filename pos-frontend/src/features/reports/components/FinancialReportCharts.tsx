@@ -12,6 +12,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
 
@@ -39,6 +41,7 @@ interface FinancialReportChartsProps {
   paymentMethods: PaymentMethod[];
   discountRules: DiscountRule[];
   taxRules: TaxRule[];
+  trendData?: Array<{ date: string; revenue: number; discounts: number; net_revenue: number }>;
   currency?: CurrencyInfo;
 }
 
@@ -56,6 +59,7 @@ export function FinancialReportCharts({
   paymentMethods,
   discountRules,
   taxRules,
+  trendData,
   currency,
 }: FinancialReportChartsProps) {
   const defaultCurrency: CurrencyInfo = { code: "USD", symbol: "$", precision: 2 };
@@ -123,6 +127,14 @@ export function FinancialReportCharts({
     amount: rule.tax_amount,
     sales_count: rule.sales_count,
   }));
+
+  const revenueDiscountTrend = (trendData || []).map((point) => {
+    const dateObj = new Date(point.date);
+    return {
+      ...point,
+      displayDate: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    };
+  });
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -222,7 +234,63 @@ export function FinancialReportCharts({
           </div>
         </div>
       )}
+
+      {/* Revenue vs Discounts Trend */}
+      {revenueDiscountTrend.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 lg:col-span-2">
+          <h3 className="text-sm font-semibold text-foreground mb-4">
+            Revenue vs Discounts Trend
+          </h3>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={revenueDiscountTrend} margin={{ left: 0, right: 20, top: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="displayDate" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={yAxisFormatter}
+                  tick={{ fill: "#9aa4b2", fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) =>
+                    name === "Revenue" || name === "Net Revenue" || name === "Discounts"
+                      ? safeMoney(value)
+                      : formatNumber(value)
+                  }
+                />
+                <Legend />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="discounts"
+                  name="Discounts"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="net_revenue"
+                  name="Net Revenue"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

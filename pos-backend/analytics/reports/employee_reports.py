@@ -8,7 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, List, Any
 from django.db.models import Sum, Count, Avg, Q, DecimalField, IntegerField
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from orders.models import Sale, Return
@@ -23,6 +24,7 @@ def calculate_employee_performance(
     date_from: datetime,
     date_to: datetime,
     limit: int = 50,
+    tz=None,
 ) -> Dict[str, Any]:
     """
     Calculate employee performance report.
@@ -158,6 +160,45 @@ def calculate_employee_performance(
     if total_transactions > 0:
         overall_return_rate = round((total_returns_count / total_transactions) * 100, 2)
     
+    # Trend data (daily revenue, transactions, returns)
+    bucket_tz = tz or timezone.utc
+    trend_data: List[Dict[str, Any]] = []
+    sales_trend = (
+        sale_qs.annotate(bucket=TruncDate("created_at", tzinfo=bucket_tz))
+        .values("bucket")
+        .annotate(
+            revenue=Coalesce(
+                Sum("total", output_field=DecimalField(max_digits=12, decimal_places=2)),
+                zero,
+            ),
+            transaction_count=Count("id", distinct=True, output_field=IntegerField()),
+        )
+        .order_by("bucket")
+    )
+    returns_trend_map: Dict[Any, int] = {}
+    returns_trend = (
+        total_returns.annotate(bucket=TruncDate("created_at", tzinfo=bucket_tz))
+        .values("bucket")
+        .annotate(return_count=Count("id"))
+    )
+    for row in returns_trend:
+        bucket = row["bucket"]
+        if bucket:
+            returns_trend_map[bucket] = int(row["return_count"] or 0)
+    
+    for row in sales_trend:
+        bucket = row["bucket"]
+        if not bucket:
+            continue
+        trend_data.append(
+            {
+                "date": bucket.isoformat(),
+                "total_revenue": float(row["revenue"] or zero),
+                "transaction_count": int(row["transaction_count"] or 0),
+                "return_count": returns_trend_map.get(bucket, 0),
+            }
+        )
+    
     return {
         "top_employees": top_employees,
         "summary": {
@@ -166,6 +207,7 @@ def calculate_employee_performance(
             "total_returns": total_returns_count,
             "overall_return_rate": overall_return_rate,
         },
+        "trend": trend_data,
         "filters": {
             "store_id": store_id,
             "date_from": date_from.isoformat(),
@@ -173,4 +215,3 @@ def calculate_employee_performance(
             "limit": limit,
         },
     }
-

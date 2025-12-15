@@ -8,7 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, List, Any
 from django.db.models import Sum, Count, Q, DecimalField, IntegerField
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 
 from orders.models import Return, ReturnItem, Sale
 
@@ -20,6 +21,7 @@ def calculate_returns_analysis(
     store_id: Optional[int],
     date_from: datetime,
     date_to: datetime,
+    tz=None,
 ) -> Dict[str, Any]:
     """
     Calculate returns analysis report.
@@ -139,6 +141,50 @@ def calculate_returns_analysis(
             "refunded_amount": float(item["refunded_amount"] or zero),
         })
     
+    # Trend data (daily buckets)
+    trend_data: List[Dict[str, Any]] = []
+    bucket_tz = tz or timezone.utc
+    trend_qs = (
+        returns_qs.annotate(bucket=TruncDate("created_at", tzinfo=bucket_tz))
+        .values("bucket")
+        .annotate(
+            return_count=Count("id", distinct=True, output_field=IntegerField()),
+            refunded_amount=Coalesce(
+                Sum("refund_total", output_field=DecimalField(max_digits=12, decimal_places=2)),
+                zero,
+            ),
+        )
+        .order_by("bucket")
+    )
+    sales_trend_map: Dict[Any, int] = {}
+    sales_trend_qs = (
+        sales_qs.annotate(bucket=TruncDate("created_at", tzinfo=bucket_tz))
+        .values("bucket")
+        .annotate(sales_count=Count("id", distinct=True, output_field=IntegerField()))
+    )
+    for row in sales_trend_qs:
+        bucket = row["bucket"]
+        if bucket:
+            sales_trend_map[bucket] = int(row["sales_count"] or zero_int)
+    
+    for row in trend_qs:
+        bucket = row["bucket"]
+        if not bucket:
+            continue
+        return_count = int(row["return_count"] or zero_int)
+        refunded_amount = float(row["refunded_amount"] or zero)
+        sales_count = sales_trend_map.get(bucket, 0)
+        daily_rate = round((return_count / sales_count) * 100, 2) if sales_count > 0 else 0.0
+        trend_data.append(
+            {
+                "date": bucket.isoformat(),
+                "return_count": return_count,
+                "refunded_amount": round(refunded_amount, 2),
+                "sales_count": sales_count,
+                "return_rate": daily_rate,
+            }
+        )
+    
     return {
         "summary": {
             "total_returns": total_returns,
@@ -149,10 +195,10 @@ def calculate_returns_analysis(
         "reason_breakdown": reason_breakdown_list,
         "disposition_breakdown": disposition_breakdown_list,
         "status_breakdown": status_breakdown_list,
+        "trend": trend_data,
         "filters": {
             "store_id": store_id,
             "date_from": date_from.isoformat(),
             "date_to": date_to.isoformat(),
         },
     }
-

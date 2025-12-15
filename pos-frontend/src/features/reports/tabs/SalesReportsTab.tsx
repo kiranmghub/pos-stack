@@ -1,12 +1,13 @@
 // pos-frontend/src/features/reports/tabs/SalesReportsTab.tsx
 import React, { useState, useEffect } from "react";
-import { DollarSign, Package, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { DollarSign, Package, TrendingUp, ArrowUpRight, ArrowDownRight, ChartPie } from "lucide-react";
 import { useSalesSummaryReport, useSalesDetailReport } from "../hooks/useReports";
 import { SalesReportCharts } from "../components/SalesReportCharts";
 import { ReportFilters } from "../components/ReportFilters";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
 import { cn } from "@/lib/utils";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
+import { LoadingSkeleton, LoadingSkeletonTable } from "@/features/inventory/components/LoadingSkeleton";
 
 interface SalesReportsTabProps {
   storeId: string;
@@ -95,6 +96,54 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
     return new Intl.NumberFormat("en-US").format(value);
   };
 
+  const renderStoreBreakdown = () => {
+    const breakdown = summaryData?.store_breakdown || [];
+    if (!breakdown.length || storeId) {
+      return null;
+    }
+    const sorted = [...breakdown].sort((a, b) => b.revenue - a.revenue);
+    const totalRevenue = sorted.reduce((sum, item) => sum + (item.revenue || 0), 0);
+
+    return (
+      <div className="rounded-xl border border-border bg-card">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Store Breakdown</h3>
+            <p className="text-xs text-muted-foreground">
+              Revenue and order distribution across active stores
+            </p>
+          </div>
+          <ChartPie className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-muted/40 border-b border-border">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Store</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Revenue</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Orders</th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Mix %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((store) => {
+                const mix = totalRevenue > 0 ? (store.revenue / totalRevenue) * 100 : 0;
+                return (
+                  <tr key={store.store_id} className="border-b border-border/50">
+                    <td className="px-4 py-2 text-foreground font-medium">{store.store_name || "Unknown store"}</td>
+                    <td className="px-4 py-2 text-right text-foreground">{safeMoney(store.revenue)}</td>
+                    <td className="px-4 py-2 text-right text-foreground">{formatNumber(store.orders)}</td>
+                    <td className="px-4 py-2 text-right text-muted-foreground">{mix.toFixed(1)}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   // Format date
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -118,6 +167,14 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
         setDateFrom={setDateFrom}
         dateTo={dateTo}
         setDateTo={setDateTo}
+        reportType="sales"
+        exportParams={{
+          store_id: storeId || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          group_by: groupBy,
+          status: detailStatus || undefined,
+        }}
       />
 
       {/* Group By Selector */}
@@ -136,8 +193,13 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
 
       {/* Loading State */}
       {summaryLoading && (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">Loading sales report...</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <LoadingSkeleton key={idx} variant="card" />
+            ))}
+          </div>
+          <LoadingSkeleton variant="rectangular" height={220} className="rounded-xl border border-border bg-card" />
         </div>
       )}
 
@@ -155,7 +217,7 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
       )}
 
       {/* Summary Cards */}
-      {summaryData && (
+      {!summaryLoading && summaryData && (
         <>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Revenue */}
@@ -265,6 +327,8 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
             <SalesReportCharts timeSeries={summaryData.time_series} groupBy={groupBy} currency={currency} />
           )}
 
+          {renderStoreBreakdown()}
+
           {/* Detail Table */}
           <div className="rounded-xl border border-border bg-card">
             <div className="p-4 border-b border-border">
@@ -293,7 +357,9 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
 
             {/* Table */}
             {detailLoading ? (
-              <div className="p-8 text-center text-muted-foreground">Loading sales...</div>
+              <div className="p-6">
+                <LoadingSkeletonTable rows={4} columns={5} />
+              </div>
             ) : detailError ? (
               <div className="p-4 text-center text-error">Error: {detailError.message}</div>
             ) : detailData && detailData.results.length > 0 ? (
@@ -395,10 +461,12 @@ export function SalesReportsTab({ storeId, setStoreId, dateFrom, setDateFrom, da
       {/* Empty State */}
       {!summaryLoading && !summaryError && !summaryData && (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">No sales data available for the selected period</p>
+        <p className="text-muted-foreground">No sales data available for the selected period.</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Try adjusting your date range or selecting a different store.
+        </p>
         </div>
       )}
     </div>
   );
 }
-

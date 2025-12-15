@@ -1,8 +1,7 @@
 // pos-frontend/src/features/reports/components/ReportFilters.tsx
 import React from "react";
 import { DateRangePicker } from "./DateRangePicker";
-import { ExportButton } from "./ExportButton";
-import type { ReportBaseParams } from "../api/reports";
+import { ExportButton, type ReportType, type ReportExportParams } from "./ExportButton";
 
 type StoreLite = { id: number; name: string; code?: string; is_active?: boolean };
 
@@ -18,6 +17,8 @@ interface ReportFiltersProps {
   onExportExcel?: () => void;
   onExportCSV?: () => void;
   exportLoading?: boolean;
+  reportType?: ReportType;
+  exportParams?: ReportExportParams;
 }
 
 /**
@@ -74,46 +75,45 @@ export function ReportFilters({
           />
         </div>
 
-            {/* Export buttons */}
-            {hasExport && (
-              <div className="flex items-end gap-2">
-                {reportType && exportParams ? (
-                  <ExportButton reportType={reportType} params={exportParams} />
-                ) : (
-                  <>
-                    {onExportPDF && (
-                      <button
-                        onClick={onExportPDF}
-                        disabled={exportLoading}
-                        className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {exportLoading ? "..." : "PDF"}
-                      </button>
-                    )}
-                    {onExportExcel && (
-                      <button
-                        onClick={onExportExcel}
-                        disabled={exportLoading}
-                        className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {exportLoading ? "..." : "Excel"}
-                      </button>
-                    )}
-                    {onExportCSV && (
-                      <button
-                        onClick={onExportCSV}
-                        disabled={exportLoading}
-                        className="px-3 py-1.5 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {exportLoading ? "..." : "CSV"}
-                      </button>
-                    )}
-                  </>
+        {/* Export buttons */}
+        {hasExport && (
+          <div className="flex items-end gap-2">
+            {reportType && exportParams ? (
+              <ExportButton reportType={reportType} params={exportParams} />
+            ) : (
+              <>
+                {onExportPDF && (
+                  <button
+                    onClick={onExportPDF}
+                    disabled={exportLoading}
+                    className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {exportLoading ? "..." : "PDF"}
+                  </button>
                 )}
-              </div>
+                {onExportExcel && (
+                  <button
+                    onClick={onExportExcel}
+                    disabled={exportLoading}
+                    className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {exportLoading ? "..." : "Excel"}
+                  </button>
+                )}
+                {onExportCSV && (
+                  <button
+                    onClick={onExportCSV}
+                    disabled={exportLoading}
+                    className="px-3 py-1.5 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {exportLoading ? "..." : "CSV"}
+                  </button>
+                )}
+              </>
             )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

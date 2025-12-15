@@ -44,6 +44,10 @@ class Sale(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["created_at"], name="sale_created_idx"),
+            models.Index(fields=["tenant", "created_at", "status"], name="sale_tenant_status_idx"),
+        ]
 
     def __str__(self):
         return f"Sale #{self.id} - {self.store} - {self.total}"
@@ -66,6 +70,11 @@ class SaleLine(models.Model):
     fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["sale", "variant"], name="saleline_sale_variant_idx"),
+        ]
 
     def __str__(self):
         return f"SaleLine {self.sale_id} - {self.variant} x {self.qty}"
@@ -129,6 +138,10 @@ class Return(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(fields=["created_at"], name="return_created_idx"),
+            models.Index(fields=["tenant", "created_at", "status"], name="return_tenant_status_idx"),
+        ]
 
     def __str__(self):
         return f"Return #{self.id} for Sale #{self.sale_id}"

@@ -1,21 +1,22 @@
 // pos-frontend/src/features/reports/components/ExportButton.tsx
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Download, FileText, FileSpreadsheet, File } from "lucide-react";
 import { exportReport, type ReportBaseParams } from "../api/reports";
 
-type ReportType = "sales" | "products" | "financial" | "customers" | "employees" | "returns";
+export type ReportType = "sales" | "products" | "financial" | "customers" | "employees" | "returns";
+export type ReportExportParams = ReportBaseParams & {
+  limit?: number;
+  sort_by?: string;
+  group_by?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+};
 type ExportFormat = "pdf" | "excel" | "csv";
 
 interface ExportButtonProps {
   reportType: ReportType;
-  params: ReportBaseParams & {
-    limit?: number;
-    sort_by?: string;
-    group_by?: string;
-    status?: string;
-    page?: number;
-    page_size?: number;
-  };
+  params: ReportExportParams;
 }
 
 /**
@@ -26,7 +27,7 @@ export function ExportButton({ reportType, params }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const handleExport = async (format: ExportFormat) => {
+  const handleExport = useCallback(async (format: ExportFormat) => {
     try {
       setIsExporting(true);
       setError("");
@@ -41,7 +42,22 @@ export function ExportButton({ reportType, params }: ExportButtonProps) {
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [params, reportType]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        if (!isExporting) {
+          handleExport("pdf");
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleExport, isExporting]);
 
   return (
     <div className="relative">
@@ -80,4 +96,3 @@ export function ExportButton({ reportType, params }: ExportButtonProps) {
     </div>
   );
 }
-

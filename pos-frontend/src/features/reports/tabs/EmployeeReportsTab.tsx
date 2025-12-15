@@ -1,11 +1,13 @@
 // pos-frontend/src/features/reports/tabs/EmployeeReportsTab.tsx
 import React, { useState, useEffect } from "react";
-import { Users, TrendingUp, DollarSign, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, TrendingUp, RefreshCw, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useEmployeePerformanceReport } from "../hooks/useReports";
 import { ReportFilters } from "../components/ReportFilters";
+import { EmployeeReportCharts } from "../components/EmployeeReportCharts";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
 import { cn } from "@/lib/utils";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
+import { LoadingSkeleton, LoadingSkeletonTable } from "@/features/inventory/components/LoadingSkeleton";
 
 interface EmployeeReportsTabProps {
   storeId: string;
@@ -93,6 +95,13 @@ export function EmployeeReportsTab({
         setDateFrom={setDateFrom}
         dateTo={dateTo}
         setDateTo={setDateTo}
+        reportType="employees"
+        exportParams={{
+          store_id: storeId || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          limit,
+        }}
       />
 
       {/* Controls */}
@@ -114,8 +123,14 @@ export function EmployeeReportsTab({
 
       {/* Loading State */}
       {isLoading && (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">Loading employee performance report...</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <LoadingSkeleton key={idx} variant="card" />
+            ))}
+          </div>
+          <LoadingSkeleton variant="rectangular" height={220} className="rounded-xl border border-border bg-card" />
+          <LoadingSkeletonTable rows={4} columns={4} className="p-4" />
         </div>
       )}
 
@@ -212,6 +227,13 @@ export function EmployeeReportsTab({
               </div>
             </div>
           </div>
+
+          {/* Charts */}
+          <EmployeeReportCharts
+            topEmployees={reportData.top_employees}
+            trendData={reportData.trend}
+            currency={currency}
+          />
 
           {/* Top Employees Table */}
           <div className="rounded-xl border border-border bg-card">
@@ -313,11 +335,13 @@ export function EmployeeReportsTab({
       {!isLoading && !error && !reportData && (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            No employee data available for the selected period
+            No employee data available for the selected period.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Try adjusting your date range or selecting a different store.
           </p>
         </div>
       )}
     </div>
   );
 }
-

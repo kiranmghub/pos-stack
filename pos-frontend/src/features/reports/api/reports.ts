@@ -244,6 +244,11 @@ export interface ProductPerformanceReport {
     total_revenue: number;
     total_quantity_sold: number;
   };
+  trends?: Array<{
+    date: string;
+    revenue: number;
+    quantity: number;
+  }>;
   filters: {
     store_id: number | null;
     date_from: string;
@@ -288,6 +293,12 @@ export interface FinancialSummaryReport {
     discount_percentage: number;
     tax_percentage: number;
   };
+  revenue_discount_trend?: Array<{
+    date: string;
+    revenue: number;
+    discounts: number;
+    net_revenue: number;
+  }>;
   payment_methods: Array<{
     method: string;
     total_amount: number;
@@ -346,6 +357,7 @@ export interface CustomerAnalyticsReport {
     new_customers: number;
     returning_customers: number;
     repeat_customer_rate: number;
+    repeat_customers: number;
     total_sales_with_customers: number;
     total_sales_without_customers: number;
   };
@@ -353,6 +365,13 @@ export interface CustomerAnalyticsReport {
     avg_lifetime_value: number;
     avg_visits: number;
   };
+  trend?: Array<{
+    date: string;
+    new_customers: number;
+    returning_customers: number;
+    sales_with_customers: number;
+    sales_without_customers: number;
+  }>;
   filters: {
     store_id: number | null;
     date_from: string;
@@ -384,6 +403,12 @@ export interface EmployeePerformanceReport {
     total_returns: number;
     overall_return_rate: number;
   };
+  trend?: Array<{
+    date: string;
+    total_revenue: number;
+    transaction_count: number;
+    return_count: number;
+  }>;
   filters: {
     store_id: number | null;
     date_from: string;
@@ -449,6 +474,13 @@ export interface ReturnsAnalysisReport {
     status: string;
     return_count: number;
     refunded_amount: number;
+  }>;
+  trend?: Array<{
+    date: string;
+    return_count: number;
+    refunded_amount: number;
+    sales_count: number;
+    return_rate: number;
   }>;
   filters: {
     store_id?: number | null;
@@ -526,4 +558,3 @@ export async function exportReport(params: {
   document.body.removeChild(a);
   URL.revokeObjectURL(blobUrl);
 }
-

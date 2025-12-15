@@ -23,6 +23,7 @@ from analytics.reports.base import (
     validate_store_access,
     get_cache_key,
     rate_limit_report,
+    parse_date_range,
 )
 from analytics.metrics import _tenant_timezone
 from analytics.reports.sales_reports import calculate_sales_summary
@@ -579,6 +580,7 @@ class ProductPerformanceReportView(BaseReportView):
                 date_to=end_dt,
                 limit=limit,
                 sort_by=sort_by,
+                tz=tz,
             )
             
             # Add currency info to response
@@ -702,6 +704,7 @@ class FinancialSummaryReportView(BaseReportView):
                 store_id=store_id,
                 date_from=start_dt,
                 date_to=end_dt,
+                tz=tz,
             )
             
             # Add currency info to response
@@ -832,6 +835,7 @@ class CustomerAnalyticsReportView(BaseReportView):
                 date_from=start_dt,
                 date_to=end_dt,
                 limit=limit,
+                tz=tz,
             )
             
             # Add currency info to response
@@ -962,6 +966,7 @@ class EmployeePerformanceReportView(BaseReportView):
                 date_from=start_dt,
                 date_to=end_dt,
                 limit=limit,
+                tz=tz,
             )
             
             # Add currency info to response
@@ -1084,6 +1089,7 @@ class ReturnsAnalysisReportView(BaseReportView):
                 store_id=store_id,
                 date_from=start_dt,
                 date_to=end_dt,
+                tz=tz,
             )
             
             # Add currency info to response
@@ -1114,4 +1120,3 @@ class ReturnsAnalysisReportView(BaseReportView):
                 {"error": "An error occurred while generating the returns analysis report."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-

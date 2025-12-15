@@ -7,8 +7,9 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, List, Any
-from django.db.models import Sum, Count, Q, DecimalField, IntegerField
-from django.db.models.functions import Coalesce
+from django.db.models import Sum, Count, DecimalField, IntegerField
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 
 from orders.models import Sale, SaleLine, SalePayment
 
@@ -20,6 +21,7 @@ def calculate_financial_summary(
     store_id: Optional[int],
     date_from: datetime,
     date_to: datetime,
+    tz=None,
 ) -> Dict[str, Any]:
     """
     Calculate financial summary report with aggregations.
@@ -106,24 +108,28 @@ def calculate_financial_summary(
             "payment_count": int(item["payment_count"] or zero_int),
         })
     
-    # Discount rules breakdown from receipt_data
+    # Discount and tax rules breakdown from receipt_data
     discount_rules_map: Dict[str, Dict[str, Any]] = {}
-    total_discount_from_rules = Decimal("0.00")
-    
-    # Iterate through sales to extract discount rules from receipt_data
-    for sale in sale_qs.select_related().iterator(chunk_size=100):
+    tax_rules_map: Dict[str, Dict[str, Any]] = {}
+    sale_iter = (
+        sale_qs.only("id", "receipt_data")
+        .iterator(chunk_size=100)
+    )
+
+    for sale in sale_iter:
         receipt = sale.receipt_data or {}
         totals = receipt.get("totals") or {}
-        rules = receipt.get("discount_by_rule") or totals.get("discount_by_rule") or []
-        
-        for rule in rules:
+        discount_rules_list = receipt.get("discount_by_rule") or totals.get("discount_by_rule") or []
+        tax_rules_list = receipt.get("tax_by_rule") or totals.get("tax_by_rule") or []
+
+        for rule in discount_rules_list:
             amount = Decimal(str(rule.get("amount") or "0"))
             if amount <= 0:
                 continue
-            
+
             code = (rule.get("code") or f"RULE-{rule.get('rule_id') or ''}" or "UNKNOWN").upper()
             name = rule.get("name") or code
-            
+
             if code not in discount_rules_map:
                 discount_rules_map[code] = {
                     "code": code,
@@ -131,39 +137,18 @@ def calculate_financial_summary(
                     "total_amount": Decimal("0.00"),
                     "sales_count": set(),
                 }
-            
+
             discount_rules_map[code]["total_amount"] += amount
             discount_rules_map[code]["sales_count"].add(sale.id)
-            total_discount_from_rules += amount
-    
-    discount_rules = []
-    for code, data in discount_rules_map.items():
-        discount_rules.append({
-            "code": code,
-            "name": data["name"],
-            "total_amount": float(data["total_amount"]),
-            "sales_count": len(data["sales_count"]),
-        })
-    discount_rules.sort(key=lambda x: x["total_amount"], reverse=True)
-    
-    # Tax rules breakdown from receipt_data
-    tax_rules_map: Dict[str, Dict[str, Any]] = {}
-    total_tax_from_rules = Decimal("0.00")
-    
-    # Iterate through sales to extract tax rules from receipt_data
-    for sale in sale_qs.select_related().iterator(chunk_size=100):
-        receipt = sale.receipt_data or {}
-        totals = receipt.get("totals") or {}
-        tax_rules_list = receipt.get("tax_by_rule") or totals.get("tax_by_rule") or []
-        
+
         for entry in tax_rules_list:
             amount = Decimal(str(entry.get("amount") or "0"))
             if amount <= 0:
                 continue
-            
+
             code = (entry.get("code") or f"TAX-{entry.get('rule_id') or ''}" or "UNKNOWN").upper()
             name = entry.get("name") or code
-            
+
             if code not in tax_rules_map:
                 tax_rules_map[code] = {
                     "code": code,
@@ -171,21 +156,70 @@ def calculate_financial_summary(
                     "tax_amount": Decimal("0.00"),
                     "sales_count": set(),
                 }
-            
+
             tax_rules_map[code]["tax_amount"] += amount
             tax_rules_map[code]["sales_count"].add(sale.id)
-            total_tax_from_rules += amount
-    
-    tax_rules = []
-    for code, data in tax_rules_map.items():
-        tax_rules.append({
+
+    discount_rules = [
+        {
+            "code": code,
+            "name": data["name"],
+            "total_amount": float(data["total_amount"]),
+            "sales_count": len(data["sales_count"]),
+        }
+        for code, data in discount_rules_map.items()
+    ]
+    discount_rules.sort(key=lambda x: x["total_amount"], reverse=True)
+
+    tax_rules = [
+        {
             "code": code,
             "name": data["name"],
             "tax_amount": float(data["tax_amount"]),
             "sales_count": len(data["sales_count"]),
-        })
+        }
+        for code, data in tax_rules_map.items()
+    ]
     tax_rules.sort(key=lambda x: x["tax_amount"], reverse=True)
-    
+
+    # Build revenue vs discounts trend (daily buckets)
+    trend_data: List[Dict[str, Any]] = []
+    if sale_ids:
+        bucket_tz = tz or timezone.utc
+        trend_qs = (
+            SaleLine.objects.filter(sale_id__in=sale_ids)
+            .annotate(bucket=TruncDate("sale__created_at", tzinfo=bucket_tz))
+            .values("bucket")
+            .annotate(
+                revenue=Coalesce(
+                    Sum("line_total", output_field=DecimalField(max_digits=12, decimal_places=2)),
+                    zero,
+                ),
+                discounts=Coalesce(
+                    Sum("discount", output_field=DecimalField(max_digits=12, decimal_places=2)),
+                    zero,
+                ),
+            )
+            .order_by("bucket")
+        )
+        for row in trend_qs:
+            bucket = row["bucket"]
+            if not bucket:
+                continue
+            bucket_dt = bucket
+            if hasattr(bucket_dt, "tzinfo") and bucket_dt.tzinfo and tz:
+                bucket_dt = bucket_dt.astimezone(tz)
+            revenue_value = Decimal(row["revenue"] or zero)
+            discount_value = Decimal(row["discounts"] or zero)
+            trend_data.append(
+                {
+                    "date": bucket_dt.isoformat() if hasattr(bucket_dt, "isoformat") else str(bucket_dt),
+                    "revenue": float(revenue_value),
+                    "discounts": float(discount_value),
+                    "net_revenue": float(revenue_value - discount_value),
+                }
+            )
+
     return {
         "summary": {
             "total_revenue": round(total_revenue, 2),
@@ -197,6 +231,7 @@ def calculate_financial_summary(
             "discount_percentage": round((total_discounts / total_revenue * 100), 2) if total_revenue > 0 else 0.0,
             "tax_percentage": round((total_taxes / total_revenue * 100), 2) if total_revenue > 0 else 0.0,
         },
+        "revenue_discount_trend": trend_data,
         "payment_methods": payment_methods,
         "discount_rules": discount_rules,
         "tax_rules": tax_rules,
@@ -206,4 +241,3 @@ def calculate_financial_summary(
             "date_to": date_to.isoformat(),
         },
     }
-

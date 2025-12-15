@@ -1,11 +1,9 @@
 // pos-frontend/src/features/reports/tabs/ReturnsReportsTab.tsx
-import React, { useState, useEffect } from "react";
-import { RefreshCw, TrendingDown, DollarSign, Percent, Package } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { RefreshCw, TrendingDown, DollarSign, Percent } from "lucide-react";
 import { useReturnsAnalysisReport } from "../hooks/useReports";
 import { ReportFilters } from "../components/ReportFilters";
-import { ExportButton } from "../components/ExportButton";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
-import { cn } from "@/lib/utils";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
 import {
   PieChart,
@@ -19,7 +17,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
+import { LoadingSkeleton, LoadingSkeletonTable } from "@/features/inventory/components/LoadingSkeleton";
 
 interface ReturnsReportsTabProps {
   storeId: string;
@@ -91,36 +92,17 @@ export function ReturnsReportsTab({
     return `${value.toFixed(2)}%`;
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-muted animate-pulse rounded-md" />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-muted animate-pulse rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const trendSeries = useMemo(() => {
+    return (reportData?.trend || []).map((point) => {
+      const dateObj = new Date(point.date);
+      return {
+        ...point,
+        displayDate: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      };
+    });
+  }, [reportData?.trend]);
 
-  if (error) {
-    return (
-      <div className="rounded-xl border border-destructive bg-destructive/10 p-8 text-center">
-        <p className="text-destructive">Error loading returns report: {error.message}</p>
-      </div>
-    );
-  }
-
-  if (!reportData) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground">No data available for the selected date range</p>
-      </div>
-    );
-  }
-
-  const { summary, reason_breakdown, disposition_breakdown, status_breakdown } = reportData;
+  const { summary, reason_breakdown, disposition_breakdown, status_breakdown } = reportData || {};
 
   return (
     <div className="space-y-6">
@@ -142,99 +124,155 @@ export function ReturnsReportsTab({
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Total Returns</span>
-            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+      {!isLoading && summary && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Returns</span>
+              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-2xl font-semibold text-foreground">{summary.total_returns}</p>
           </div>
-          <p className="text-2xl font-semibold text-foreground">{summary.total_returns}</p>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Total Refunded</span>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Refunded</span>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-2xl font-semibold text-foreground">{safeMoney(summary.total_refunded)}</p>
           </div>
-          <p className="text-2xl font-semibold text-foreground">{safeMoney(summary.total_refunded)}</p>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Return Rate</span>
-            <Percent className="h-4 w-4 text-muted-foreground" />
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Return Rate</span>
+              <Percent className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-2xl font-semibold text-foreground">{formatPercentage(summary.return_rate)}</p>
           </div>
-          <p className="text-2xl font-semibold text-foreground">{formatPercentage(summary.return_rate)}</p>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Total Sales</span>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Sales</span>
+              <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-2xl font-semibold text-foreground">{summary.total_sales}</p>
           </div>
-          <p className="text-2xl font-semibold text-foreground">{summary.total_sales}</p>
         </div>
-      </div>
+      )}
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Reason Breakdown */}
-        {reason_breakdown && reason_breakdown.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Returns by Reason</h3>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={reason_breakdown}
-                    dataKey="return_count"
-                    nameKey="reason_code"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ reason_code, percent }) => `${reason_code} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {reason_breakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Disposition Breakdown */}
-        {disposition_breakdown && disposition_breakdown.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Returns by Disposition</h3>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={disposition_breakdown}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="disposition" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "#9aa4b2", fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(value: number, name: string) => {
-                      if (name === "refunded_amount") {
-                        return safeMoney(value);
+      {!isLoading && reportData && (
+        <>
+          {trendSeries.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-4">Return Trend</h3>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendSeries} margin={{ left: 0, right: 20, top: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                    <XAxis dataKey="displayDate" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                    <YAxis yAxisId="left" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number, name: string) =>
+                        name === "Refunded" ? safeMoney(value) : value
                       }
-                      return value;
-                    }}
-                  />
-                  <Bar dataKey="item_count" name="Items" fill="#3b82f6" />
-                  <Bar dataKey="refunded_amount" name="Refunded" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
+                    />
+                    <Legend />
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="return_count"
+                      name="Returns"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="refunded_amount"
+                      name="Refunded"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="return_rate"
+                      name="Return Rate %"
+                      stroke="#f97316"
+                      strokeDasharray="4 4"
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Reason Breakdown */}
+            {reason_breakdown && reason_breakdown.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Returns by Reason</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={reason_breakdown}
+                        dataKey="return_count"
+                        nameKey="reason_code"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ reason_code, percent }) => `${reason_code} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {reason_breakdown.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {/* Disposition Breakdown */}
+            {disposition_breakdown && disposition_breakdown.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-4">Returns by Disposition</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={disposition_breakdown}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="disposition" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                      <Tooltip
+                        formatter={(value: number, name: string) => {
+                          if (name === "refunded_amount") {
+                            return safeMoney(value);
+                          }
+                          return value;
+                        }}
+                      />
+                      <Bar dataKey="item_count" name="Items" fill="#3b82f6" />
+                      <Bar dataKey="refunded_amount" name="Refunded" fill="#10b981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Breakdown Tables */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {!isLoading && reportData && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Reason Breakdown Table */}
         {reason_breakdown && reason_breakdown.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-4">
@@ -315,8 +353,38 @@ export function ReturnsReportsTab({
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <LoadingSkeleton key={idx} variant="card" />
+            ))}
+          </div>
+          <LoadingSkeleton variant="rectangular" height={220} className="rounded-xl border border-border bg-card" />
+          <LoadingSkeletonTable rows={4} columns={4} className="p-4" />
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="rounded-xl border border-destructive bg-destructive/10 p-8 text-center">
+          <p className="text-destructive">Error loading returns report: {error.message}</p>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !error && !reportData && (
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">No data available for the selected date range.</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Try adjusting your date range or selecting a different store.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
-

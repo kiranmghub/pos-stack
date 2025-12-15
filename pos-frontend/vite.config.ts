@@ -9,6 +9,16 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.ts",
+    css: true,
+    coverage: {
+      reporter: ["text", "lcov"],
+      include: ["src/features/reports/**/*.{ts,tsx}"],
+    },
+  },
   server: isDev
     ? {
         host: true,

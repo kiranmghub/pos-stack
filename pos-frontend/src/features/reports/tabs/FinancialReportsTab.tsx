@@ -1,12 +1,12 @@
 // pos-frontend/src/features/reports/tabs/FinancialReportsTab.tsx
 import React, { useState, useEffect } from "react";
-import { DollarSign, TrendingDown, Percent, CreditCard, Receipt } from "lucide-react";
+import { DollarSign, TrendingDown, Percent, Receipt } from "lucide-react";
 import { useFinancialSummaryReport } from "../hooks/useReports";
 import { ReportFilters } from "../components/ReportFilters";
 import { FinancialReportCharts } from "../components/FinancialReportCharts";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
-import { cn } from "@/lib/utils";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
+import { LoadingSkeleton, LoadingSkeletonTable } from "@/features/inventory/components/LoadingSkeleton";
 
 interface FinancialReportsTabProps {
   storeId: string;
@@ -92,12 +92,24 @@ export function FinancialReportsTab({
         setDateFrom={setDateFrom}
         dateTo={dateTo}
         setDateTo={setDateTo}
+        reportType="financial"
+        exportParams={{
+          store_id: storeId || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+        }}
       />
 
       {/* Loading State */}
       {isLoading && (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">Loading financial report...</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <LoadingSkeleton key={idx} variant="card" />
+            ))}
+          </div>
+          <LoadingSkeleton variant="rectangular" height={220} className="rounded-xl border border-border bg-card" />
+          <LoadingSkeletonTable rows={4} columns={4} className="p-4" />
         </div>
       )}
 
@@ -212,6 +224,7 @@ export function FinancialReportsTab({
             paymentMethods={reportData.payment_methods}
             discountRules={reportData.discount_rules.slice(0, 10)}
             taxRules={reportData.tax_rules.slice(0, 10)}
+            trendData={reportData.revenue_discount_trend}
             currency={currency}
           />
 
@@ -321,11 +334,13 @@ export function FinancialReportsTab({
       {!isLoading && !error && !reportData && (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            No financial data available for the selected period
+            No financial data available for the selected period.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Try adjusting your date range or selecting a different store.
           </p>
         </div>
       )}
     </div>
   );
 }
-

@@ -9,6 +9,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
 } from "recharts";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
 
@@ -30,6 +35,8 @@ interface ProductData {
 interface ProductReportChartsProps {
   topByRevenue: ProductData[];
   topByQuantity: ProductData[];
+  categoryBreakdown?: Array<{ name: string; revenue: number; quantity: number }>;
+  trendData?: Array<{ date: string; revenue: number; quantity: number }>;
   currency?: CurrencyInfo;
 }
 
@@ -40,6 +47,8 @@ interface ProductReportChartsProps {
 export function ProductReportCharts({
   topByRevenue,
   topByQuantity,
+  categoryBreakdown,
+  trendData,
   currency,
 }: ProductReportChartsProps) {
   const defaultCurrency: CurrencyInfo = { code: "USD", symbol: "$", precision: 2 };
@@ -90,7 +99,26 @@ export function ProductReportCharts({
     return null;
   };
 
-  if (topByRevenue.length === 0 && topByQuantity.length === 0) {
+  const categoryData = (categoryBreakdown || []).map((category) => ({
+    ...category,
+    displayName: category.name.length > 24 ? `${category.name.substring(0, 24)}...` : category.name,
+  }));
+  const CATEGORY_COLORS = ["#6366f1", "#ec4899", "#10b981", "#f97316", "#14b8a6", "#8b5cf6", "#ef4444"];
+
+  const trendSeries = (trendData || []).map((trend) => {
+    const dateObj = new Date(trend.date);
+    return {
+      ...trend,
+      displayDate: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    };
+  });
+
+  if (
+    topByRevenue.length === 0 &&
+    topByQuantity.length === 0 &&
+    categoryData.length === 0 &&
+    trendSeries.length === 0
+  ) {
     return (
       <div className="rounded-xl border border-border bg-card p-8 text-center">
         <p className="text-muted-foreground">No chart data available</p>
@@ -164,7 +192,90 @@ export function ProductReportCharts({
           </div>
         </div>
       )}
+
+      {categoryData.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 lg:col-span-2">
+          <h3 className="text-sm font-semibold text-foreground mb-4">
+            Revenue by Category
+          </h3>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  dataKey="revenue"
+                  nameKey="displayName"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={110}
+                  label={({ displayName, percent }) => `${displayName} ${(percent * 100).toFixed(0)}%`}
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={entry.name} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number, name: string) =>
+                    name === "revenue" ? safeMoney(value) : formatNumber(value)
+                  }
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {trendSeries.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 lg:col-span-2">
+          <h3 className="text-sm font-semibold text-foreground mb-4">
+            Product Revenue Trend
+          </h3>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendSeries} margin={{ left: 0, right: 20, top: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="displayDate" tick={{ fill: "#9aa4b2", fontSize: 11 }} />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={yAxisRevenueFormatter}
+                  tick={{ fill: "#9aa4b2", fontSize: 11 }}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={(value) => formatNumber(value)}
+                  tick={{ fill: "#9aa4b2", fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) =>
+                    name === "Revenue" ? safeMoney(value) : formatNumber(value)
+                  }
+                />
+                <Legend />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="revenue"
+                  name="Revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={false}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="quantity"
+                  name="Quantity"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

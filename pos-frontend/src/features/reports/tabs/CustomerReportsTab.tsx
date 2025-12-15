@@ -3,9 +3,10 @@ import React, { useState, useEffect } from "react";
 import { Users, UserPlus, UserCheck, TrendingUp, DollarSign } from "lucide-react";
 import { useCustomerAnalyticsReport } from "../hooks/useReports";
 import { ReportFilters } from "../components/ReportFilters";
+import { CustomerReportCharts } from "../components/CustomerReportCharts";
 import { getMyStores, type StoreLite } from "@/features/pos/api";
-import { cn } from "@/lib/utils";
 import { useMoney, type CurrencyInfo } from "@/features/sales/useMoney";
+import { LoadingSkeleton, LoadingSkeletonTable } from "@/features/inventory/components/LoadingSkeleton";
 
 interface CustomerReportsTabProps {
   storeId: string;
@@ -93,6 +94,13 @@ export function CustomerReportsTab({
         setDateFrom={setDateFrom}
         dateTo={dateTo}
         setDateTo={setDateTo}
+        reportType="customers"
+        exportParams={{
+          store_id: storeId || undefined,
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+          limit,
+        }}
       />
 
       {/* Controls */}
@@ -114,8 +122,14 @@ export function CustomerReportsTab({
 
       {/* Loading State */}
       {isLoading && (
-        <div className="rounded-xl border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">Loading customer analytics report...</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <LoadingSkeleton key={idx} variant="card" />
+            ))}
+          </div>
+          <LoadingSkeleton variant="rectangular" height={220} className="rounded-xl border border-border bg-card" />
+          <LoadingSkeletonTable rows={4} columns={4} className="p-4" />
         </div>
       )}
 
@@ -239,6 +253,14 @@ export function CustomerReportsTab({
             </div>
           )}
 
+          {/* Charts */}
+          <CustomerReportCharts
+            topCustomers={reportData.top_customers}
+            summary={reportData.summary}
+            trendData={reportData.trend}
+            currency={currency}
+          />
+
           {/* Top Customers Table */}
           <div className="rounded-xl border border-border bg-card">
             <div className="p-4 border-b border-border">
@@ -323,11 +345,13 @@ export function CustomerReportsTab({
       {!isLoading && !error && !reportData && (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            No customer data available for the selected period
+            No customer data available for the selected period.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Try adjusting your date range or selecting a different store.
           </p>
         </div>
       )}
     </div>
   );
 }
-

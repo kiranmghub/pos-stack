@@ -8,7 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, List, Any
 from django.db.models import Sum, Count, Avg, Q, DecimalField, IntegerField, F
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 
 from orders.models import Sale, SaleLine
 from catalog.models import Variant, Product
@@ -23,6 +24,7 @@ def calculate_product_performance(
     date_to: datetime,
     limit: int = 50,
     sort_by: str = "revenue",
+    tz=None,
 ) -> Dict[str, Any]:
     """
     Calculate product performance report with aggregations by variant/product.
@@ -132,6 +134,36 @@ def calculate_product_performance(
         reverse=True
     )[:limit]
     
+    # Build product trends over time (daily revenue/quantity)
+    trend_data: List[Dict[str, Any]] = []
+    bucket_tz = tz or timezone.utc
+    trends_qs = (
+        SaleLine.objects.filter(sale_id__in=sale_ids)
+        .annotate(bucket=TruncDate("sale__created_at", tzinfo=bucket_tz))
+        .values("bucket")
+        .annotate(
+            revenue=Coalesce(
+                Sum("line_total", output_field=DecimalField(max_digits=12, decimal_places=2)),
+                zero,
+            ),
+            quantity=Coalesce(Sum("qty", output_field=IntegerField()), zero_int),
+        )
+        .order_by("bucket")
+    )
+    for row in trends_qs:
+        bucket = row["bucket"]
+        if bucket:
+            bucket_dt = bucket
+            if hasattr(bucket_dt, "tzinfo") and bucket_dt.tzinfo and tz:
+                bucket_dt = bucket_dt.astimezone(tz)
+            trend_data.append(
+                {
+                    "date": bucket_dt.isoformat() if hasattr(bucket_dt, "isoformat") else str(bucket_dt),
+                    "revenue": float(row["revenue"] or zero),
+                    "quantity": int(row["quantity"] or zero_int),
+                }
+            )
+
     # Format response data
     def format_product(item):
         """Format product item for response."""
@@ -158,6 +190,7 @@ def calculate_product_performance(
             "total_revenue": round(total_revenue, 2),
             "total_quantity_sold": total_quantity,
         },
+        "trends": trend_data,
         "filters": {
             "store_id": store_id,
             "date_from": date_from.isoformat(),
@@ -166,4 +199,3 @@ def calculate_product_performance(
             "sort_by": sort_by,
         },
     }
-

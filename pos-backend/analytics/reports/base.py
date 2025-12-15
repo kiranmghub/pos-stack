@@ -7,7 +7,6 @@ from datetime import datetime, date, time
 from typing import Optional, Tuple
 from django.utils import timezone
 from django.core.cache import cache
-from django.conf import settings
 from dateutil.parser import parse as parse_datetime
 from django.utils.dateparse import parse_date as django_parse_date
 from stores.models import Store
@@ -35,33 +34,6 @@ def _resolve_request_tenant(request):
         if getattr(user, "active_tenant", None):
             return user.active_tenant
     return None
-
-
-def _tenant_timezone(request):
-    """
-    Get tenant's timezone.
-    Reuses pattern from analytics/metrics.py
-    """
-    tz_name = None
-    tenant = getattr(request, "tenant", None)
-    if tenant:
-        tz_name = getattr(tenant, "timezone", None) or getattr(tenant, "tz", None)
-        if not tz_name:
-            try:
-                from stores.models import Store
-                tz_name = (
-                    Store.objects.filter(tenant=tenant, timezone__isnull=False, timezone__gt="")
-                    .values_list("timezone", flat=True)
-                    .first()
-                )
-            except Exception:
-                tz_name = None
-    if not tz_name:
-        tz_name = getattr(settings, "TIME_ZONE", "UTC")
-    try:
-        return timezone.pytz.timezone(tz_name)
-    except Exception:
-        return timezone.utc
 
 
 def parse_date_range(
@@ -198,4 +170,3 @@ def rate_limit_report(user_id: int, limit: int = 60, window_seconds: int = 60) -
         return True, window_seconds
     
     return False, None
-

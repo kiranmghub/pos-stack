@@ -103,7 +103,7 @@ export function useCustomerAnalyticsReport(
   return useQuery({
     queryKey: ["reports", "customers", "analytics", params],
     queryFn: () => fetchCustomerAnalyticsReport(params),
-    enabled: enabled,
+    enabled: enabled && !!(params.date_from && params.date_to),
     staleTime: 30000, // 30 seconds
     gcTime: 300000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -143,4 +143,3 @@ export function useReturnsAnalysisReport(
     refetchOnWindowFocus: false,
   });
 }
-

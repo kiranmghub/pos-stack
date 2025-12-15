@@ -18,7 +18,7 @@
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
 
-    "types": ["vite/client", "node", "react", "react-dom"],
+    "types": ["vite/client", "node", "react", "react-dom", "vitest/globals", "@testing-library/jest-dom"],
 
     "resolveJsonModule": true,
     "isolatedModules": true,

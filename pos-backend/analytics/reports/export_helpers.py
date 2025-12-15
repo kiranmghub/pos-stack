@@ -264,10 +264,12 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
     """
     try:
         from reportlab.lib.pagesizes import letter, landscape
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
         from reportlab.lib import colors
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
+        from reportlab.graphics.shapes import Drawing
+        from reportlab.graphics.charts.barcharts import VerticalBarChart
     except ImportError:
         raise ImportError("reportlab is required for PDF export. Please install it.")
     
@@ -281,10 +283,11 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
             return _hashlib.md5(*args)
         _pdfdoc.md5 = _md5_no_kw
     
+    page_size = landscape(letter)
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
-        pagesize=landscape(letter),
+        pagesize=page_size,
         leftMargin=0.5 * inch,
         rightMargin=0.5 * inch,
         topMargin=0.5 * inch,
@@ -308,6 +311,7 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
     )
     normal_style = styles["Normal"]
     
+    page_width, page_height = page_size
     story = []
     
     # Title
@@ -316,6 +320,19 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
     story.append(Paragraph(f"<b>Date Range:</b> {date_range}", normal_style))
     story.append(Spacer(1, 0.2 * inch))
     
+    def draw_header_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 9)
+        canvas.setFillColor(colors.HexColor("#475569"))
+        canvas.drawString(doc.leftMargin, page_height - 0.35 * inch, f"{tenant_name} • {report_type.title()} Report")
+        canvas.drawRightString(page_width - doc.rightMargin, 0.35 * inch, f"Page {doc.page}")
+        canvas.setFont("Helvetica-Bold", 48)
+        canvas.setFillColor(colors.HexColor("#E2E8F0"))
+        canvas.translate(page_width / 2.0, page_height / 2.0)
+        canvas.rotate(45)
+        canvas.drawCentredString(0, 0, tenant_name[:24].upper())
+        canvas.restoreState()
+
     def create_table(data: List[Dict[str, Any]], title: Optional[str] = None):
         """Create a PDF table from data."""
         if not data:
@@ -357,12 +374,56 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
         story.append(table)
         story.append(Spacer(1, 0.2 * inch))
     
+    def add_bar_chart_section(data: List[Dict[str, Any]], title: str, label_key: str, value_key: str, max_items: int = 8):
+        if not data:
+            return
+        trimmed = [row for row in data if row.get(label_key) not in (None, "")][:max_items]
+        if not trimmed:
+            return
+        labels = [str(row.get(label_key)) for row in trimmed]
+        values = [float(row.get(value_key) or 0) for row in trimmed]
+        if not any(values):
+            return
+        story.append(Paragraph(f"<b>{title}</b>", heading_style))
+        drawing = Drawing(500, 240)
+        chart = VerticalBarChart()
+        chart.x = 50
+        chart.y = 30
+        chart.height = 180
+        chart.width = 380
+        chart.data = [values]
+        chart.categoryAxis.categoryNames = labels
+        chart.categoryAxis.labels.boxAnchor = "ne"
+        chart.categoryAxis.labels.angle = 45
+        chart.valueAxis.valueMin = 0
+        chart.barSpacing = 2
+        chart.bars[0].fillColor = colors.HexColor("#3b82f6")
+        drawing.add(chart)
+        story.append(drawing)
+        story.append(Spacer(1, 0.2 * inch))
+
     # Generate content based on report type
-    if report_type == "sales" and "results" in report_data:
-        create_table(report_data["results"], "Sales Detail")
+    if report_type == "sales":
+        if report_data.get("summary"):
+            create_table([report_data["summary"]], "Summary")
+        if report_data.get("store_breakdown"):
+            create_table(report_data["store_breakdown"], "Store Breakdown")
+        if report_data.get("results"):
+            create_table(report_data["results"], "Sales Detail")
+        if report_data.get("time_series"):
+            chart_rows = [
+                {"label": row.get("date") or row.get("period"), "value": row.get("revenue", 0)}
+                for row in report_data["time_series"]
+            ]
+            add_bar_chart_section(chart_rows, "Revenue Trend", "label", "value")
     
     elif report_type == "products" and "top_products_by_revenue" in report_data:
         create_table(report_data["top_products_by_revenue"], "Top Products by Revenue")
+        chart_rows = [
+            {"label": row.get("product_name") or row.get("variant_name"), "value": row.get("revenue", 0)}
+            for row in report_data.get("top_products_by_revenue", [])
+        ]
+        add_bar_chart_section(chart_rows, "Top Product Revenue", "label", "value")
     
     elif report_type == "financial":
         if "summary" in report_data:
@@ -376,22 +437,44 @@ def export_report_to_pdf(report_data: Dict[str, Any], report_type: str, tenant_n
     
     elif report_type == "customers" and "top_customers" in report_data:
         create_table(report_data["top_customers"], "Top Customers")
+        chart_rows = [
+            {"label": row.get("customer_name"), "value": row.get("total_revenue", 0)}
+            for row in report_data.get("top_customers", [])
+        ]
+        add_bar_chart_section(chart_rows, "Customer Revenue Leaders", "label", "value")
     
     elif report_type == "employees" and "top_employees" in report_data:
         create_table(report_data["top_employees"], "Top Employees")
+        chart_rows = [
+            {"label": row.get("employee_name"), "value": row.get("total_revenue", 0)}
+            for row in report_data.get("top_employees", [])
+        ]
+        add_bar_chart_section(chart_rows, "Employee Revenue Leaders", "label", "value")
     
     elif report_type == "returns":
         if "summary" in report_data:
             create_table([report_data["summary"]], "Summary")
         if "reason_breakdown" in report_data and report_data["reason_breakdown"]:
             create_table(report_data["reason_breakdown"], "Breakdown by Reason")
+            add_bar_chart_section(
+                [{"label": row.get("reason_code"), "value": row.get("return_count", 0)} for row in report_data["reason_breakdown"]],
+                "Returns by Reason",
+                "label",
+                "value",
+            )
         if "disposition_breakdown" in report_data and report_data["disposition_breakdown"]:
             create_table(report_data["disposition_breakdown"], "Breakdown by Disposition")
         if "status_breakdown" in report_data and report_data["status_breakdown"]:
             create_table(report_data["status_breakdown"], "Breakdown by Status")
+        if report_data.get("trend"):
+            add_bar_chart_section(
+                [{"label": row.get("date"), "value": row.get("return_count", 0)} for row in report_data["trend"]],
+                "Return Trend",
+                "label",
+                "value",
+            )
     
     # Build PDF
-    doc.build(story)
+    doc.build(story, onFirstPage=draw_header_footer, onLaterPages=draw_header_footer)
     buf.seek(0)
     return buf.getvalue()
-
