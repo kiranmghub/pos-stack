@@ -104,6 +104,10 @@ class StockLedger(models.Model):
         ("RESERVATION", "Reservation"),
         ("RESERVATION_COMMIT", "Reservation Commit"),
         ("RESERVATION_RELEASE", "Reservation Release"),
+        ("BREAKAGE", "Breakage"),  # For ICDC invoice breakage tracking
+        ("SHORTAGE", "Shortage"),  # For ICDC invoice shortage tracking
+        ("ICDC_RECEIPT", "ICDC Invoice Receipt"),  # For ICDC invoice receipts
+        ("ICDC_REVERSAL", "ICDC Invoice Reversal"),  # For ICDC invoice reversals
     ]
     tenant = models.ForeignKey("tenants.Tenant", on_delete=models.CASCADE, db_index=True)
     store = models.ForeignKey("stores.Store", on_delete=models.PROTECT, db_index=True)

@@ -71,7 +71,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
       try {
         // Try to fetch tenant details (only works for owners/admins)
         // Silently fail if user doesn't have permission
-        const data = await apiFetchJSON<{ name?: string; logo_file_url?: string; logo_url?: string }>("/api/v1/tenant_admin/tenant");
+        const data = await apiFetchJSON<{ name?: string; logo_file_url?: string; logo_url?: string }>("/api/v1/tenant_admin/tenant/");
         if (!alive) return;
         setTenantName(data.name || null);
         // Prefer logo_file_url over logo_url
@@ -94,7 +94,7 @@ export default function AppShell({ children, title, contained, actions, subtitle
       // Refresh tenant data when logo is uploaded
       (async () => {
         try {
-          const data = await apiFetchJSON<{ name?: string; logo_file_url?: string; logo_url?: string }>("/api/v1/tenant_admin/tenant");
+          const data = await apiFetchJSON<{ name?: string; logo_file_url?: string; logo_url?: string }>("/api/v1/tenant_admin/tenant/");
           setTenantName(data.name || null);
           const logoUrl = data.logo_file_url || data.logo_url || null;
           setTenantLogo(logoUrl);

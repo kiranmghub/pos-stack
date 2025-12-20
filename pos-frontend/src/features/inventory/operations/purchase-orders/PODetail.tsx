@@ -143,6 +143,22 @@ export function PODetail({
           <p className="text-sm text-muted-foreground mt-2">{po.notes}</p>
         )}
 
+        {/* ICDC Invoice Link */}
+        {po.import_source === "PDF" && po.vendor_invoice_number && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <div className="flex items-center gap-2 text-sm">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-muted-foreground">ICDC Invoice:</span>
+              <span className="font-medium">{po.vendor_invoice_number}</span>
+              {po.vendor_invoice_date && (
+                <span className="text-muted-foreground">
+                  ({format(new Date(po.vendor_invoice_date), "MMM d, yyyy")})
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* External PO Information */}
         {po.is_external && (
           <div className="mt-3 pt-3 border-t border-border space-y-2">

@@ -89,6 +89,7 @@ urlpatterns = [
     path("api/v1/inventory/", include("inventory.urls", namespace="inventory")),
     path("api/v1/purchasing/", include("purchasing.urls", namespace="purchasing")),
     path("api/v1/webhooks/", include("webhooks.urls", namespace="webhooks")),
+    path("api/v1/domain-extensions/telangana-liquor/", include("domain_extensions.telangana_liquor.urls", namespace="telangana_liquor")),
     # Variants
     path("api/v1/catalog/variants", VariantSearchView.as_view(), name="variant-search"),
     path("api/v1/catalog/products/<int:pk>/image", ProductImageUploadView.as_view()),
@@ -96,7 +97,6 @@ urlpatterns = [
     path("api/v1/tenant_admin/", include("tenant_admin.urls")),
     path("api/v1/discounts/", include("discounts.urls", namespace="discounts")),
     path("api/v1/taxes/", include("taxes.urls", namespace="taxes")),
-    path("api/v1/tenant-admin/", include("tenant_admin.urls")),
     path("api/v1/catalog/codes", CodeGenerateView.as_view()),
     path("api/v1/catalog/barcodes", BarcodeGenerateView.as_view()),
     path("api/v1/stores/stores-lite", StoreLiteViewSet.as_view({"get": "list"}), name="stores-lite",),

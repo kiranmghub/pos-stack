@@ -15,3 +15,11 @@ urllib3<2.0  # Pin to v1.x for LibreSSL compatibility on macOS
 Pillow>=10.0.0  # Image processing for document uploads
 reportlab>=4.0.0  # PDF generation for image-to-PDF conversion
 openpyxl>=3.1.0  # Excel export for reports
+pdfplumber>=0.10.0  # PDF text extraction
+python-doctr>=1.0.0  # Deep learning OCR for scanned PDFs (primary)
+torch>=2.0.0,<3.0.0  # PyTorch backend for docTR (required for docTR)
+torchvision>=0.15.0  # PyTorch vision utilities (required by docTR)
+numpy<2.0.0  # Pin to NumPy 1.x for PyTorch compatibility (PyTorch 2.2.2 requires NumPy <2.0)
+opencv-python<4.9.0  # Pin to version compatible with NumPy 1.x (opencv-python 4.9+ requires NumPy 2+)
+pytesseract>=0.3.10  # OCR for scanned PDFs (fallback)
+pdf2image>=1.16.0  # PDF to image conversion for OCR (fallback)

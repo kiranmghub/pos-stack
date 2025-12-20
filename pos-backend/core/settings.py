@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "onboarding",
     "purchasing",
     "webhooks",
+    "domain_extensions",
 ]
 
 # -----------------------------------------------------------------------------

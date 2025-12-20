@@ -266,6 +266,8 @@ class TenantDetailView(APIView):
             "currency_code": tenant.currency_code,
             "currency_symbol": tenant.currency_symbol,
             "country_code": tenant.country_code or tenant.business_country_code,
+            "business_domain": tenant.business_domain or None,
+            "business_domain_config": tenant.business_domain_config or {},
         })
 
 

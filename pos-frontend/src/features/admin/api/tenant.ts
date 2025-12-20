@@ -16,7 +16,7 @@ export type TenantDetails = {
 };
 
 export async function getTenantDetails(): Promise<TenantDetails> {
-  return apiFetchJSON<TenantDetails>("/api/v1/tenant_admin/tenant");
+  return apiFetchJSON<TenantDetails>("/api/v1/tenant_admin/tenant/");
 }
 
 export async function uploadTenantLogo(file: File): Promise<{ image_url: string; logo_file_url: string }> {

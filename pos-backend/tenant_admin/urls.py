@@ -32,7 +32,7 @@ router.register("coupons", CouponViewSet, basename="admin-coupons")
 urlpatterns = [
     path("", include(router.urls)),
     path("roles/tenant", tenant_roles, name="tenant-roles"),
-    path("tenant", TenantDetailView.as_view(), name="tenant-detail"),
+    path("tenant/", TenantDetailView.as_view(), name="tenant-detail"),
     path("tenant/logo", TenantLogoUploadView.as_view(), name="tenant-logo-upload"),
           # Documents endpoints
     # GET /documents/ -> list (handled by TenantDocumentListView)

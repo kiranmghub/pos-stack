@@ -9,6 +9,7 @@ import { PODetail } from "./PODetail";
 import { CreatePOModal } from "./CreatePOModal";
 import { ReceivePOModal } from "./ReceivePOModal";
 import { ReceiveExternalPOModal } from "./ReceiveExternalPOModal";
+import { ICDCUploadModal } from "../telangana-liquor/ICDCUploadModal";
 import {
   usePurchaseOrdersList,
   usePurchaseOrderDetail,
@@ -16,9 +17,10 @@ import {
   useDeletePurchaseOrder,
 } from "../../hooks/usePurchaseOrders";
 import { PurchaseOrder } from "../../api/purchaseOrders";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, FileText } from "lucide-react";
 import { useNotify } from "@/lib/notify";
 import { DataTablePagination } from "../../components/DataTable";
+import { apiFetchJSON } from "@/lib/auth";
 
 export interface PurchaseOrdersPageProps {
   /** Available stores */
@@ -61,6 +63,8 @@ export function PurchaseOrdersPage({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showExternalReceiveModal, setShowExternalReceiveModal] = useState(false);
+  const [showICDCModal, setShowICDCModal] = useState(false);
+  const [tenantBusinessDomain, setTenantBusinessDomain] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [vendorFilter, setVendorFilter] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -80,6 +84,19 @@ export function PurchaseOrdersPage({
 
   const submitMutation = useSubmitPurchaseOrder();
   const deleteMutation = useDeletePurchaseOrder();
+
+  // Fetch tenant info to check business_domain
+  React.useEffect(() => {
+    async function fetchTenantInfo() {
+      try {
+        const tenantInfo = await apiFetchJSON("/api/v1/tenant_admin/tenant/") as any;
+        setTenantBusinessDomain(tenantInfo.business_domain || null);
+      } catch (err) {
+        console.error("Failed to fetch tenant info:", err);
+      }
+    }
+    fetchTenantInfo();
+  }, []);
 
   const filteredPOs = useMemo(() => {
     if (!poData?.results) return [];
@@ -163,6 +180,12 @@ export function PurchaseOrdersPage({
         subtitle="Manage purchase orders and receiving"
         actions={
           <div className="flex gap-2">
+            {tenantBusinessDomain === "telangana_liquor" && (
+              <Button variant="outline" onClick={() => setShowICDCModal(true)}>
+                <FileText className="h-4 w-4 mr-2" />
+                Receive ICDC Invoice
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowExternalReceiveModal(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Receive External PO
@@ -289,6 +312,16 @@ export function PurchaseOrdersPage({
         stores={stores}
         defaultStoreId={storeId}
       />
+
+      {tenantBusinessDomain === "telangana_liquor" && (
+        <ICDCUploadModal
+          open={showICDCModal}
+          onClose={() => setShowICDCModal(false)}
+          stores={stores}
+          defaultStoreId={storeId}
+          onSuccess={handleReceiveSuccess}
+        />
+      )}
     </div>
   );
 }

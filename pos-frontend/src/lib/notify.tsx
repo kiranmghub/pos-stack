@@ -47,6 +47,7 @@ export function useNotify() {
     error:   (msg: string, duration?: number) => push({ kind: "error", msg, duration }),
     info:    (msg: string, duration?: number) => push({ kind: "info", msg, duration }),
     warn:    (msg: string, duration?: number) => push({ kind: "warn", msg, duration }),
+    warning: (msg: string, duration?: number) => push({ kind: "warn", msg, duration }), // alias for compatibility
   };
 }
 
@@ -80,4 +81,5 @@ export const notify = {
   error:   (msg: string, duration?: number) => _emit("error", msg, duration),
   info:    (msg: string, duration?: number) => _emit("info", msg, duration),
   warn:    (msg: string, duration?: number) => _emit("warn", msg, duration),
+  warning: (msg: string, duration?: number) => _emit("warn", msg, duration), // Alias for compatibility
 };

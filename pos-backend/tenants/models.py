@@ -77,6 +77,19 @@ class Tenant(TimeStampedModel):
     logo_file = models.ImageField(upload_to=tenant_logo_upload_path, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     additional_details = models.JSONField(default=dict, blank=True)
+    # Domain-specific customization
+    business_domain = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Business domain/industry type (e.g., 'telangana_liquor', 'paints_industry', 'grocery')"
+    )
+    business_domain_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Domain-specific configuration settings stored as JSON"
+    )
     signup_completed_at = models.DateTimeField(blank=True, null=True)
     default_reorder_point = models.PositiveIntegerField(null=True, blank=True)
     allow_backorders = models.BooleanField(default=False, help_text="Allow reservations to exceed on_hand quantity")

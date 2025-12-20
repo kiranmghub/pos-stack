@@ -1,0 +1,2 @@
+# Telangana Liquor domain extension
+
